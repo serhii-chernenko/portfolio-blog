@@ -2,7 +2,24 @@ import { config, fields, collection } from '@keystatic/core';
 import { block, wrapper } from '@keystatic/core/content-components';
 import { createElement, type ReactNode } from 'react';
 
-const isProd = process.env.NODE_ENV === 'production';
+// Mode selection.
+//
+//   Local kind: `pnpm dev` (Astro dev server) AND `pnpm wrangler:dev` (Workers
+//   preview). Both set KEYSTATIC=true, which also flips Astro's base path to
+//   apex in `astro.config.mts` so Keystatic's hardcoded /api/keystatic/* paths
+//   line up.
+//
+//   GitHub kind: production builds (`pnpm build` → `pnpm wrangler:deploy`).
+//   KEYSTATIC is unset, base path is `/blog`, and the integration uses the
+//   GitHub App credentials set via wrangler secrets. Authentication runs via
+//   GitHub OAuth; commits go to branches with the `post/` prefix and open PRs.
+//
+//   See docs/KEYSTATIC.md for the full secret/setup checklist.
+const useLocal = process.env.KEYSTATIC === 'true';
+
+// Repo for GitHub mode. Must match the actual GitHub repo where content lives,
+// i.e. the same repo the deployed app is built from.
+const GITHUB_REPO = 'serhii-chernenko/portfolio-blog';
 
 const markdocComponents = {
 	callout: wrapper({
@@ -77,13 +94,13 @@ const markdocComponents = {
 };
 
 export default config({
-	storage: isProd
-		? {
+	storage: useLocal
+		? { kind: 'local' }
+		: {
 				kind: 'github',
-				repo: 'serhii-chernenko/portfolio-blog',
+				repo: GITHUB_REPO,
 				branchPrefix: 'post/',
-			}
-		: { kind: 'local' },
+			},
 
 	ui: {
 		brand: {

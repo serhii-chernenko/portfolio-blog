@@ -1,11 +1,16 @@
 User-agent: *
 Allow: /
 
-# Defensive — the production build doesn't include Keystatic routes at all,
-# but disallow indexing anyway in case something escapes.
+# Keystatic CMS — hide from indexing in every form the URL might take.
+# The Admin UI is gated by GitHub OAuth in production, but we still don't want
+# it surfaced in search results.
 Disallow: /blog/keystatic
 Disallow: /blog/keystatic/
 Disallow: /blog/api/keystatic
 Disallow: /blog/api/keystatic/
+Disallow: /keystatic
+Disallow: /keystatic/
+Disallow: /api/keystatic
+Disallow: /api/keystatic/
 
-Sitemap: https://chernenko.digital/blog/sitemap-index.xml
+Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml

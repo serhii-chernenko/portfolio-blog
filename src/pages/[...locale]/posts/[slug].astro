@@ -2,7 +2,7 @@
 export const prerender = true;
 import { render } from 'astro:content';
 import PostLayout from '../../../layouts/PostLayout.astro';
-import { getPublishedPosts, postUrl, localeOf } from '../../../lib/posts';
+import { getPublishedPosts, localeOf } from '../../../lib/posts';
 import { getPostSlug } from '../../../lib/post-slug';
 import { getTranslatedPostUrls } from '../../../i18n/utils';
 import { readingTimeMinutes } from '../../../lib/reading-time';

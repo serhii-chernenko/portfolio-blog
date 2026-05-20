@@ -1,10 +1,9 @@
 ---
 import type { Locale } from '../i18n/config';
 import type { AnyPost } from '../lib/posts';
-import { localeOf, tagSlug } from '../lib/posts';
+import { tagSlug } from '../lib/posts';
 import { getTranslatedPostUrls, useTranslations, localeHref } from '../i18n/utils';
 import BaseLayout from './BaseLayout.astro';
-import PostMeta from '../components/PostMeta.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import Giscus from '../components/Giscus.astro';
 
@@ -31,13 +30,23 @@ const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MOD
 
 // Tags with computed slugs
 const tags = post.data.tags ?? [];
+
+// Resolve hero image as og:image when available so social shares use the post image
+// (Astro returns ImageMetadata for image() schema fields and a string for raw paths.)
+const heroImageHref =
+  typeof post.data.heroImage === 'string'
+    ? post.data.heroImage
+    : post.data.heroImage?.src;
+const ogImage = heroImageHref
+  ? new URL(heroImageHref, Astro.site).toString()
+  : undefined;
 ---
 
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
   locale={locale}
-  image={post.data.heroImage ? undefined : undefined}
+  image={ogImage}
   type="article"
   publishedAt={post.data.publishedAt}
   updatedAt={post.data.updatedAt}

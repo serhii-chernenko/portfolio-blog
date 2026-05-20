@@ -1,13 +1,57 @@
+// ============================================================================
+//  Wrangler config — Cloudflare Workers deployment for the blog app.
+// ============================================================================
+//
+//  ── Required public vars (declared below under "vars") ──
+//    SITE_URL                              Canonical site URL (used by SSR routes).
+//    MAIL_FROM                             Sender address. Must be on a domain with
+//                                          Cloudflare Email Routing enabled.
+//    PUBLIC_KEYSTATIC_GITHUB_APP_SLUG      The "slug" of the GitHub App that backs
+//                                          Keystatic — the part after `/apps/` in
+//                                          https://github.com/apps/<slug>.
+//
+//  ── Required secrets (set via `wrangler secret put`) ──
+//    SUBSCRIBE_RATE_LIMIT_SECRET           32-byte random — HMAC key for subscribe
+//                                          tokens & IP hashing.
+//    TELEGRAM_BOT_TOKEN                    Optional in dev. Required in prod for
+//                                          notifications.
+//    TELEGRAM_CHAT_ID                      Optional in dev. Required in prod.
+//    KEYSTATIC_SECRET                      32-byte random — signs Keystatic auth
+//                                          cookies. Required for prod GitHub mode.
+//    KEYSTATIC_GITHUB_CLIENT_ID            GitHub App client ID (prod GitHub mode).
+//    KEYSTATIC_GITHUB_CLIENT_SECRET        GitHub App client secret (prod GitHub mode).
+//
+//  Set them all in one go (see docs/KEYSTATIC.md for the GitHub App setup):
+//
+//    pnpm wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
+//    pnpm wrangler secret put TELEGRAM_BOT_TOKEN
+//    pnpm wrangler secret put TELEGRAM_CHAT_ID
+//    pnpm wrangler secret put KEYSTATIC_SECRET
+//    pnpm wrangler secret put KEYSTATIC_GITHUB_CLIENT_ID
+//    pnpm wrangler secret put KEYSTATIC_GITHUB_CLIENT_SECRET
+//
+//  ── Required bindings ──
+//    DB           D1 database. Replace database_id with the value from
+//                 `wrangler d1 create blog-db`.
+//    RATE_LIMIT   KV namespace. Replace id with the value from
+//                 `wrangler kv:namespace create RATE_LIMIT`.
+//    ASSETS       Static assets bound from ./dist (set automatically).
+//    SEND_EMAIL   Cloudflare Email Service binding. Requires Email Routing to
+//                 be enabled on the sender domain.
+//
+// ============================================================================
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "blog",
 	"main": "./dist/_worker.js/index.js",
 	"compatibility_date": "2026-05-15",
 	"compatibility_flags": ["nodejs_compat"],
+
 	"assets": {
 		"binding": "ASSETS",
 		"directory": "./dist"
 	},
+
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -16,30 +60,51 @@
 			"migrations_dir": "./schema"
 		}
 	],
+
 	"kv_namespaces": [
 		{
 			"binding": "RATE_LIMIT",
 			"id": "REPLACE_WITH_REAL_ID"
 		}
 	],
-	"observability": {
-		"enabled": true
-	},
-	"routes": [
-		{ "pattern": "chernenko.digital/blog", "zone_name": "chernenko.digital" },
-		{ "pattern": "chernenko.digital/blog/*", "zone_name": "chernenko.digital" }
-	],
-	// Cloudflare Email Service binding for outbound email.
-	// No destination_address restriction = supports arbitrary recipients (newsletter use).
-	// Requires Email Routing to be enabled on the domain in the CF dashboard.
+
 	"send_email": [
 		{
 			"name": "SEND_EMAIL"
 		}
 	],
+
+	"observability": {
+		"enabled": true
+	},
+
+	// Route topology
+	//
+	//   /blog          → blog landing
+	//   /blog/*        → all blog routes (incl. /blog/keystatic UI)
+	//   /api/keystatic, /api/keystatic/*
+	//                  → apex Keystatic API. The shipped Keystatic React UI
+	//                    fetches these absolute paths; src/middleware.ts
+	//                    rewrites them to /blog/api/keystatic/* so Astro
+	//                    (running with base: '/blog') can serve them.
+	//
+	// Apex `/` is intentionally NOT bound here — serhiichernenko.com root will
+	// be served separately later (small static landing or future portfolio).
+	"routes": [
+		{ "pattern": "serhiichernenko.com/blog", "zone_name": "serhiichernenko.com" },
+		{ "pattern": "serhiichernenko.com/blog/*", "zone_name": "serhiichernenko.com" },
+		{ "pattern": "serhiichernenko.com/api/keystatic", "zone_name": "serhiichernenko.com" },
+		{ "pattern": "serhiichernenko.com/api/keystatic/*", "zone_name": "serhiichernenko.com" }
+	],
+
+	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
+	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.
 	"vars": {
-		"SITE_URL": "https://chernenko.digital",
-		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-github-app-slug",
-		"MAIL_FROM": "hello@blog.chernenko.digital"
+		"SITE_URL": "https://serhiichernenko.com",
+		// MAIL_FROM stays on the chernenko.digital email domain for now —
+		// Email Routing is already enabled there. Migrate to a serhiichernenko.com
+		// sender when DNS + Email Routing are set up on the new domain.
+		"MAIL_FROM": "hello@blog.chernenko.digital",
+		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug"
 	}
 }

@@ -7,7 +7,7 @@ import keystatic from '@keystatic/astro';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
-const SITE = process.env.SITE_URL || 'https://chernenko.digital';
+const SITE = process.env.SITE_URL || 'https://serhiichernenko.com';
 
 /**
  * Keystatic + base-path mode.
@@ -18,19 +18,21 @@ const SITE = process.env.SITE_URL || 'https://chernenko.digital';
  * is set, the UI loads at `/blog/keystatic` but its fetches hit `/api/keystatic/*`
  * (the apex) which 404s — UI renders blank.
  *
- * Resolution (development):
- *   `pnpm dev` and `pnpm wrangler:dev` set KEYSTATIC=true, which makes Astro
- *   serve at the apex (no `/blog/` prefix). Keystatic UI at /keystatic works
- *   cleanly because its hardcoded API paths line up.
+ * Dev / wrangler:dev:
+ *   The `dev` and `build:local` npm scripts set KEYSTATIC=true. The base path
+ *   collapses to apex and Keystatic's hardcoded API paths line up. Mode in
+ *   keystatic.config.ts also reads KEYSTATIC=true and uses local kind — no
+ *   GitHub auth, saves write straight to the filesystem.
  *
- * Resolution (production):
- *   The integration is always loaded (to support GitHub-mode editing). With
- *   base `/blog`, Keystatic UI is at `/blog/keystatic`. The UI's hardcoded API
- *   paths require either:
- *     (a) a CF Worker-level rewrite of `/api/keystatic/*` → `/blog/api/...`, or
- *     (b) running prod also at the apex via a `blog.chernenko.digital` subdomain
- *     (c) patching @keystatic/core/ui (~20 hardcoded paths — fragile)
- *   Documented in README. The user opted to handle prod setup when ready to deploy.
+ * Production:
+ *   `pnpm build` runs without KEYSTATIC, so base is `/blog` and Keystatic
+ *   uses GitHub kind (OAuth via the GitHub App credentials set as wrangler
+ *   secrets — see docs/KEYSTATIC.md). The base-path/API-path mismatch is
+ *   solved by two pieces (no Keystatic fork needed):
+ *     1. wrangler.jsonc binds the Worker to apex /api/keystatic[/*] routes
+ *        in addition to /blog/*, so the UI's apex fetches reach this Worker.
+ *     2. src/middleware.ts rewrites those apex requests to /blog/api/keystatic/*
+ *        so Astro's router (which lives under base: '/blog') can serve them.
  */
 const KEYSTATIC_DEV = process.env.KEYSTATIC === 'true';
 const BASE_PATH = KEYSTATIC_DEV ? '/' : '/blog';

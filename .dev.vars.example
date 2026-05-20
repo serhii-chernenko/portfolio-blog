@@ -1,15 +1,17 @@
 # Copy to `.dev.vars` (gitignored) before `pnpm wrangler:dev`.
-# These values are read by wrangler at startup and exposed as Cloudflare-runtime secrets.
-# In production, set the equivalents via `pnpm wrangler secret put <NAME>`.
+# These values are read by wrangler at startup and exposed as Cloudflare-runtime
+# secrets. In production, set the equivalents via `wrangler secret put <NAME>`.
 
-# REQUIRED — any non-empty string works locally. Generate a real 32-byte secret for production.
+# REQUIRED — any non-empty string works locally. Use a real 32-byte random in prod.
 SUBSCRIBE_RATE_LIMIT_SECRET=local-dev-only-secret-replace-in-prod
 
-# Optional — leave empty in local dev to skip notifications. notify() no-ops gracefully.
+# Optional locally — leave empty to skip notifications. notify() no-ops gracefully.
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 
-# Only needed if you test Keystatic GitHub mode locally (rare — local mode is default).
-KEYSTATIC_GITHUB_CLIENT_ID=
-KEYSTATIC_GITHUB_CLIENT_SECRET=
-KEYSTATIC_SECRET=local-dev-keystatic-secret
+# Keystatic — local mode is used in dev AND `wrangler:dev`, so these are NOT
+# needed locally. They're only consumed by the deployed Worker in GitHub mode.
+# Leave blank here; set them via `wrangler secret put` for production.
+# KEYSTATIC_SECRET=
+# KEYSTATIC_GITHUB_CLIENT_ID=
+# KEYSTATIC_GITHUB_CLIENT_SECRET=

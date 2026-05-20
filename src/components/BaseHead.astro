@@ -3,7 +3,6 @@ import type { Locale } from '../i18n/config';
 import { buildCanonical, buildHreflang, articleJsonLd, websiteJsonLd, ogLocaleFor } from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
 import { useTranslations, withBase } from '../i18n/utils';
-import { htmlLangAttribute } from '../i18n/config';
 
 export interface Props {
   title: string;
@@ -99,7 +98,7 @@ const jsonLd =
 <meta name="twitter:image" content={ogImage} />
 
 <!-- JSON-LD -->
-<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+<script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
 <!-- RSS auto-discovery -->
 <link
@@ -132,6 +131,7 @@ const jsonLd =
 <!-- Cloudflare Web Analytics (deferred) -->
 {import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN && (
   <script
+    is:inline
     defer
     src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon={JSON.stringify({ token: import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN })}
