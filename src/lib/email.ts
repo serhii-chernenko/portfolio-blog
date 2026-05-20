@@ -13,12 +13,12 @@
  * GA with formal SLAs.
  *
  * Wrangler binding: see `send_email` section in wrangler.jsonc.
- * Sender address: configured via the `MAIL_FROM` env var (default: hello@blog.chernenko.digital).
+ * Sender address: configured via the `MAIL_FROM` env var (default: hello@serhiichernenko.com).
  */
 
 import type { Locale } from '../i18n/config';
 
-const DEFAULT_FROM = 'hello@blog.chernenko.digital';
+const DEFAULT_FROM = 'hello@serhiichernenko.com';
 const FROM_NAME = 'Chernenko · Blog';
 
 function fromAddress(env: Env): string {
@@ -52,14 +52,23 @@ const CONFIRM_TEMPLATES: Record<
 	},
 };
 
-const WELCOME_TEMPLATES: Record<Locale, { subject: string; body: string }> = {
+const WELCOME_TEMPLATES: Record<
+	Locale,
+	{ subject: string; body: string; unsubscribePre: string; unsubscribeLinkText: string; unsubscribePost: string }
+> = {
 	en: {
 		subject: "You’re subscribed",
 		body: "You’re in! Expect occasional posts on engineering, photography, and craft. Reply to this email anytime — I read everything.",
+		unsubscribePre: "Not interested anymore?",
+		unsubscribeLinkText: "Unsubscribe",
+		unsubscribePost: "in one click.",
 	},
 	uk: {
-		subject: 'Підписку підтверджено',
+		subject: "Підписку підтверджено",
 		body: "Готово! Іноді надсилатиму нові дописи про розробку, фотографію та ремесло. Можете відповісти на цей лист — я читаю усі.",
+		unsubscribePre: "Не цікаво?",
+		unsubscribeLinkText: "Відписатися",
+		unsubscribePost: "в один клік.",
 	},
 };
 
@@ -104,12 +113,16 @@ export async function sendWelcome(args: {
 	env: Env;
 	to: string;
 	locale: Locale;
+	unsubscribeUrl?: string;
 }): Promise<void> {
 	const tpl = WELCOME_TEMPLATES[args.locale];
 	const from = fromAddress(args.env);
+	const unsubscribeFooter = args.unsubscribeUrl
+		? `<p style="color:#888;font-size:13px;margin-top:24px">${tpl.unsubscribePre} <a href="${args.unsubscribeUrl}" style="color:#888">${tpl.unsubscribeLinkText}</a> ${tpl.unsubscribePost}</p>`
+		: '';
 	const html = emailLayout(
 		`<h1 style="font-size:22px;margin:0 0 16px">${tpl.subject}</h1>
-		 <p style="font-size:16px;line-height:1.6;margin:0">${tpl.body}</p>`,
+		 <p style="font-size:16px;line-height:1.6;margin:0">${tpl.body}</p>${unsubscribeFooter}`,
 		args.locale,
 		FROM_NAME,
 	);

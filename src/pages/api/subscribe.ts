@@ -90,9 +90,14 @@ export const POST: APIRoute = async (context) => {
   });
 
   const token = await issueToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, email, 'confirm');
+  // Derive origin from the incoming request so prod, preview Workers, and
+  // local `wrangler dev` each produce a link that points back to themselves.
+  // Note: `wrangler dev` defaults `request.url`'s host to the first route's
+  // hostname (production) — override via `dev.host` in wrangler.jsonc.
+  const origin = new URL(context.request.url).origin;
   // Astro injects the base path (e.g. `/blog/` in prod, `/` locally).
   const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-  const confirmUrl = `${env.SITE_URL}${base}/api/confirm?token=${encodeURIComponent(token)}&locale=${locale}`;
+  const confirmUrl = `${origin}${base}/api/confirm?token=${encodeURIComponent(token)}&locale=${locale}`;
 
   try {
     await sendConfirmation({ env, to: email, locale, confirmUrl });

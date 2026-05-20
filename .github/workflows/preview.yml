@@ -31,7 +31,6 @@ jobs:
       - name: Build with preview mode (drafts visible)
         env:
           PREVIEW_MODE: 'true'
-          SITE_URL: https://blog-pr-${{ github.event.pull_request.number }}.${{ secrets.CF_ACCOUNT_SUBDOMAIN }}.workers.dev
           PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: ${{ vars.PUBLIC_KEYSTATIC_GITHUB_APP_SLUG }}
         run: pnpm build
 

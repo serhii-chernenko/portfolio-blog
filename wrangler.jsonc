@@ -3,7 +3,6 @@
 // ============================================================================
 //
 //  ── Required public vars (declared below under "vars") ──
-//    SITE_URL                              Canonical site URL (used by SSR routes).
 //    MAIL_FROM                             Sender address. Must be on a domain with
 //                                          Cloudflare Email Routing enabled.
 //    PUBLIC_KEYSTATIC_GITHUB_APP_SLUG      The "slug" of the GitHub App that backs
@@ -78,6 +77,15 @@
 		"enabled": true
 	},
 
+	// `wrangler dev` defaults its simulated host to the first entry in `routes`
+	// (production), which makes `request.url` resolve to serhiichernenko.com
+	// even when serving from localhost. Forcing the dev host to localhost makes
+	// request.url match where the browser actually is — so things like
+	// self-referential confirm links work without any env-var indirection.
+	"dev": {
+		"host": "localhost:8787"
+	},
+
 	// Route topology
 	//
 	//   /blog          → blog landing
@@ -100,11 +108,12 @@
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
 	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.
 	"vars": {
-		"SITE_URL": "https://serhiichernenko.com",
-		// MAIL_FROM stays on the chernenko.digital email domain for now —
-		// Email Routing is already enabled there. Migrate to a serhiichernenko.com
-		// sender when DNS + Email Routing are set up on the new domain.
-		"MAIL_FROM": "hello@blog.chernenko.digital",
+		// MAIL_FROM must be on a domain with Cloudflare Email Routing enabled
+		// AND a verified sender for that exact address. Until Email Routing +
+		// sender verification are configured on serhiichernenko.com, outbound
+		// email will fail. Set it up in the CF dashboard before relying on
+		// production sends.
+		"MAIL_FROM": "hello@serhiichernenko.com",
 		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug"
 	}
 }

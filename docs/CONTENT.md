@@ -418,11 +418,11 @@ The Zod schema in `src/content.config.ts` validates this at build time. If the b
 
 ## Troubleshooting
 
-**`/blog/keystatic` returns 404 / not found.**
-Expected. Locally Keystatic is at `/keystatic` (no `/blog/` prefix) because Astro's base path is `/` when the CMS is enabled. In production, Keystatic isn't shipped at all — `/blog/keystatic` returns 404 by design.
+**`/blog/keystatic` returns 404 under `pnpm dev`.**
+Expected. `pnpm dev` serves at root, so Keystatic is at `/keystatic` (no `/blog/` prefix). The `/blog/keystatic` path is only valid under `pnpm wrangler:dev` and in production.
 
 **`/keystatic` page is blank (white).**
-Usually means the React UI failed to hydrate. Open browser devtools console — most likely an API call to `/api/keystatic/...` 404'd. Confirm you're running `pnpm dev` (which sets `KEYSTATIC=true`), not `astro dev` directly without the flag.
+Usually means the React UI failed to hydrate. Open browser devtools console — most likely an API call to `/api/keystatic/...` 404'd. Confirm you're running `pnpm dev` (which sets `PUBLIC_KEYSTATIC_MODE=local`), not `astro dev` directly without the flag.
 
 **Save in Keystatic does nothing (local).**
 Check the `pnpm dev` terminal for an error. Usually a permission issue on `src/content/posts/` or `src/assets/posts/`. `chmod -R u+w` the dirs.

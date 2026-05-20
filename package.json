@@ -7,13 +7,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "KEYSTATIC=true astro dev",
+    "dev": "PUBLIC_KEYSTATIC_MODE=local astro dev",
     "build": "astro build && pagefind --site dist/blog --output-path dist/blog/pagefind && node ./scripts/post-build.mjs",
-    "build:local": "KEYSTATIC=true astro build && pagefind --site dist --output-path dist/pagefind",
     "build:astro": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "wrangler:dev": "pnpm build:local && wrangler dev",
+    "wrangler:dev": "pnpm build && wrangler dev",
     "wrangler:deploy": "pnpm build && wrangler deploy",
     "d1:apply:local": "wrangler d1 migrations apply blog-db --local",
     "d1:apply:remote": "wrangler d1 migrations apply blog-db --remote",

@@ -11,9 +11,6 @@ export async function getStaticPaths() {
 
 const { locale } = Astro.params as { locale: Locale };
 const t = useTranslations(locale);
-
-// ?confirmed=1 shows a success banner after redirect from /api/confirm
-const confirmed = Astro.url.searchParams.get('confirmed') === '1';
 ---
 
 <BaseLayout
@@ -38,13 +35,22 @@ const confirmed = Astro.url.searchParams.get('confirmed') === '1';
   <!-- Form -->
   <main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
     <div class="max-w-lg">
-      {confirmed && (
-        <div class="alert alert-success mb-8">
-          <span>{t('subscribe.confirm.body')}</span>
-        </div>
-      )}
+      <div id="subscribe-confirmed-banner" hidden class="alert alert-success mb-8">
+        <span>{t('subscribe.confirm.body')}</span>
+      </div>
 
       <SubscribeForm locale={locale} source="subscribe-page" />
     </div>
   </main>
 </BaseLayout>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('confirmed') === '1') {
+    const banner = document.getElementById('subscribe-confirmed-banner');
+    if (banner) banner.removeAttribute('hidden');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('confirmed');
+    history.replaceState(null, '', url);
+  }
+</script>

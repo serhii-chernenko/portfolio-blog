@@ -9,9 +9,10 @@ SUBSCRIBE_RATE_LIMIT_SECRET=local-dev-only-secret-replace-in-prod
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 
-# Keystatic — local mode is used in dev AND `wrangler:dev`, so these are NOT
-# needed locally. They're only consumed by the deployed Worker in GitHub mode.
-# Leave blank here; set them via `wrangler secret put` for production.
-# KEYSTATIC_SECRET=
-# KEYSTATIC_GITHUB_CLIENT_ID=
-# KEYSTATIC_GITHUB_CLIENT_SECRET=
+# Keystatic GitHub mode — REQUIRED for `pnpm wrangler:dev` (the Worker runtime
+# can't use Keystatic local storage; only `pnpm dev` can do that). Get the
+# values from your GitHub App; see docs/KEYSTATIC.md. Same values are set in
+# production via `wrangler secret put`.
+KEYSTATIC_SECRET=
+KEYSTATIC_GITHUB_CLIENT_ID=
+KEYSTATIC_GITHUB_CLIENT_SECRET=

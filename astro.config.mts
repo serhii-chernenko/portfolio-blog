@@ -7,7 +7,10 @@ import keystatic from '@keystatic/astro';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
-const SITE = process.env.SITE_URL || 'https://serhiichernenko.com';
+// Canonical production URL — used at build time for sitemap.xml and RSS
+// absolute links. Runtime URLs are derived from the incoming request, so
+// preview Workers and local `wrangler dev` produce self-referential links.
+const SITE = 'https://serhiichernenko.com';
 
 /**
  * Keystatic + base-path mode.
@@ -18,24 +21,29 @@ const SITE = process.env.SITE_URL || 'https://serhiichernenko.com';
  * is set, the UI loads at `/blog/keystatic` but its fetches hit `/api/keystatic/*`
  * (the apex) which 404s — UI renders blank.
  *
- * Dev / wrangler:dev:
- *   The `dev` and `build:local` npm scripts set KEYSTATIC=true. The base path
- *   collapses to apex and Keystatic's hardcoded API paths line up. Mode in
- *   keystatic.config.ts also reads KEYSTATIC=true and uses local kind — no
- *   GitHub auth, saves write straight to the filesystem.
+ * `pnpm dev` (Astro dev server, Node.js):
+ *   Sets PUBLIC_KEYSTATIC_MODE=local. Base path collapses to apex so
+ *   Keystatic's hardcoded API paths line up. keystatic.config.ts reads the
+ *   same flag and uses local kind — no GitHub auth, saves write straight to
+ *   `src/content/posts/{en,uk}/`. Only works in a real Node.js process
+ *   (Keystatic's local storage requires `fs`).
  *
- * Production:
- *   `pnpm build` runs without KEYSTATIC, so base is `/blog` and Keystatic
- *   uses GitHub kind (OAuth via the GitHub App credentials set as wrangler
- *   secrets — see docs/KEYSTATIC.md). The base-path/API-path mismatch is
- *   solved by two pieces (no Keystatic fork needed):
+ * `pnpm wrangler:dev` and production (Cloudflare Worker runtime):
+ *   The flag is unset, so base is `/blog` and Keystatic uses GitHub kind
+ *   (OAuth via the GitHub App credentials — wrangler secrets in prod,
+ *   `.dev.vars` for `wrangler:dev`; see docs/KEYSTATIC.md). The Worker
+ *   runtime isn't Node.js, so local storage isn't an option there. The
+ *   base-path/API-path mismatch is solved by two pieces:
  *     1. wrangler.jsonc binds the Worker to apex /api/keystatic[/*] routes
  *        in addition to /blog/*, so the UI's apex fetches reach this Worker.
  *     2. src/middleware.ts rewrites those apex requests to /blog/api/keystatic/*
  *        so Astro's router (which lives under base: '/blog') can serve them.
  */
-const KEYSTATIC_DEV = process.env.KEYSTATIC === 'true';
-const BASE_PATH = KEYSTATIC_DEV ? '/' : '/blog';
+// astro.config.mts runs in Node before Vite kicks in, so it reads from
+// `process.env`. The same flag is read by keystatic.config.ts via
+// `import.meta.env` (which Vite inlines at build time) and by middleware.ts.
+const LOCAL_MODE = process.env.PUBLIC_KEYSTATIC_MODE === 'local';
+const BASE_PATH = LOCAL_MODE ? '/' : '/blog';
 
 const integrations = [
 	react(),

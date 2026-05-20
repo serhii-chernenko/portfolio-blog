@@ -13,7 +13,7 @@ interface Env {
 	ASSETS: Fetcher;
 	/** Cloudflare Email Service binding — see `send_email` in wrangler.jsonc. */
 	SEND_EMAIL: SendEmail;
-	/** Sender address, e.g. "hello@blog.chernenko.digital". Set as a wrangler var. */
+	/** Sender address, e.g. "hello@serhiichernenko.com". Set as a wrangler var. */
 	MAIL_FROM: string;
 	TELEGRAM_BOT_TOKEN: string;
 	TELEGRAM_CHAT_ID: string;
@@ -22,12 +22,16 @@ interface Env {
 	KEYSTATIC_GITHUB_CLIENT_SECRET: string;
 	KEYSTATIC_SECRET: string;
 	PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
-	SITE_URL: string;
 }
 
 interface ImportMetaEnv {
 	readonly PREVIEW_MODE?: string;
-	readonly SITE_URL?: string;
+	/**
+	 * Drives Keystatic storage kind AND Astro base path. Set to `'local'`
+	 * by `pnpm dev` only. Unset for `pnpm wrangler:dev` and `pnpm build`
+	 * (both use GitHub OAuth and base `/blog`).
+	 */
+	readonly PUBLIC_KEYSTATIC_MODE?: 'local';
 	readonly PUBLIC_KEYSTATIC_GITHUB_APP_SLUG?: string;
 	readonly PUBLIC_GISCUS_REPO?: string;
 	readonly PUBLIC_GISCUS_REPO_ID?: string;

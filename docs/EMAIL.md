@@ -50,11 +50,11 @@ If your domain already has MX records (you receive email at `you@chernenko.digit
 
 In the CF dashboard → **Email** → **Email Routing** → **Routes** (or **Destinations** depending on UI version):
 
-Add the sender address you want to send **from**. Example: `hello@blog.chernenko.digital`.
+Add the sender address you want to send **from**. Example: `hello@serhiichernenko.com`.
 
 CF emails a verification link to that address. Click it. Now the address can be used as the `from` field.
 
-> **Note:** If you don't actually have an inbox at `hello@blog.chernenko.digital`, set up an Email Routing forwarding rule first: `hello@blog.chernenko.digital → your-personal@gmail.com`. Then verify against your personal inbox.
+> **Note:** If you don't actually have an inbox at `hello@serhiichernenko.com`, set up an Email Routing forwarding rule first: `hello@serhiichernenko.com → your-personal@gmail.com`. Then verify against your personal inbox.
 
 ### 3. Set `MAIL_FROM`
 
@@ -62,7 +62,7 @@ CF emails a verification link to that address. Click it. Now the address can be 
 
 ```jsonc
 "vars": {
-  "MAIL_FROM": "hello@blog.chernenko.digital"
+  "MAIL_FROM": "hello@serhiichernenko.com"
 }
 ```
 

@@ -4,13 +4,18 @@ Two modes live in this repo:
 
 | Where                                  | Mode    | Auth        | Storage                    |
 | -------------------------------------- | ------- | ----------- | -------------------------- |
-| `pnpm dev` (Astro dev server)          | local   | none        | local files                |
-| `pnpm wrangler:dev` (Workers preview)  | local   | none        | local files                |
+| `pnpm dev` (Astro dev server, Node.js) | local   | none        | local files                |
+| `pnpm wrangler:dev` (Workers preview)  | github  | GitHub OAuth| commits → PRs to this repo |
 | Deployed Worker (production)           | github  | GitHub OAuth| commits → PRs to this repo |
 
-The mode is selected at build time by the `KEYSTATIC` env var, set by the
-`dev` and `build:local` npm scripts. The production build (`pnpm build`) leaves
-it unset, which switches `keystatic.config.ts` to GitHub mode.
+`pnpm dev` sets `PUBLIC_KEYSTATIC_MODE=local`. The Astro dev server runs in
+real Node.js, so Keystatic's local kind (which needs `fs`) works there and
+writes go straight to `src/content/posts/{en,uk}/`.
+
+`pnpm wrangler:dev` and the deployed Worker both run in the Cloudflare
+Worker runtime, which is not Node.js — local storage cannot work there.
+Both use GitHub OAuth instead, identical flow, different secret sources
+(`.dev.vars` locally vs. `wrangler secret put` in prod).
 
 The Admin UI at `/keystatic` is blocked from search engines via `robots.txt`
 and is only accessible to GitHub users with write access to the repo.
@@ -118,11 +123,27 @@ maintain a fork.
 
 ---
 
-## Local development reminder
+## Local development with `pnpm dev`
 
-Nothing above applies to local dev. `pnpm dev` and `pnpm wrangler:dev` use
-Keystatic's local kind — saves write straight to `src/content/posts/{en,uk}/`
-on disk. No secrets, no GitHub round-trip.
+`pnpm dev` is the fast iteration loop for content. It uses Keystatic's local
+kind — saves write straight to `src/content/posts/{en,uk}/` on disk. No
+secrets, no GitHub round-trip. The Admin UI lives at
+`http://127.0.0.1:4321/keystatic`.
+
+## Local Worker preview with `pnpm wrangler:dev`
+
+`pnpm wrangler:dev` mirrors production: Keystatic runs in GitHub mode and
+needs the same three secrets. Put them in `.dev.vars` (gitignored — copy
+from `.dev.vars.example`):
+
+```
+KEYSTATIC_SECRET=<32-byte random>
+KEYSTATIC_GITHUB_CLIENT_ID=<from your GitHub App>
+KEYSTATIC_GITHUB_CLIENT_SECRET=<from your GitHub App>
+```
+
+Then the Admin UI at `http://127.0.0.1:8787/blog/keystatic` will use the
+real GitHub OAuth flow exactly like production.
 
 ---
 

@@ -18,7 +18,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 There are **three** different ways to run this project. Use them deliberately.
 
-> ⚠️ **Local URLs ≠ production URLs.** Locally the site is at `/`, e.g. `http://127.0.0.1:4321/en/posts/hello-world/`. In production it's at `/blog/`, e.g. `https://chernenko.digital/blog/en/posts/hello-world/`. This is intentional — see "Why" below.
+> ⚠️ **`pnpm dev` URLs differ from production.** The Astro dev server serves at `/` (e.g. `http://127.0.0.1:4321/en/posts/hello-world/`) so Keystatic local mode works. `pnpm wrangler:dev` and production both serve at `/blog/` (e.g. `https://chernenko.digital/blog/en/posts/hello-world/`). See "Why `pnpm dev` drops `/blog/`" below.
 
 ### 1. `pnpm dev` — fast iteration on pages, components, styles, and content
 
@@ -27,11 +27,11 @@ pnpm install
 pnpm dev
 ```
 
-Opens at `http://127.0.0.1:4321`. HMR, hot-reload, draft posts visible. Sets `KEYSTATIC=true` for you.
+Opens at `http://127.0.0.1:4321`. HMR, hot-reload, draft posts visible. Sets `PUBLIC_KEYSTATIC_MODE=local` for you.
 
 What this gives you:
 - All pages, layouts, components, Tailwind/DaisyUI
-- **Keystatic CMS at <http://127.0.0.1:4321/keystatic>** (writes directly to `src/content/posts/`)
+- **Keystatic CMS at <http://127.0.0.1:4321/keystatic>** (local kind — writes directly to `src/content/posts/`, no GitHub round-trip)
 - Markdoc rendering, theme toggle, language switcher
 - API routes mount, but **they have no Cloudflare bindings here** (no D1, no KV). The `/api/subscribe`, `/api/confirm`, `/api/unsubscribe` endpoints will throw "D1 binding 'DB' is not available". For full API testing, use option 2.
 
@@ -39,25 +39,27 @@ What this does **not** give you:
 - **Pagefind search.** Pagefind builds its index from the static HTML produced by `pnpm build` — there is no index for it to query until you've built.
 - Real Cloudflare runtime — no D1, KV, secrets, send_email.
 
-### Why local URLs don't have `/blog/`
+### Why `pnpm dev` drops `/blog/`
 
 Keystatic's React UI hardcodes its API at root-relative `/api/keystatic/...` and doesn't support a base path. With Astro `base: '/blog'`, the UI loads at `/blog/keystatic` but its API calls go to `/api/keystatic/...` (404) — the UI renders blank.
 
-So when Keystatic is enabled (`KEYSTATIC=true`, set by `pnpm dev` and `pnpm wrangler:dev`), the whole app drops the `/blog/` base and serves at root. In production builds (`pnpm build`, no flag), the `/blog/` base is back and Keystatic is **not loaded at all** — the routes simply don't exist. No auth gate, no robots dance — the CMS is unreachable in production by construction.
+`pnpm dev` (`PUBLIC_KEYSTATIC_MODE=local`) collapses the base to `/` so the paths line up. `pnpm wrangler:dev` and production both keep `base: '/blog'` and rely on `src/middleware.ts` to rewrite apex `/api/keystatic/*` requests onto the prefixed routes — see [`docs/KEYSTATIC.md`](./docs/KEYSTATIC.md).
 
 ### 2. `pnpm wrangler:dev` — Worker preview with real CF bindings
 
-Runs the built Worker against local simulations of D1, KV, and Send Email. Closest you can get to production locally — Keystatic, Pagefind, API endpoints, and D1 all work.
+Runs the built Worker against local simulations of D1, KV, and Send Email. Closest you can get to production locally — Keystatic (GitHub OAuth), Pagefind, API endpoints, and D1 all work. Same base path (`/blog`) and same auth flow as production.
 
-This script builds with `KEYSTATIC=true` then starts wrangler. Like option 1, the app serves at root (`/`), not `/blog/`.
-
-**One-time setup** (`.dev.vars` is already in this clone, gitignored):
+**One-time setup** — copy `.dev.vars.example` and fill in the required secrets:
 
 ```bash
-cp .dev.vars.example .dev.vars     # if not already present
+cp .dev.vars.example .dev.vars
 ```
 
-`SUBSCRIBE_RATE_LIMIT_SECRET` must be set to any non-empty string for `/api/subscribe` to work. Other values can stay empty — the helpers no-op gracefully.
+Required in `.dev.vars`:
+- `SUBSCRIBE_RATE_LIMIT_SECRET` — any non-empty string locally
+- `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — needed because the Worker runtime cannot use Keystatic local storage. See [`docs/KEYSTATIC.md`](./docs/KEYSTATIC.md) for the GitHub App setup.
+
+Optional: Telegram bot credentials. Empty values are fine — the helpers no-op gracefully.
 
 **Run:**
 
@@ -65,13 +67,13 @@ cp .dev.vars.example .dev.vars     # if not already present
 pnpm wrangler:dev       # builds then serves at http://127.0.0.1:8787
 ```
 
-Open <http://127.0.0.1:8787/>. Keystatic is at <http://127.0.0.1:8787/keystatic>.
+Open <http://127.0.0.1:8787/blog/>. Keystatic is at <http://127.0.0.1:8787/blog/keystatic>.
 
 D1 schema applies automatically on first run.
 
 What this gives you:
 - Full CF runtime: Pagefind search, D1, KV, assets binding, send_email binding (logs locally, no real delivery).
-- Keystatic UI fully working.
+- Keystatic UI with real GitHub OAuth — commits go to a `post/*` branch and open PRs, just like prod.
 - The subscribe/confirm/unsubscribe flow works end-to-end against local D1 (verified: POST returns `{ok:true}`, row lands in `subscribers` table).
 
 What this does **not** give you:
@@ -94,14 +96,13 @@ If you see that, you ran the wrong command. Use option 2.
 ## Build
 
 ```bash
-pnpm build         # production build — base /blog, NO Keystatic, full SEO output
-pnpm build:local   # local-preview build — base /, Keystatic included (for wrangler:dev)
+pnpm build         # production build — base /blog, GitHub-mode Keystatic, full SEO output
 pnpm build:astro   # just astro, no pagefind — fastest when iterating
 ```
 
 Build output goes to `dist/`. The Worker entrypoint is `dist/_worker.js/index.js`. Static assets (HTML, CSS, JS, Pagefind, images) are also under `dist/`.
 
-**Always use `pnpm build` for production deploys.** `pnpm wrangler:deploy` calls it explicitly. Don't deploy `build:local` output — it has Keystatic enabled and the wrong base path.
+`pnpm wrangler:dev` and `pnpm wrangler:deploy` both call `pnpm build` — the dev preview and the prod deploy share the exact same artifact.
 
 ## Deploy
 
@@ -134,19 +135,19 @@ These are intentionally left as placeholders — none of them have safe defaults
    pnpm wrangler kv:namespace create RATE_LIMIT
    ```
 2. **`keystatic.config.ts`** — `storage.repo` is set to `inevix/portfolio-blog`. Change if the repo lives elsewhere.
-3. **`astro.config.mjs`** — `SITE_URL` defaults to `https://blog.chernenko.digital`. Change via env or edit the file.
+3. **`astro.config.mts`** — canonical `SITE` constant (used for sitemap/RSS absolute links) is hardcoded. Edit the file to change it. Runtime URLs (e.g. subscribe confirm links) are derived from the incoming request, so previews and `wrangler dev` self-reference automatically.
 4. **Cloudflare Email Service** — outbound email uses CF's native `send_email` Worker binding (no third-party API key needed). Before the first deploy:
    - Enable **Email Routing** on `chernenko.digital` in the Cloudflare dashboard (Email → Email Routing).
-   - Add a verified sender address matching `MAIL_FROM` (e.g. `hello@blog.chernenko.digital`). CF will send a verification email to the address — click the link.
+   - Add a verified sender address matching `MAIL_FROM` (e.g. `hello@serhiichernenko.com`). CF will send a verification email to the address — click the link.
    - The `send_email` binding with no `destination_address` restriction enables the Cloudflare Email Service API, which supports sending to **arbitrary subscriber addresses** (newsletter use case). This is currently in **beta** — if you hit delivery issues at scale, consider adding Resend/Postmark as a fallback.
-   - `MAIL_FROM` is set as a `var` in `wrangler.jsonc` (default: `hello@blog.chernenko.digital`). Override per environment if needed.
+   - `MAIL_FROM` is set as a `var` in `wrangler.jsonc` (default: `hello@serhiichernenko.com`). Override per environment if needed.
 5. **`.github/workflows/*.yml`** — uses these repo secrets/vars:
    - Secrets: `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-   - Vars: `SITE_URL`, `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN`
+   - Vars: `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN`
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
    - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used for HMAC tokens and IP hashing
-   - `KEYSTATIC_*` secrets are **not needed in production** — Keystatic isn't shipped in the prod build. Skip these.
+   - `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — Keystatic runs in GitHub mode in the deployed Worker (and in `wrangler:dev`). See `docs/KEYSTATIC.md` for the GitHub App setup that produces these values.
 7. **`.github/labels.yml`** — apply once: either create the 4 labels manually in repo settings, or wire `crazy-max/ghaction-github-labeler` to do it.
 8. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
 9. **`public/og-default.png`** — replace the 1×1 placeholder with a real 1200×630 PNG. Phase 2 per the plan generates per-post OGs via satori.

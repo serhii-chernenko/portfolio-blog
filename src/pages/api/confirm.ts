@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDB, getEnv, markConfirmed } from '../../lib/d1';
-import { verifyToken } from '../../lib/tokens';
+import { verifyToken, issueToken } from '../../lib/tokens';
 import { sendWelcome } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
 import { isLocale, type Locale } from '../../i18n/config';
@@ -81,7 +81,11 @@ export const GET: APIRoute = async (context) => {
   }
 
   try {
-    await sendWelcome({ env, to: email, locale });
+    const unsubscribeToken = await issueToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, email, 'unsubscribe');
+    const origin = new URL(context.request.url).origin;
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+    const unsubscribeUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&locale=${locale}`;
+    await sendWelcome({ env, to: email, locale, unsubscribeUrl });
   } catch (err) {
     console.error('Failed to send welcome email:', err);
   }

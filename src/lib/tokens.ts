@@ -1,4 +1,7 @@
-const EXPIRY_MS = 48 * 60 * 60 * 1000;
+const EXPIRY_MS: Record<'confirm' | 'unsubscribe', number> = {
+	confirm: 48 * 60 * 60 * 1000,           // 48 hours
+	unsubscribe: 10 * 365 * 24 * 60 * 60 * 1000, // ~10 years
+};
 
 function b64urlEncode(bytes: Uint8Array): string {
 	let s = '';
@@ -44,7 +47,7 @@ export async function issueToken(
 	purpose: 'confirm' | 'unsubscribe',
 	now = Date.now(),
 ): Promise<string> {
-	const expiresAt = now + EXPIRY_MS;
+	const expiresAt = now + EXPIRY_MS[purpose];
 	const payload = `${purpose}:${email}:${expiresAt}`;
 	const sig = await hmac(secret, payload);
 	return b64urlEncode(new TextEncoder().encode(`${payload}:`)).slice(0, -1) +

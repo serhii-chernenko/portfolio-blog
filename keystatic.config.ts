@@ -4,18 +4,28 @@ import { createElement, type ReactNode } from 'react';
 
 // Mode selection.
 //
-//   Local kind: `pnpm dev` (Astro dev server) AND `pnpm wrangler:dev` (Workers
-//   preview). Both set KEYSTATIC=true, which also flips Astro's base path to
-//   apex in `astro.config.mts` so Keystatic's hardcoded /api/keystatic/* paths
-//   line up.
+//   Local kind: ONLY `pnpm dev` (Astro dev server, real Node.js). Sets
+//   PUBLIC_KEYSTATIC_MODE=local, which also flips Astro's base path to apex
+//   in `astro.config.mts` so Keystatic's hardcoded /api/keystatic/* paths
+//   line up. Saves write directly to `src/content/posts/{en,uk}/`.
 //
-//   GitHub kind: production builds (`pnpm build` → `pnpm wrangler:deploy`).
-//   KEYSTATIC is unset, base path is `/blog`, and the integration uses the
-//   GitHub App credentials set via wrangler secrets. Authentication runs via
-//   GitHub OAuth; commits go to branches with the `post/` prefix and open PRs.
+//   Keystatic's local storage requires `fs`, so it cannot run inside a
+//   Cloudflare Worker — that rules out `pnpm wrangler:dev` and production.
+//
+//   GitHub kind: `pnpm wrangler:dev` AND deployed Worker (production).
+//   The flag is unset, base path is `/blog`, and the integration uses the
+//   GitHub App credentials. For `wrangler:dev` they come from `.dev.vars`;
+//   for production they come from `wrangler secret put`. Authentication
+//   runs via GitHub OAuth; commits go to branches with the `post/` prefix
+//   and open PRs.
+//
+//   `import.meta.env.PUBLIC_*` is the Astro idiom: Vite substitutes it at
+//   build time into both server and client bundles, so the storage kind is a
+//   literal in the shipped output (no runtime `process.env` lookup that
+//   wouldn't survive into the browser).
 //
 //   See docs/KEYSTATIC.md for the full secret/setup checklist.
-const useLocal = process.env.KEYSTATIC === 'true';
+const useLocal = import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local';
 
 // Repo for GitHub mode. Must match the actual GitHub repo where content lives,
 // i.e. the same repo the deployed app is built from.
