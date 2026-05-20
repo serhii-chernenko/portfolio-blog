@@ -1,0 +1,53 @@
+---
+title: Hello, world
+translationKey: hello-world
+description: >-
+  A short note on launching this blog, what to expect, and how it's built —
+  Astro on Cloudflare with a git-backed CMS.
+publishedAt: 2026-05-15T09:00:00.000Z
+tags:
+  - meta
+  - astro
+heroImage: /src/assets/posts/hello-world/heroImage.jpg
+heroImageAlt: A simple typewriter on a wooden desk
+draft: false
+---
+This is the first post on the new site. The plan is simple: write more, write longer, and trust the index to find anything worth keeping.
+
+## Why a new blog
+
+I had a portfolio. It worked, but it didn't invite writing. The friction was real — every "I should publish this" became "I'll add it to drafts" became nothing.
+
+So I rebuilt around writing. The stack is small enough that pushing a new post is a two-minute exercise, and good enough that I won't have to migrate again next year.
+
+{% callout type="tip" %}
+The whole thing is **Astro on Cloudflare Workers**. Content is markdown in git, edited via [Keystatic](https://keystatic.com). Drafts live on PR preview URLs until I merge.
+{% /callout %}
+
+## What you'll find here
+
+Three threads, roughly:
+
+1. **Engineering** — what I'm building, what broke, what I'd do differently.
+1. **Photography** — equipment, processing, the occasional gallery.
+1. **Craft** — slower notes on tools, workflows, and the boring parts that make work feel good.
+
+There's an English and a Ukrainian version of the site. They're not auto-translated — each language is hand-written, and I'll only publish in the language I can do justice to.
+
+```ts
+// A tiny taste of the code that runs this
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts('en');
+for (const post of posts) {
+  console.log(post.data.title);
+}
+```
+
+![](/src/assets/posts/hello-world/image.png)
+
+## Subscribing
+
+If you want to follow along, hit the **Subscribe** link in the header. It's a personal cadence — no calendar, no newsletter platform. Just emails when there's something worth sending.
+
+Thanks for reading.

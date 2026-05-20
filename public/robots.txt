@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Defensive — the production build doesn't include Keystatic routes at all,
+# but disallow indexing anyway in case something escapes.
+Disallow: /blog/keystatic
+Disallow: /blog/keystatic/
+Disallow: /blog/api/keystatic
+Disallow: /blog/api/keystatic/
+
+Sitemap: https://chernenko.digital/blog/sitemap-index.xml

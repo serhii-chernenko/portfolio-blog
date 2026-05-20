@@ -1,0 +1,80 @@
+---
+import type { Locale } from '../i18n/config';
+import { locales, localeLabels, localeFlags, htmlLangAttribute } from '../i18n/config';
+import { useTranslations, localeHref } from '../i18n/utils';
+
+export interface Props {
+  locale: Locale;
+  currentPath?: string;
+  translationKey?: string;
+  /** Pre-resolved translated URLs, keyed by locale. Passed from PostLayout via getTranslatedPostUrls(). */
+  translatedUrls?: Partial<Record<Locale, string | null>>;
+}
+
+const { locale, currentPath, translationKey: _translationKey, translatedUrls } = Astro.props;
+
+const t = useTranslations(locale);
+
+function hrefFor(target: Locale): string {
+  // If we have explicit translated URLs (e.g. from a post page), use them.
+  // These are already base-prefixed from getTranslatedPostUrls().
+  if (translatedUrls) {
+    const url = translatedUrls[target];
+    if (url) return url;
+    // Fallback to locale home if no translation exists
+    return localeHref(target);
+  }
+
+  // Otherwise swap the locale prefix in currentPath.
+  // currentPath includes the Astro base (e.g. /blog/en/posts/),
+  // so we must strip the base first before extracting the locale-relative part.
+  if (currentPath) {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+    // Remove base prefix, then strip leading locale segment (/en or /uk)
+    const afterBase = currentPath.startsWith(base)
+      ? currentPath.slice(base.length)
+      : currentPath;
+    const withoutLocale = afterBase.replace(/^\/(en|uk)/, '');
+    return localeHref(target, withoutLocale);
+  }
+
+  return localeHref(target);
+}
+---
+
+<div class="dropdown dropdown-end">
+  <button
+    tabindex="0"
+    class="btn btn-ghost btn-sm gap-1"
+    aria-label={t('lang.switch')}
+    aria-haspopup="true"
+  >
+    <span aria-hidden="true">{localeFlags[locale]}</span>
+    <span class="hidden sm:inline">{localeLabels[locale]}</span>
+    <!-- Chevron -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4" aria-hidden="true">
+      <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+    </svg>
+  </button>
+
+  <ul
+    tabindex="0"
+    class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-lg z-50 w-44 p-1"
+    role="menu"
+  >
+    {locales.map((loc) => (
+      <li role="none">
+        <a
+          href={hrefFor(loc)}
+          hreflang={htmlLangAttribute[loc]}
+          role="menuitem"
+          aria-current={loc === locale ? 'true' : undefined}
+          class={loc === locale ? 'active' : ''}
+        >
+          <span aria-hidden="true">{localeFlags[loc]}</span>
+          {localeLabels[loc]}
+        </a>
+      </li>
+    ))}
+  </ul>
+</div>

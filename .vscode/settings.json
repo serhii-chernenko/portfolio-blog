@@ -1,0 +1,52 @@
+{
+	"files.associations": {
+		"*.mdoc": "markdoc",
+		"wrangler.jsonc": "jsonc",
+		".dev.vars": "properties",
+		".dev.vars.example": "properties"
+	},
+	"[astro]": {
+		"editor.defaultFormatter": "astro-build.astro-vscode"
+	},
+	"[markdoc]": {
+		"editor.defaultFormatter": "stripe.markdoc-language-support"
+	},
+	"[mdx]": {
+		"editor.defaultFormatter": "unifiedjs.vscode-mdx"
+	},
+	"editor.tabSize": 2,
+	"editor.insertSpaces": false,
+	"editor.formatOnSave": false,
+	"tailwindCSS.experimental.classRegex": [
+		["class:list=\"([^\"]*)\"", "[^\"]+"]
+	],
+	"tailwindCSS.includeLanguages": {
+		"astro": "html",
+		"markdoc": "markdown"
+	},
+	"emmet.includeLanguages": {
+		"astro": "html"
+	},
+	"cSpell.words": [
+		"astro",
+		"astrojs",
+		"chernenko",
+		"daisyui",
+		"keystatic",
+		"markdoc",
+		"pagefind",
+		"prerender",
+		"unixepoch",
+		"giscus",
+		"shiki",
+		"wrangler",
+		"mdoc",
+		"hreflang",
+		"FOUC",
+		"webp",
+		"avif",
+		"cloudflare",
+		"workerd"
+	],
+	"cSpell.language": "en,uk",
+}

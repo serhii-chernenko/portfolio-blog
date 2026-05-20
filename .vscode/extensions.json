@@ -1,4 +1,18 @@
 {
-  "recommendations": ["astro-build.astro-vscode", "unifiedjs.vscode-mdx"],
-  "unwantedRecommendations": []
+	"recommendations": [
+		"astro-build.astro-vscode",
+		"stripe.markdoc-language-support",
+		"bradlc.vscode-tailwindcss",
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint",
+		"redhat.vscode-yaml",
+		"unifiedjs.vscode-mdx",
+		"davidanson.vscode-markdownlint",
+		"editorconfig.editorconfig",
+		"yoavbls.pretty-ts-errors",
+		"streetsidesoftware.code-spell-checker",
+		"streetsidesoftware.code-spell-checker-ukrainian",
+		"cloudflare.cloudflare-workers-bindings-extension"
+	],
+	"unwantedRecommendations": []
 }

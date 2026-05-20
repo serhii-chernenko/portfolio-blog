@@ -1,0 +1,45 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "blog",
+	"main": "./dist/_worker.js/index.js",
+	"compatibility_date": "2026-05-15",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "blog-db",
+			"database_id": "REPLACE_WITH_REAL_ID",
+			"migrations_dir": "./schema"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "RATE_LIMIT",
+			"id": "REPLACE_WITH_REAL_ID"
+		}
+	],
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{ "pattern": "chernenko.digital/blog", "zone_name": "chernenko.digital" },
+		{ "pattern": "chernenko.digital/blog/*", "zone_name": "chernenko.digital" }
+	],
+	// Cloudflare Email Service binding for outbound email.
+	// No destination_address restriction = supports arbitrary recipients (newsletter use).
+	// Requires Email Routing to be enabled on the domain in the CF dashboard.
+	"send_email": [
+		{
+			"name": "SEND_EMAIL"
+		}
+	],
+	"vars": {
+		"SITE_URL": "https://chernenko.digital",
+		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-github-app-slug",
+		"MAIL_FROM": "hello@blog.chernenko.digital"
+	}
+}

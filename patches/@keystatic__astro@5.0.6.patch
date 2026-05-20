@@ -1,0 +1,27 @@
+diff --git a/internal/keystatic-astro-page.astro b/internal/keystatic-astro-page.astro
+index 75945d14d2d517249f7081de2f49620098bc49e5..e6468b98833ac0788177a2cde30bf3f59133ea35 100644
+--- a/internal/keystatic-astro-page.astro
++++ b/internal/keystatic-astro-page.astro
+@@ -1,7 +1,20 @@
+ ---
+ import { Keystatic } from './keystatic-page.js';
+-
+ export const prerender = false;
+ ---
+ 
+-<Keystatic client:only="react" />
++<!doctype html>
++<html lang="en">
++	<head>
++		<meta charset="utf-8" />
++		<meta name="viewport" content="width=device-width, initial-scale=1" />
++		<meta name="robots" content="noindex, nofollow" />
++		<title>Keystatic</title>
++		<style is:global>
++			html, body { margin: 0; padding: 0; height: 100%; background: #fff; color: #111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
++		</style>
++	</head>
++	<body>
++		<Keystatic client:only="react" />
++	</body>
++</html>

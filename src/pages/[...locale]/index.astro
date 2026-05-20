@@ -1,0 +1,166 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import SubscribeForm from '../../components/SubscribeForm.astro';
+import Carousel from '../../components/Carousel.astro';
+import CarouselItem from '../../components/CarouselItem.astro';
+import { locales, type Locale } from '../../i18n/config';
+import { useTranslations, localeHref, withBase } from '../../i18n/utils';
+import { getPublishedPosts, getTagsForLocale, tagSlug } from '../../lib/posts';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return locales.map((locale) => ({ params: { locale } }));
+}
+
+const locale = Astro.params.locale as Locale;
+const t = useTranslations(locale);
+
+const allPosts = await getPublishedPosts(locale);
+const latest = allPosts.slice(0, 6);
+const tags = (await getTagsForLocale(locale)).slice(0, 14);
+
+const alternates: Record<Locale, string> = {
+  en: localeHref('en'),
+  uk: localeHref('uk'),
+};
+---
+
+<BaseLayout
+  title={`${t('site.name')} — ${t('site.tagline')}`}
+  description={t('site.description')}
+  locale={locale}
+  alternates={alternates}
+  type="website"
+>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div
+      class="absolute inset-0 -z-10 opacity-[0.18]"
+      style="background-image: radial-gradient(circle at 1px 1px, var(--color-base-content) 1px, transparent 0); background-size: 24px 24px;"
+      aria-hidden="true"
+    >
+    </div>
+    <div class="absolute inset-x-0 top-0 -z-10 h-[420px] bg-gradient-to-b from-primary/10 via-base-100 to-base-100" aria-hidden="true"></div>
+
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-16">
+      <p class="badge badge-outline mb-5 text-xs uppercase tracking-[0.2em]">
+        {t('home.hero.eyebrow')}
+      </p>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight max-w-3xl">
+        {t('home.hero.title')}
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg sm:text-xl text-base-content/70 leading-relaxed">
+        {t('home.hero.subtitle')}
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <a href={localeHref(locale, 'posts/')} class="btn btn-primary">
+          {t('home.hero.ctaPosts')}
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
+        <a href={localeHref(locale, 'subscribe')} class="btn btn-ghost">
+          {t('home.hero.ctaSubscribe')}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Latest posts -->
+  <section class="py-12 sm:py-16">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-end justify-between gap-4 mb-8">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">
+          {t('home.latest')}
+        </h2>
+        <a
+          href={localeHref(locale, 'posts/')}
+          class="link link-hover text-sm font-medium inline-flex items-center gap-1"
+        >
+          {t('home.viewAll')}
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    {
+      latest.length === 0 ? (
+        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto size-10 opacity-50 mb-4" aria-hidden="true">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <p class="text-base-content/60">{t('post.empty')}</p>
+          </div>
+        </div>
+      ) : (
+        <Carousel>
+          {latest.map((post) => (
+            <CarouselItem class="my-4 mb-10 ml-4 w-4/5 scroll-ml-4 last:mr-4 last:scroll-mr-4 sm:w-3/5 md:w-1/2 lg:w-1/3">
+              <PostCard post={post} />
+            </CarouselItem>
+          ))}
+        </Carousel>
+      )
+    }
+  </section>
+
+  {
+    tags.length > 0 && (
+      <section class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-t border-base-300">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+          {t('home.tags')}
+        </h2>
+        <div class="flex flex-wrap gap-2">
+          {tags.map(({ tag, count }) => (
+            <a
+              href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+              class="badge badge-lg badge-outline hover:badge-primary transition-colors"
+            >
+              {tag}
+              <span class="ml-2 opacity-60 text-xs">{count}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- About teaser + Subscribe -->
+  <section class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 sm:py-20 border-t border-base-300">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">
+          {t('home.about.title')}
+        </h2>
+        <p class="mt-5 text-base-content/70 leading-relaxed text-lg">
+          {t('home.about.body')}
+        </p>
+        <a
+          href={localeHref(locale, 'about')}
+          class="mt-6 inline-flex items-center gap-1.5 link link-hover font-medium"
+        >
+          {t('home.about.cta')}
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="card bg-base-200 border border-base-300">
+        <div class="card-body">
+          <h3 class="card-title text-xl">{t('subscribe.title')}</h3>
+          <p class="text-base-content/70">{t('subscribe.description')}</p>
+          <div class="mt-2">
+            <SubscribeForm locale={locale} source="home" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

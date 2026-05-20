@@ -1,0 +1,52 @@
+---
+export const prerender = true;
+import { render } from 'astro:content';
+import PostLayout from '../../../layouts/PostLayout.astro';
+import { getPublishedPosts, postUrl, localeOf } from '../../../lib/posts';
+import { getPostSlug } from '../../../lib/post-slug';
+import { getTranslatedPostUrls } from '../../../i18n/utils';
+import { readingTimeMinutes } from '../../../lib/reading-time';
+import { locales, type Locale } from '../../../i18n/config';
+
+export async function getStaticPaths() {
+  const paths = [];
+  for (const locale of locales) {
+    const posts = await getPublishedPosts(locale);
+    for (const post of posts) {
+      const slug = getPostSlug(post);
+      const translationKey = post.data.translationKey;
+      const alternates = translationKey
+        ? await getTranslatedPostUrls(translationKey)
+        : { en: null, uk: null };
+      paths.push({
+        params: { locale, slug },
+        props: { post, translationKey, alternates },
+      });
+    }
+  }
+  return paths;
+}
+
+type Props = {
+  post: Awaited<ReturnType<typeof getPublishedPosts>>[number];
+  translationKey: string;
+  alternates: Record<Locale, string | null>;
+};
+
+const { post, translationKey, alternates } = Astro.props as Props;
+const locale = localeOf(post) as Locale;
+
+const { Content, headings } = await render(post);
+const readingTime = readingTimeMinutes(post.body ?? '');
+---
+
+<PostLayout
+  post={post}
+  locale={locale}
+  headings={headings}
+  translationKey={translationKey}
+  alternates={alternates}
+  readingTime={readingTime}
+>
+  <Content />
+</PostLayout>

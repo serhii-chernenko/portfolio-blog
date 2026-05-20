@@ -1,0 +1,81 @@
+---
+import type { AnyPost } from '../lib/posts';
+import { postUrl, localeOf } from '../lib/posts';
+import { readingTimeMinutes } from '../lib/reading-time';
+import { useTranslations } from '../i18n/utils';
+
+export interface Props {
+  post: AnyPost;
+}
+
+const { post } = Astro.props;
+const locale = localeOf(post);
+const t = useTranslations(locale);
+const url = postUrl(post);
+const minutes = readingTimeMinutes(typeof post.body === 'string' ? post.body : '');
+const isDraft = post.data.draft;
+const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true');
+
+const formattedDate = post.data.publishedAt.toLocaleDateString(
+  locale === 'uk' ? 'uk-UA' : 'en-US',
+  { year: 'numeric', month: 'short', day: 'numeric' }
+);
+---
+
+<article class="size-full">
+  <a
+    href={url}
+    class="group card flex size-full flex-col overflow-hidden bg-base-100 no-underline shadow-sm ring-1 ring-base-300 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 focus-visible:motion-safe:shadow-xl focus-visible:motion-safe:-translate-y-1"
+  >
+    <figure class="relative aspect-video overflow-hidden bg-base-300">
+      {post.data.heroImage ? (
+        <img
+          src={typeof post.data.heroImage === 'string' ? post.data.heroImage : post.data.heroImage.src}
+          alt={post.data.heroImageAlt ?? post.data.title}
+          class="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:motion-safe:scale-[1.02] group-focus-within:motion-safe:scale-[1.02]"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <div class="flex size-full items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-12 opacity-30" aria-hidden="true">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+          <span class="sr-only">No image</span>
+        </div>
+      )}
+    </figure>
+
+    <div class="card-body grow gap-4">
+      {showDraft && (
+        <span class="badge badge-warning badge-sm self-start">{t('post.draft')}</span>
+      )}
+
+      <div class="flex flex-wrap items-center gap-2 text-xs uppercase text-base-content/60">
+        <time datetime={post.data.publishedAt.toISOString()} class="font-bold tracking-widest">
+          {formattedDate}
+        </time>
+        <span aria-hidden="true">&middot;</span>
+        <span>{t('post.readingTime', { minutes })}</span>
+      </div>
+
+      <h2 class="card-title text-xl leading-tight">{post.data.title}</h2>
+
+      {post.data.description && (
+        <p class="text-sm text-base-content/70 line-clamp-3">{post.data.description}</p>
+      )}
+
+      <div class="card-actions justify-end">
+        <span class="group/cta btn btn-primary btn-sm">
+          {t('post.readMore')}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cta-icon" aria-hidden="true">
+            <path d="M5 12h14"/>
+            <path d="m12 5 7 7-7 7"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+  </a>
+</article>

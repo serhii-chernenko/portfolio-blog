@@ -1,0 +1,18 @@
+# Repo labels used by .github/workflows/auto-label.yml
+# Create these manually in the repo settings, or apply via crazy-max/ghaction-github-labeler.
+
+- name: new article
+  color: '0e8a16'
+  description: PR adds a new blog post
+
+- name: edit article
+  color: '1d76db'
+  description: PR modifies an existing post
+
+- name: dev
+  color: '5319e7'
+  description: Dev / infrastructure work
+
+- name: mixed
+  color: 'fbca04'
+  description: PR contains both content and dev — consider splitting

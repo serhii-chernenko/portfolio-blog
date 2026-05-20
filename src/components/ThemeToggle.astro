@@ -1,0 +1,104 @@
+---
+import type { Locale } from '../i18n/config';
+import { useTranslations } from '../i18n/utils';
+
+export interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<button
+  id="theme-toggle"
+  class="btn btn-ghost btn-square"
+  aria-label={t('theme.toggle')}
+  title={t('theme.toggle')}
+>
+  <!-- Sun icon (shown in dark mode) -->
+  <svg
+    id="theme-icon-sun"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="hidden size-5"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4"></circle>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+  </svg>
+  <!-- Moon icon (shown in light mode) -->
+  <svg
+    id="theme-icon-moon"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-5"
+    aria-hidden="true"
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+  </svg>
+</button>
+
+<script>
+  function applyTheme(theme: string) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('theme', theme);
+    } catch (e) {}
+
+    const sun = document.getElementById('theme-icon-sun');
+    const moon = document.getElementById('theme-icon-moon');
+    if (theme === 'dark') {
+      sun?.classList.remove('hidden');
+      moon?.classList.add('hidden');
+    } else {
+      sun?.classList.add('hidden');
+      moon?.classList.remove('hidden');
+    }
+
+    // Sync with Giscus iframe
+    const giscusFrame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+    if (giscusFrame) {
+      giscusFrame.contentWindow?.postMessage(
+        { giscus: { setConfig: { theme: theme === 'dark' ? 'dark' : 'light' } } },
+        'https://giscus.app'
+      );
+    }
+  }
+
+  function initTheme() {
+    let theme: string;
+    try {
+      theme = localStorage.getItem('theme') ?? '';
+    } catch {
+      theme = '';
+    }
+    if (theme !== 'light' && theme !== 'dark') {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    applyTheme(theme);
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') ?? 'light';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  }
+
+  // Initialize on load
+  initTheme();
+
+  document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+
+  // Re-init after Astro view transitions
+  document.addEventListener('astro:after-swap', initTheme);
+</script>

@@ -1,0 +1,76 @@
+name: Auto-label PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect and apply label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const POST_PATH_PREFIX = 'src/content/posts/';
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const postFiles = files.filter((f) => f.filename.startsWith(POST_PATH_PREFIX));
+            const devFiles = files.filter((f) => !f.filename.startsWith(POST_PATH_PREFIX));
+
+            const hasAddedPost = postFiles.some((f) => f.status === 'added');
+
+            let label;
+            if (postFiles.length > 0 && devFiles.length > 0) {
+              label = 'mixed';
+            } else if (postFiles.length > 0) {
+              label = hasAddedPost ? 'new article' : 'edit article';
+            } else if (devFiles.length > 0) {
+              label = 'dev';
+            }
+
+            if (!label) return;
+
+            const managedLabels = ['new article', 'edit article', 'dev', 'mixed'];
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            for (const l of currentLabels) {
+              if (managedLabels.includes(l.name) && l.name !== label) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: l.name,
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: [label],
+            });
+
+      - name: Notify Telegram on new article
+        if: contains(github.event.pull_request.labels.*.name, 'new article')
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            -d "text=📝 New article PR opened: ${{ github.event.pull_request.html_url }}"
