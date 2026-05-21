@@ -1,0 +1,38 @@
+{
+	"name": "Вітання (UK)",
+	"subject": "Підписку підтверджено",
+	"locale": "uk",
+	"updatedAt": "2026-05-20T00:00:00.000Z",
+	"json": {
+		"type": "doc",
+		"content": [
+			{
+				"type": "heading",
+				"attrs": { "level": 1 },
+				"content": [{ "type": "text", "text": "Підписку підтверджено" }]
+			},
+			{
+				"type": "paragraph",
+				"content": [
+					{
+						"type": "text",
+						"text": "Готово! Іноді надсилатиму нові дописи про розробку, фотографію та ремесло. Можете відповісти на цей лист — я читаю усі."
+					}
+				]
+			},
+			{
+				"type": "paragraph",
+				"content": [
+					{ "type": "text", "text": "Не цікаво? " },
+					{
+						"type": "text",
+						"marks": [{ "type": "link", "attrs": { "href": "{{unsubscribeUrl}}" } }],
+						"text": "Відписатися"
+					},
+					{ "type": "text", "text": " в один клік." }
+				]
+			}
+		]
+	},
+	"html": "<!doctype html><html lang=\"uk\"><body style=\"font-family:system-ui,-apple-system,sans-serif;background:#f6f6f6;margin:0;padding:24px;color:#111\"><div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #eee\"><h1 style=\"font-size:22px;margin:0 0 16px\">Підписку підтверджено</h1><p style=\"font-size:16px;line-height:1.6;margin:0\">Готово! Іноді надсилатиму нові дописи про розробку, фотографію та ремесло. Можете відповісти на цей лист — я читаю усі.</p><p style=\"color:#888;font-size:13px;margin-top:24px\">Не цікаво? <a href=\"{{unsubscribeUrl}}\" style=\"color:#888\">Відписатися</a> в один клік.</p></div></body></html>"
+}

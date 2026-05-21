@@ -93,6 +93,7 @@ export default defineConfig({
 				'react-dom/client',
 				'@keystatic/core/ui',
 				'@keystatic/astro/ui',
+				'@react-email/editor',
 			],
 		},
 	},

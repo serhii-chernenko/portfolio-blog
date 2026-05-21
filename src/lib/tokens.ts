@@ -50,7 +50,7 @@ export async function issueToken(
 	const expiresAt = now + EXPIRY_MS[purpose];
 	const payload = `${purpose}:${email}:${expiresAt}`;
 	const sig = await hmac(secret, payload);
-	return b64urlEncode(new TextEncoder().encode(`${payload}:`)).slice(0, -1) +
+	return b64urlEncode(new TextEncoder().encode(`${payload}:`)) +
 		'.' +
 		b64urlEncode(sig);
 }

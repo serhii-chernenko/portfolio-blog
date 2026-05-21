@@ -1,0 +1,14 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import EmailTemplateListIsland from '../../../components/EmailTemplateListIsland';
+
+if (import.meta.env.PUBLIC_KEYSTATIC_MODE !== 'local') {
+	return new Response('Not found', { status: 404 });
+}
+---
+
+<AdminLayout title="Email templates">
+	<EmailTemplateListIsland client:only="react" />
+</AdminLayout>

@@ -1,0 +1,42 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 014df0bec5995cc579bc21363a0ea5d6193141a9..e53e067bae1aa8549256664817d57587c3709fdb 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -156,7 +156,7 @@ function EmailEditorReadyBridge({ onReadyRef }) {
+ 	}, [editor, onReadyRef]);
+ 	return null;
+ }
+-const EmailEditor = forwardRef(({ content, onUpdate, onReady, theme = "basic", editable = true, placeholder, bubbleMenu, extensions: extensionsProp, onUploadImage, className, children }, ref) => {
++const EmailEditor = forwardRef(({ content, onUpdate, onReady, theme = "basic", editable = true, placeholder, bubbleMenu, extensions: extensionsProp, onUploadImage, className, children, validateUrl }, ref) => {
+ 	const onUpdateRef = useRef(onUpdate);
+ 	onUpdateRef.current = onUpdate;
+ 	const onReadyRef = useRef(onReady);
+@@ -201,7 +201,7 @@ const EmailEditor = forwardRef(({ content, onUpdate, onReady, theme = "basic", e
+ 				hideWhenActiveNodes: bubbleMenu?.hideWhenActiveNodes ?? ["button", "horizontalRule"],
+ 				hideWhenActiveMarks: bubbleMenu?.hideWhenActiveMarks ?? ["link"]
+ 			}),
+-			/* @__PURE__ */ jsx(BubbleMenu.LinkDefault, {}),
++			/* @__PURE__ */ jsx(BubbleMenu.LinkDefault, { validateUrl }),
+ 			/* @__PURE__ */ jsx(BubbleMenu.ButtonDefault, {}),
+ 			/* @__PURE__ */ jsx(BubbleMenu.ImageDefault, {}),
+ 			/* @__PURE__ */ jsx(SlashCommandRoot, {}),
+diff --git a/dist/root-DTTCkmjD.mjs b/dist/root-DTTCkmjD.mjs
+index f440d8e9c37806c36b536e3f6c26b591be7967dc..427ae91c051fa5de0c5d624c21f3edff9ab2cad9 100644
+--- a/dist/root-DTTCkmjD.mjs
++++ b/dist/root-DTTCkmjD.mjs
+@@ -865,13 +865,13 @@ function setLinkHref(editor, href) {
+ 	}
+ 	const { from, to } = editor.state.selection;
+ 	if (from === to) {
+-		editor.chain().extendMarkRange("link").setLink({ href }).setTextSelection({
++		editor.chain().extendMarkRange("link").setMark("link", { href }).setTextSelection({
+ 			from,
+ 			to
+ 		}).run();
+ 		return;
+ 	}
+-	editor.chain().setLink({ href }).run();
++	editor.chain().setMark("link", { href }).run();
+ }
+ function focusEditor(editor) {
+ 	setTimeout(() => {

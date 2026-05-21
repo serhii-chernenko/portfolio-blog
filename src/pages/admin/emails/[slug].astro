@@ -1,0 +1,21 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import EmailEditorIsland from '../../../components/EmailEditorIsland';
+
+if (import.meta.env.PUBLIC_KEYSTATIC_MODE !== 'local') {
+	return new Response('Not found', { status: 404 });
+}
+
+const { slug } = Astro.params;
+const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/i;
+
+if (!slug || !SLUG_RE.test(slug)) {
+	return new Response('Not found', { status: 404 });
+}
+---
+
+<AdminLayout title={slug}>
+	<EmailEditorIsland slug={slug} client:only="react" />
+</AdminLayout>
