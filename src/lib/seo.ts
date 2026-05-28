@@ -16,9 +16,24 @@ export interface SeoInput {
 	alternates?: Partial<Record<Locale, string | null>>;
 }
 
+/**
+ * Ensures an absolute URL string ends with a trailing slash.
+ * Skips URLs whose pathname ends with a file extension (e.g. .xml, .html)
+ * so that asset/feed URLs are left untouched.
+ */
+function ensureTrailingSlash(url: string): string {
+	const parsed = new URL(url);
+	// If the pathname ends with a file extension, leave it as-is.
+	if (/\.[^./]+$/.test(parsed.pathname)) return url;
+	if (!parsed.pathname.endsWith('/')) {
+		parsed.pathname += '/';
+	}
+	return parsed.toString();
+}
+
 export function buildCanonical(site: URL | string, pathname: string): string {
 	const base = typeof site === 'string' ? new URL(site) : site;
-	return new URL(pathname, base).toString();
+	return ensureTrailingSlash(new URL(pathname, base).toString());
 }
 
 export function buildHreflang(
@@ -31,7 +46,7 @@ export function buildHreflang(
 	const out: { hreflang: string; href: string }[] = [];
 	const seen = new Set<string>();
 
-	const self = new URL(pathname, base).toString();
+	const self = ensureTrailingSlash(new URL(pathname, base).toString());
 	out.push({ hreflang: htmlLangAttribute[locale], href: self });
 	seen.add(locale);
 
@@ -40,7 +55,7 @@ export function buildHreflang(
 			if (!path || seen.has(lang)) continue;
 			out.push({
 				hreflang: htmlLangAttribute[lang as Locale],
-				href: new URL(path, base).toString(),
+				href: ensureTrailingSlash(new URL(path, base).toString()),
 			});
 			seen.add(lang);
 		}
@@ -51,7 +66,7 @@ export function buildHreflang(
 	out.push({
 		hreflang: 'x-default',
 		href: enPath
-			? new URL(enPath, base).toString()
+			? ensureTrailingSlash(new URL(enPath, base).toString())
 			: self,
 	});
 

@@ -98,9 +98,10 @@ export const POST: APIRoute = async (context) => {
   // Astro injects the base path (e.g. `/blog/` in prod, `/` locally).
   const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
   const confirmUrl = `${origin}${base}/api/confirm?token=${encodeURIComponent(token)}&locale=${locale}`;
+  const privacyUrl = `${origin}${base}/${locale}/privacy/`;
 
   try {
-    await sendConfirmation({ env, to: email, locale, confirmUrl });
+    await sendConfirmation({ env, to: email, locale, confirmUrl, privacyUrl });
   } catch (err) {
     console.error('Failed to send confirmation email:', err);
     return jsonError('Failed to send confirmation email', 500);

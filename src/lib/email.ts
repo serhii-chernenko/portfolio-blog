@@ -50,9 +50,10 @@ export async function sendConfirmation(args: {
 	to: string;
 	locale: Locale;
 	confirmUrl: string;
+	privacyUrl: string;
 }): Promise<void> {
 	const tpl = CONFIRM[args.locale];
-	const html = applyVars(tpl.html, { confirmUrl: args.confirmUrl });
+	const html = applyVars(tpl.html, { confirmUrl: args.confirmUrl, privacyUrl: args.privacyUrl });
 
 	await args.env.SEND_EMAIL.send({
 		from: fromAddress(args.env),
@@ -67,9 +68,10 @@ export async function sendWelcome(args: {
 	to: string;
 	locale: Locale;
 	unsubscribeUrl: string;
+	privacyUrl: string;
 }): Promise<void> {
 	const tpl = WELCOME[args.locale];
-	const html = applyVars(tpl.html, { unsubscribeUrl: args.unsubscribeUrl });
+	const html = applyVars(tpl.html, { unsubscribeUrl: args.unsubscribeUrl, privacyUrl: args.privacyUrl });
 
 	await args.env.SEND_EMAIL.send({
 		from: fromAddress(args.env),

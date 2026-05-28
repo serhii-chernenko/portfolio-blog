@@ -1,6 +1,6 @@
 ---
 import type { Locale } from '../i18n/config';
-import { useTranslations, withBase } from '../i18n/utils';
+import { useTranslations, withBase, localeHref } from '../i18n/utils';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
 export interface Props {
@@ -22,6 +22,13 @@ const rssHref = new URL(withBase(`${locale}/rss.xml`), Astro.site).toString();
 
     <!-- Right: links + lang switcher -->
     <div class="flex items-center gap-4 flex-wrap">
+      <a
+        href={localeHref(locale, 'privacy')}
+        class="link link-hover light:opacity-80 light:hover:opacity-100"
+      >
+        {t('footer.privacy')}
+      </a>
+
       <a
         href={rssHref}
         class="link link-hover flex items-center gap-1 light:opacity-80 light:hover:opacity-100"

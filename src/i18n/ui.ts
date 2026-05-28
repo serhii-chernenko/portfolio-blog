@@ -77,6 +77,10 @@ export const ui = {
 		'footer.copyright': '© {year} Serhii Chernenko',
 		'footer.rss': 'RSS',
 		'footer.source': 'Source',
+		'footer.privacy': 'Privacy',
+		'privacy.title': 'Privacy Policy',
+		'privacy.description':
+			'How this site handles your data: newsletter subscriptions, analytics, and comments.',
 		'pagination.previous': 'Previous',
 		'pagination.next': 'Next',
 		'pagination.page': 'Page {page} of {total}',
@@ -158,6 +162,10 @@ export const ui = {
 		'footer.copyright': '© {year} Сергій Черненко',
 		'footer.rss': 'RSS',
 		'footer.source': 'Код',
+		'footer.privacy': 'Конфіденційність',
+		'privacy.title': 'Політика конфіденційності',
+		'privacy.description':
+			'Як цей сайт обробляє ваші дані: підписка на розсилку, аналітика та коментарі.',
 		'pagination.previous': 'Попередня',
 		'pagination.next': 'Наступна',
 		'pagination.page': 'Сторінка {page} з {total}',

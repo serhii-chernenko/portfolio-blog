@@ -65,7 +65,7 @@ const t = useTranslations(locale);
       await loadScript(`${pagefindBase}pagefind-ui.js`);
       // Pagefind builds a separate index per <html lang>, so same-language
       // isolation is automatic — no explicit locale filter needed here.
-      // @ts-ignore – PagefindUI is a global injected by the script above
+      // @ts-expect-error – PagefindUI is a global injected by the script above
       new PagefindUI({
         element: '#pagefind-ui-container',
         bundlePath: pagefindBase,

@@ -85,7 +85,8 @@ export const GET: APIRoute = async (context) => {
     const origin = new URL(context.request.url).origin;
     const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
     const unsubscribeUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&locale=${locale}`;
-    await sendWelcome({ env, to: email, locale, unsubscribeUrl });
+    const privacyUrl = `${origin}${homeHrefFor(locale)}privacy/`;
+    await sendWelcome({ env, to: email, locale, unsubscribeUrl, privacyUrl });
   } catch (err) {
     console.error('Failed to send welcome email:', err);
   }
