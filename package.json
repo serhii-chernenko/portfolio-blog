@@ -16,7 +16,10 @@
     "wrangler:deploy": "pnpm build && wrangler deploy",
     "d1:apply:local": "wrangler d1 migrations apply blog-db --local",
     "d1:apply:remote": "wrangler d1 migrations apply blog-db --remote",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -41,9 +44,16 @@
     "@cloudflare/workers-types": "^4.20260519.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.0.0",
+    "astro-eslint-parser": "^1.4.0",
     "daisyui": "^5.0.0",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-astro": "^1.7.0",
     "pagefind": "^1.2.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-astro": "^0.14.1",
     "tailwindcss": "^4.0.0",
+    "typescript-eslint": "^8.60.0",
     "wrangler": "^4.0.0"
   }
 }

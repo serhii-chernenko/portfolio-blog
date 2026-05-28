@@ -1,0 +1,13 @@
+dist/
+.astro/
+.wrangler/
+node_modules/
+pnpm-lock.yaml
+patches/
+public/
+# Agent skills and Claude config are not project source code
+.agents/
+.claude/
+# Giscus.astro uses <script is:inline data-*={expr}> which prettier-plugin-astro
+# cannot parse (expression-attributed inline script tags)
+src/components/Giscus.astro

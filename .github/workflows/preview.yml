@@ -28,6 +28,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Typecheck & lint
+        run: pnpm typecheck && pnpm lint
+
       - name: Build with preview mode (drafts visible)
         env:
           PREVIEW_MODE: 'true'
