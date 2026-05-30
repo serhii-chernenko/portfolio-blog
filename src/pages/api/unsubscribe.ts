@@ -3,6 +3,7 @@ import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
 import { getDB, markUnsubscribed } from '../../lib/d1';
 import { verifyToken } from '../../lib/tokens';
 import { notify, escapeHtml } from '../../lib/telegram';
+import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 import { ui } from '../../i18n/ui';
 
@@ -79,6 +80,9 @@ export const GET: APIRoute = async (context) => {
   }
 
   await notify(`👋 Unsubscribed: ${escapeHtml(email)} (${locale})`);
+
+  // Analytics Engine event (fire-and-forget, never throws, no PII)
+  trackEvent('unsubscribed', { locale, status: 'unsubscribed' });
 
   return htmlPage(
     ui[locale]['subscribe.unsubscribe.title'],

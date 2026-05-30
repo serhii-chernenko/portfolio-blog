@@ -50,8 +50,8 @@ PUBLIC_GISCUS_REPO_ID=
 PUBLIC_GISCUS_CATEGORY=Comments
 PUBLIC_GISCUS_CATEGORY_ID=
 
-# Cloudflare Web Analytics beacon token. Empty → no beacon injected.
-PUBLIC_CF_ANALYTICS_TOKEN=
+# Cloudflare Web Analytics is auto-injected by Cloudflare's edge (auto-install
+# enabled for the serhiichernenko.com zone) — no token or env var needed here.
 
 # Show draft posts. Under `pnpm dev` drafts ALWAYS show (import.meta.env.DEV);
 # this flag only matters for `pnpm wrangler:dev` / preview builds. Leave empty otherwise.

@@ -145,7 +145,7 @@ These are intentionally left as placeholders — none of them have safe defaults
 
 1. **`wrangler.jsonc`** — replace `REPLACE_WITH_REAL_ID` for both `d1_databases[0].database_id` and `kv_namespaces[0].id` after running:
    ```bash
-   pnpm wrangler d1 create blog-db
+   pnpm wrangler d1 create portfolio-blog
    pnpm wrangler kv:namespace create RATE_LIMIT
    ```
 2. **`keystatic.config.ts`** — `storage.repo` is set to `inevix/portfolio-blog`. Change if the repo lives elsewhere.
@@ -157,7 +157,7 @@ These are intentionally left as placeholders — none of them have safe defaults
    - `MAIL_FROM` is set as a `var` in `wrangler.jsonc` (default: `hello@serhiichernenko.com`). Override per environment if needed.
 5. **`.github/workflows/*.yml`** — uses these repo secrets/vars:
    - Secrets: `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-   - Vars: `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN`
+   - Vars: `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
    - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used for HMAC tokens and IP hashing. Accessed via `astro:env/server` (required, validated at runtime).
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
@@ -175,7 +175,7 @@ There are three distinct sources for runtime values — use the right one for ea
 | Source | What it covers | How to access in code |
 |---|---|---|
 | `astro:env/server` | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
-| `astro:env/client` | Public build-time vars: `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN` | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'` |
+| `astro:env/client` | Public build-time vars: `PUBLIC_GISCUS_*` | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'` |
 | `cloudflare:workers` env | Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) | `import { env } from 'cloudflare:workers'` |
 | `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts` | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
 

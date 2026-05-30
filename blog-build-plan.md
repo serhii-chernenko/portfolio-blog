@@ -80,7 +80,7 @@ This document is a complete brief for building a personal technical blog from sc
 |---|---|---|
 | Worker | `blog` | Hosts the Astro app (static assets + SSR routes), production |
 | Worker | `blog-pr-*` | Per-PR preview deployments |
-| D1 Database | `blog-db` | Subscribers, future comments |
+| D1 Database | `portfolio-blog` | Subscribers, future comments |
 | KV Namespace | `RATE_LIMIT` | Rate limiting for subscribe endpoint |
 | Custom Domain | e.g. `yourdomain.com` | Bound to the production Worker |
 | Web Analytics | site token | Privacy-friendly analytics |
@@ -147,14 +147,14 @@ npx wrangler login
 # The sender domain must have Cloudflare Email Routing enabled.
 
 # 12. Create D1 database
-npx wrangler d1 create blog-db
+npx wrangler d1 create portfolio-blog
 # Copy the database_id from output into wrangler.jsonc
 
 # 13. Create KV namespace for rate limiting
 npx wrangler kv:namespace create RATE_LIMIT
 
 # 14. Initial schema
-npx wrangler d1 execute blog-db --remote --file=./schema/0001_init.sql
+npx wrangler d1 execute portfolio-blog --remote --file=./schema/0001_init.sql
 
 # 15. Add Cloudflare Workers types (for Env interface)
 pnpm add -D @cloudflare/workers-types
@@ -624,7 +624,7 @@ export default defineMarkdocConfig({
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "blog-db",
+      "database_name": "portfolio-blog",
       "database_id": "REPLACE_WITH_REAL_ID",
       "migrations_dir": "./schema"
     }
@@ -1653,7 +1653,7 @@ jobs:
 
 ### D1 Migrations
 - New migration files in `schema/` numbered sequentially
-- Apply: `pnpm wrangler d1 migrations apply blog-db --remote`
+- Apply: `pnpm wrangler d1 migrations apply portfolio-blog --remote`
 
 ### Post-build script
 `scripts/post-build.mjs` runs after `astro build` and Pagefind indexing. It writes a `dist/index.html` that meta-refreshes `/` → `/blog/en/`. This redirect is only relevant during `wrangler dev` (where the Worker handles all requests including the apex). In production, the Worker's route pattern (`yourdomain.com/blog/*`) doesn't match the apex, so this file is never served.

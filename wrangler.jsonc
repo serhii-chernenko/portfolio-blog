@@ -31,21 +31,31 @@
 //
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from
-//                 `wrangler d1 create blog-db`.
+//                 `wrangler d1 create portfolio-blog`.
 //    RATE_LIMIT   KV namespace. Replace id with the value from
 //                 `wrangler kv:namespace create RATE_LIMIT`.
 //    ASSETS       Static assets bound from ./dist (set automatically).
 //    SEND_EMAIL   Cloudflare Email Service binding. Requires Email Routing to
 //                 be enabled on the sender domain.
+//    ANALYTICS    Analytics Engine dataset (portfolio_blog_events). No separate
+//                 provisioning step — Cloudflare creates the dataset on
+//                 the first writeDataPoint() call. Used for server-side
+//                 newsletter funnel metrics (subscribe / confirm / unsubscribe).
+//                 Query via: POST https://api.cloudflare.com/client/v4/accounts/
+//                 <account_id>/analytics_engine/sql  (bearer token required:
+//                 "Account Analytics: Read" permission). ~3 month retention.
+//                 NOTE: writeDataPoint() is a no-op in plain `wrangler dev`
+//                 (Cloudflare issue #4258); use --remote to test locally.
 //
 // ============================================================================
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "blog",
+	"name": "portfolio-blog",
 	"main": "@astrojs/cloudflare/entrypoints/server",
 	"compatibility_date": "2026-05-15",
-	"compatibility_flags": ["nodejs_compat"],
-
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	// Astro v13 Cloudflare build emits static assets to ./dist/client and the
 	// Worker code to ./dist/server. Scope ASSETS to ./dist/client ONLY — never
 	// ./dist — so server-side files (notably dist/server/.dev.vars, which the
@@ -55,61 +65,90 @@
 		"binding": "ASSETS",
 		"directory": "./dist/client"
 	},
-
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "blog-db",
-			"database_id": "REPLACE_WITH_REAL_ID",
+			"database_name": "portfolio-blog",
+			"database_id": "3203b8f1-e6c5-4db7-bdb1-1651b33fb67f",
 			"migrations_dir": "./schema"
 		}
 	],
-
 	"kv_namespaces": [
 		{
 			"binding": "RATE_LIMIT",
-			"id": "REPLACE_WITH_REAL_ID"
+			"id": "a560b7fe8deb44489bc9d276b19c8b2c"
 		}
 	],
-
 	"send_email": [
 		{
 			"name": "SEND_EMAIL"
 		}
 	],
-
+	// Analytics Engine — server-side newsletter funnel metrics.
+	// Dataset is auto-created on first write; no dashboard (query via SQL API).
+	// Dimensions written: event name, locale, source, status — NO PII ever.
+	// After adding/changing this block, run `pnpm exec wrangler types` to
+	// regenerate worker-configuration.d.ts with the ANALYTICS binding typed.
+	"analytics_engine_datasets": [
+		{
+			"binding": "ANALYTICS",
+			"dataset": "portfolio_blog_events"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
-
 	// `wrangler dev` defaults its simulated host to the first entry in `routes`
-	// (production), which makes `request.url` resolve to serhiichernenko.com
+	// (production), which makes `request.url` resolve to www.serhiichernenko.com
 	// even when serving from localhost. Forcing the dev host to localhost makes
 	// request.url match where the browser actually is — so things like
 	// self-referential confirm links work without any env-var indirection.
 	"dev": {
 		"host": "localhost:8787"
 	},
-
-	// Route topology
+	// Route topology — canonical host is www.serhiichernenko.com.
 	//
-	//   /blog          → blog landing
-	//   /blog/*        → all blog routes (incl. /blog/keystatic UI)
-	//   /api/keystatic, /api/keystatic/*
-	//                  → apex Keystatic API. The shipped Keystatic React UI
-	//                    fetches these absolute paths; src/middleware.ts
-	//                    rewrites them to /blog/api/keystatic/* so Astro
-	//                    (running with base: '/blog') can serve them.
+	//   www…/blog          → blog landing
+	//   www…/blog/*        → all blog routes (incl. /blog/keystatic UI)
+	//   www…/api/keystatic, www…/api/keystatic/*
+	//                       → host-root Keystatic API. The shipped Keystatic
+	//                         React UI fetches these absolute paths;
+	//                         src/middleware.ts rewrites them to
+	//                         /blog/api/keystatic/* so Astro (base: '/blog')
+	//                         can serve them.
 	//
-	// Apex `/` is intentionally NOT bound here — serhiichernenko.com root will
-	// be served separately later (small static landing or future portfolio).
+	// `zone_name` stays the apex (serhiichernenko.com) — that is the Cloudflare
+	// zone the www hostname lives in; the route *pattern* is what binds to www.
+	//
+	// The bare apex serhiichernenko.com is NOT bound to this Worker. A Cloudflare
+	// Redirect Rule (dashboard → Rules → Redirect Rules) 301s the apex → www, so
+	// visitors who type the bare domain land on the canonical www host. The
+	// host root `/` (on either host) is intentionally unbound — it falls through
+	// to the 100:: placeholder and errors for now. This domain uses path-based
+	// routing across MULTIPLE Workers (one per app, separate repos): a future
+	// portfolio Worker — its own repo, a from-scratch rewrite of the old
+	// chernenko.digital — will claim the root `/`. It can bind a catch-all
+	// `www.serhiichernenko.com/*`; these `/blog*` + `/api/keystatic*` routes are
+	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
+	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	"routes": [
-		{ "pattern": "serhiichernenko.com/blog", "zone_name": "serhiichernenko.com" },
-		{ "pattern": "serhiichernenko.com/blog/*", "zone_name": "serhiichernenko.com" },
-		{ "pattern": "serhiichernenko.com/api/keystatic", "zone_name": "serhiichernenko.com" },
-		{ "pattern": "serhiichernenko.com/api/keystatic/*", "zone_name": "serhiichernenko.com" }
+		{
+			"pattern": "www.serhiichernenko.com/blog",
+			"zone_name": "serhiichernenko.com"
+		},
+		{
+			"pattern": "www.serhiichernenko.com/blog/*",
+			"zone_name": "serhiichernenko.com"
+		},
+		{
+			"pattern": "www.serhiichernenko.com/api/keystatic",
+			"zone_name": "serhiichernenko.com"
+		},
+		{
+			"pattern": "www.serhiichernenko.com/api/keystatic/*",
+			"zone_name": "serhiichernenko.com"
+		}
 	],
-
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
 	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.
 	"vars": {

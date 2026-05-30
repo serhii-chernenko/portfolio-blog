@@ -4,6 +4,7 @@ import { getDB, markConfirmed } from '../../lib/d1';
 import { verifyToken, issueToken } from '../../lib/tokens';
 import { sendWelcome } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
+import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 import { ui } from '../../i18n/ui';
 
@@ -91,6 +92,9 @@ export const GET: APIRoute = async (context) => {
   }
 
   await notify(`✅ Subscriber confirmed: ${escapeHtml(email)} (${locale})`);
+
+  // Analytics Engine event (fire-and-forget, never throws, no PII)
+  trackEvent('subscribe_confirmed', { locale, status: 'confirmed' });
 
   // Redirect to subscribe page with confirmed flag
   return context.redirect(`${homeHrefFor(locale)}subscribe?confirmed=1`, 302);

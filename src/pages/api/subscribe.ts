@@ -4,6 +4,7 @@ import { getDB, getKV, upsertPendingSubscriber } from '../../lib/d1';
 import { issueToken, hashIp } from '../../lib/tokens';
 import { sendConfirmation } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
+import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 
 export const prerender = false;
@@ -108,6 +109,13 @@ export const POST: APIRoute = async (context) => {
 
   // Telegram notify (best-effort)
   await notify(`📬 New pending subscriber: ${escapeHtml(email)} (${locale})`);
+
+  // Analytics Engine event (fire-and-forget, never throws, no PII)
+  trackEvent('subscribe_pending', {
+    locale,
+    source: typeof source === 'string' ? source : undefined,
+    status: 'pending',
+  });
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

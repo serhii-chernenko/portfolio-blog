@@ -3,7 +3,7 @@
 Everything the code can't do for itself. The app builds, typechecks, and lints
 clean — but it ships with placeholder IDs and empty secrets. This is the
 ordered list of manual steps to take it from "builds locally" to "live in
-production at `serhiichernenko.com/blog`".
+production at `www.serhiichernenko.com/blog`".
 
 Work top to bottom — later steps depend on earlier ones. Each item says **what**,
 **where**, the **command/action**, and **how to verify** it worked.
@@ -14,9 +14,9 @@ Legend: 🔴 = blocks production deploy · 🟡 = blocks a specific feature · �
 
 ## 0. Prerequisites
 
-- [ ] Cloudflare account with `serhiichernenko.com` added as a zone (DNS on Cloudflare).
-- [ ] Install + authenticate Wrangler: `npm i -g wrangler && wrangler login`.
-- [ ] GitHub repo `serhii-chernenko/portfolio-blog` exists and you can push to it.
+- [x] Cloudflare account with `serhiichernenko.com` added as a zone (DNS on Cloudflare).
+- [x] Install + authenticate Wrangler: `npm i -g wrangler && wrangler login`.
+- [x] GitHub repo `serhii-chernenko/portfolio-blog` exists and you can push to it.
 
 ---
 
@@ -26,15 +26,15 @@ The subscribers table lives in D1. `wrangler.jsonc` currently has
 `"database_id": "REPLACE_WITH_REAL_ID"`.
 
 ```bash
-wrangler d1 create blog-db
+wrangler d1 create portfolio-blog
 ```
 
-- [ ] Copy the printed `database_id` into `wrangler.jsonc` → `d1_databases[0].database_id`.
-- [ ] Apply the schema to the remote DB:
+- [x] Copy the printed `database_id` into `wrangler.jsonc` → `d1_databases[0].database_id`.
+- [x] Apply the schema to the remote DB:
   ```bash
-  pnpm d1:apply:remote      # wrangler d1 migrations apply blog-db --remote
+  pnpm d1:apply:remote      # wrangler d1 migrations apply portfolio-blog --remote
   ```
-- **Verify:** `wrangler d1 execute blog-db --remote --command "SELECT name FROM sqlite_master WHERE type='table';"` lists a `subscribers` table.
+- **Verify:** `wrangler d1 execute portfolio-blog --remote --command "SELECT name FROM sqlite_master WHERE type='table';"` lists a `subscribers` table.
 
 ---
 
@@ -47,7 +47,7 @@ wrangler kv namespace create RATE_LIMIT
 # (older wrangler: wrangler kv:namespace create RATE_LIMIT)
 ```
 
-- [ ] Copy the printed `id` into `wrangler.jsonc` → `kv_namespaces[0].id`.
+- [x] Copy the printed `id` into `wrangler.jsonc` → `kv_namespaces[0].id`.
 - **Verify:** `wrangler kv namespace list` shows `RATE_LIMIT`.
 
 ---
@@ -62,18 +62,18 @@ Server secrets are accessed at runtime via `astro:env/server` typed imports (not
 `validateSecrets` defaults to false, so the build succeeds without them —
 validation happens at runtime when the Worker receives its first request.
 
-- [ ] `SUBSCRIBE_RATE_LIMIT_SECRET` — generate 32 random bytes:
+- [x] `SUBSCRIBE_RATE_LIMIT_SECRET` — generate 32 random bytes:
   ```bash
   openssl rand -base64 32 | wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
   ```
   HMAC key for confirm/unsubscribe tokens **and** IP hashing. If this changes
   later, all outstanding confirm links break. Declared as `required` in the
   `astro:env` schema (min length: 1).
-- [ ] `KEYSTATIC_SECRET` — `openssl rand -base64 32 | wrangler secret put KEYSTATIC_SECRET` (signs the Keystatic admin auth cookie).
+- [x] `KEYSTATIC_SECRET` — `openssl rand -base64 32 | wrangler secret put KEYSTATIC_SECRET` (signs the Keystatic admin auth cookie).
 - [ ] `KEYSTATIC_GITHUB_CLIENT_ID` — from the GitHub App (see step 4).
 - [ ] `KEYSTATIC_GITHUB_CLIENT_SECRET` — from the GitHub App (see step 4).
-- [ ] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
-- [ ] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
+- [x] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
+- [x] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
 - **Verify:** `wrangler secret list` shows all six names.
 
 ---
@@ -88,7 +88,7 @@ as a `vars` entry there (exposed to local dev automatically) and is NOT in `.dev
 Easiest path — let Keystatic create the app for you:
 
 1. [ ] Deploy once with the other config in place (step 9), then visit
-   `https://serhiichernenko.com/blog/keystatic`.
+   `https://www.serhiichernenko.com/blog/keystatic`.
 2. [ ] Keystatic detects no app is connected and walks you through creating one
    (it pre-fills the callback URLs). This yields: **App slug**, **Client ID**,
    **Client Secret**.
@@ -111,11 +111,11 @@ Outbound email uses the `send_email` Worker binding (`SEND_EMAIL`). It only
 works once Email Routing is enabled and the sender is verified. Until then,
 `/api/subscribe` returns a 500 on the email step.
 
-1. [ ] Cloudflare dashboard → `serhiichernenko.com` → **Email** → **Email Routing** → enable.
-2. [ ] Add and verify the sender address `hello@serhiichernenko.com`
+1. [x] Cloudflare dashboard → `serhiichernenko.com` → **Email** → **Email Routing** → enable.
+2. [x] Add and verify the sender address `hello@serhiichernenko.com`
    (this is the `MAIL_FROM` var in `wrangler.jsonc`). Cloudflare requires the
    destination/sender to be a verified address.
-3. [ ] Ensure the required DNS records (MX, SPF/TXT, DKIM) Cloudflare prompts
+3. [x] Ensure the required DNS records (MX, SPF/TXT, DKIM) Cloudflare prompts
    for are added to the zone.
 
 See `docs/EMAIL.md`.
@@ -129,9 +129,9 @@ See `docs/EMAIL.md`.
 `.dev.vars.example` has empty `PUBLIC_GISCUS_REPO_ID` and `PUBLIC_GISCUS_CATEGORY_ID`.
 Comments render blank without them.
 
-1. [ ] Make the GitHub repo **public** (Giscus requires it) and enable
+1. [x] Make the GitHub repo **public** (Giscus requires it) and enable
    **Discussions** (Settings → General → Features).
-2. [ ] Install the [Giscus GitHub App](https://github.com/apps/giscus) on the repo.
+2. [x] Install the [Giscus GitHub App](https://github.com/apps/giscus) on the repo.
 3. [ ] Go to <https://giscus.app>, enter the repo, pick the **Comments**
    discussion category, and copy the generated `data-repo-id` and
    `data-category-id`.
@@ -144,16 +144,17 @@ Comments render blank without them.
 
 ---
 
-## 7. ⚪ Cloudflare Web Analytics
+## 7. ✅ Cloudflare Web Analytics
 
-`PUBLIC_CF_ANALYTICS_TOKEN` is empty → the beacon script in `BaseHead.astro` is
-not emitted (it's gated on the token).
+Web Analytics is injected **automatically** by Cloudflare's edge for the proxied
+`serhiichernenko.com` zone (auto-install is enabled in the dashboard). There is
+no beacon script in the app and no `PUBLIC_CF_ANALYTICS_TOKEN` env var — nothing
+to configure here.
 
-1. [ ] Cloudflare dashboard → **Analytics & Logs** → **Web Analytics** → add a
-   site → copy the token.
-2. [ ] Set `PUBLIC_CF_ANALYTICS_TOKEN` as a build-time var (same as Giscus vars above).
-- **Verify:** view-source on a production page shows the
-  `static.cloudflareinsights.com/beacon.min.js` script with your token.
+- **Verify:** after deploy, the Web Analytics dashboard shows hits, and
+  view-source on a production page shows exactly one
+  `static.cloudflareinsights.com/beacon.min.js` (the edge-injected one). If it is
+  missing on Worker-served HTML, re-add the manual beacon to `BaseHead.astro`.
 
 ---
 
@@ -195,14 +196,31 @@ The build outputs two directories:
 
 Or push to `main` to trigger `.github/workflows/deploy.yml`.
 
-- [ ] Bind the production routes. `wrangler.jsonc` already declares the
-  `serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` routes —
-  confirm they attach without error on first deploy (the zone must be active on
-  Cloudflare).
-- [ ] Decide what serves the apex `/` (it is intentionally **not** bound to this
-  Worker — open decision #8 in `blog-build-plan.md`).
-- **Verify:** `https://serhiichernenko.com/blog/en/` loads; `/blog` →
-  `/blog/en/`; `/blog/keystatic` shows the CMS login.
+  The canonical host is **`www.serhiichernenko.com`**; the bare apex
+  301-redirects to it. Three things outside the deploy make routing work — see
+  **`docs/DNS-ROUTING.md`** for the full runbook. **Routes do not create DNS**, and
+  the wrangler OAuth token + CI `CF_API_TOKEN` have zone *read* only, so the DNS
+  records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
+
+  - [ ] **DNS — two Proxied (orange-cloud) records** (Cloudflare → `serhiichernenko.com`
+    → **DNS → Records**): `CNAME www → serhiichernenko.com` (so `www` resolves to
+    the edge where the Worker routes fire) **and** `AAAA @ → 100::` (so the bare
+    apex resolves to the edge where the redirect rule runs). Both must be Proxied.
+  - [ ] **Redirect rule — apex → www** (**Rules → Redirect Rules**): when hostname
+    equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
+    path/query. Scope to the apex only (don't match `www`, or it loops).
+  - [ ] **Routes deploy to www.** `wrangler.jsonc` declares
+    `www.serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` (`zone_name`
+    stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
+    (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
+    old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
+- [ ] Decide what serves the host root `/` (intentionally **not** bound to this
+  Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
+- **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
+  checks `www` resolves to a proxied edge IP, `www/blog/en/` returns 2xx, and the
+  apex `/blog` 301-redirects to `www`. Then manually confirm
+  `www.serhiichernenko.com/blog/keystatic` shows the CMS login. HTTPS may need up
+  to 24h for Universal SSL — test `http://` first.
 
 ---
 
@@ -232,4 +250,3 @@ Acceptance criteria that can only be checked against the live site
 | `REPLACE_WITH_REAL_ID` (KV) | `wrangler.jsonc` | 2 |
 | `your-keystatic-github-app-slug` | `wrangler.jsonc` (`vars`) | 4 |
 | empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars | 6 |
-| empty `PUBLIC_CF_ANALYTICS_TOKEN` | Worker vars | 7 |

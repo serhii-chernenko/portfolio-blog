@@ -11,7 +11,7 @@ import tailwindcss from '@tailwindcss/vite';
 // Canonical production URL — used at build time for sitemap.xml and RSS
 // absolute links. Runtime URLs are derived from the incoming request, so
 // preview Workers and local `wrangler dev` produce self-referential links.
-const SITE = 'https://serhiichernenko.com';
+const SITE = 'https://www.serhiichernenko.com';
 
 /**
  * Keystatic + base-path mode.
@@ -127,11 +127,6 @@ export default defineConfig({
 				optional: true,
 			}),
 			PUBLIC_GISCUS_CATEGORY_ID: envField.string({
-				context: 'client',
-				access: 'public',
-				optional: true,
-			}),
-			PUBLIC_CF_ANALYTICS_TOKEN: envField.string({
 				context: 'client',
 				access: 'public',
 				optional: true,

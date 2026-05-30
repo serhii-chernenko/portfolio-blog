@@ -13,4 +13,4 @@ Disallow: /keystatic/
 Disallow: /api/keystatic
 Disallow: /api/keystatic/
 
-Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml
+Sitemap: https://www.serhiichernenko.com/blog/sitemap-index.xml

@@ -83,6 +83,15 @@ const { locale } = Astro.params as { locale: Locale };
               personal data is collected or stored by the analytics system. Cloudflare receives
               aggregated, anonymous page-view metrics only.
             </p>
+            <p>
+              In addition, aggregate server-side product metrics are recorded for newsletter events
+              (subscription pending, confirmed, and unsubscribe) using Cloudflare Analytics Engine.
+              Only the following non-identifying dimensions are recorded: event type, user language
+              (<code>en</code> or <code>uk</code>), and referral source label. Email addresses,
+              IP addresses, tokens, browser information, and any other personal data are{' '}
+              <strong>never</strong> recorded in these metrics. Data is retained for approximately
+              3 months.
+            </p>
 
             <h2>Comments (Giscus / GitHub)</h2>
             <p>
@@ -165,6 +174,15 @@ const { locale } = Astro.params as { locale: Locale };
               . Ця система не використовує файли cookie і не відстежує користувачів між сайтами
               або сесіями. Персональні дані аналітикою не збираються і не зберігаються. Cloudflare
               отримує лише агреговані анонімні дані про перегляди сторінок.
+            </p>
+            <p>
+              Крім того, для подій розсилки (підписка в очікуванні, підтверджена та відписка)
+              записуються агреговані серверні метрики за допомогою Cloudflare Analytics Engine.
+              Фіксуються лише такі знеособлені параметри: тип події, мова користувача
+              (<code>en</code> або <code>uk</code>) та мітка джерела переходу. Електронні адреси,
+              IP-адреси, токени, інформація про браузер та будь-які інші персональні дані{' '}
+              <strong>ніколи</strong> не записуються до цих метрик. Дані зберігаються приблизно
+              3 місяці.
             </p>
 
             <h2>Коментарі (Giscus / GitHub)</h2>
