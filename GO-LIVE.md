@@ -57,17 +57,23 @@ wrangler kv namespace create RATE_LIMIT
 These are set with `wrangler secret put <NAME>` (prompts for the value, stored
 encrypted on Cloudflare — never in git).
 
+Server secrets are accessed at runtime via `astro:env/server` typed imports (not
+`Astro.locals.runtime.env`, which was removed in `@astrojs/cloudflare` v13).
+`validateSecrets` defaults to false, so the build succeeds without them —
+validation happens at runtime when the Worker receives its first request.
+
 - [ ] `SUBSCRIBE_RATE_LIMIT_SECRET` — generate 32 random bytes:
   ```bash
   openssl rand -base64 32 | wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
   ```
   HMAC key for confirm/unsubscribe tokens **and** IP hashing. If this changes
-  later, all outstanding confirm links break.
+  later, all outstanding confirm links break. Declared as `required` in the
+  `astro:env` schema (min length: 1).
 - [ ] `KEYSTATIC_SECRET` — `openssl rand -base64 32 | wrangler secret put KEYSTATIC_SECRET` (signs the Keystatic admin auth cookie).
 - [ ] `KEYSTATIC_GITHUB_CLIENT_ID` — from the GitHub App (see step 4).
 - [ ] `KEYSTATIC_GITHUB_CLIENT_SECRET` — from the GitHub App (see step 4).
-- [ ] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`.
-- [ ] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`.
+- [ ] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
+- [ ] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
 - **Verify:** `wrangler secret list` shows all six names.
 
 ---
@@ -76,8 +82,8 @@ encrypted on Cloudflare — never in git).
 
 In production, Keystatic runs in **GitHub mode** — editing a post creates a
 `post/<slug>` branch and opens a PR. This needs a GitHub App. The app slug
-placeholder is in two files: `wrangler.jsonc` (`PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`)
-and `.env.example`.
+placeholder is in `wrangler.jsonc` (`PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`) — it lives
+as a `vars` entry there (exposed to local dev automatically) and is NOT in `.dev.vars.example`.
 
 Easiest path — let Keystatic create the app for you:
 
@@ -120,7 +126,7 @@ See `docs/EMAIL.md`.
 
 ## 6. 🟡 Giscus comments
 
-`.env.example` has empty `PUBLIC_GISCUS_REPO_ID` and `PUBLIC_GISCUS_CATEGORY_ID`.
+`.dev.vars.example` has empty `PUBLIC_GISCUS_REPO_ID` and `PUBLIC_GISCUS_CATEGORY_ID`.
 Comments render blank without them.
 
 1. [ ] Make the GitHub repo **public** (Giscus requires it) and enable
@@ -183,6 +189,10 @@ Once steps 1–4 and 8 are done:
 pnpm wrangler:deploy      # pnpm build && wrangler deploy
 ```
 
+The build outputs two directories:
+- `dist/client/` — static assets served by the `ASSETS` binding (scoped to `./dist/client` in `wrangler.jsonc`).
+- `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `@astrojs/cloudflare/entrypoints/server`. Files in `dist/server/` are never served publicly as static assets.
+
 Or push to `main` to trigger `.github/workflows/deploy.yml`.
 
 - [ ] Bind the production routes. `wrangler.jsonc` already declares the
@@ -220,6 +230,6 @@ Acceptance criteria that can only be checked against the live site
 |---|---|---|
 | `REPLACE_WITH_REAL_ID` (D1) | `wrangler.jsonc` | 1 |
 | `REPLACE_WITH_REAL_ID` (KV) | `wrangler.jsonc` | 2 |
-| `your-keystatic-github-app-slug` | `wrangler.jsonc`, `.env.example` | 4 |
+| `your-keystatic-github-app-slug` | `wrangler.jsonc` (`vars`) | 4 |
 | empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars | 6 |
 | empty `PUBLIC_CF_ANALYTICS_TOKEN` | Worker vars | 7 |

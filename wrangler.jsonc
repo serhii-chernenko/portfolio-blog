@@ -42,13 +42,18 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "blog",
-	"main": "./dist/_worker.js/index.js",
+	"main": "@astrojs/cloudflare/entrypoints/server",
 	"compatibility_date": "2026-05-15",
 	"compatibility_flags": ["nodejs_compat"],
 
+	// Astro v13 Cloudflare build emits static assets to ./dist/client and the
+	// Worker code to ./dist/server. Scope ASSETS to ./dist/client ONLY — never
+	// ./dist — so server-side files (notably dist/server/.dev.vars, which the
+	// adapter writes from the local .dev.vars at build time) are NEVER uploaded
+	// or served as public static assets.
 	"assets": {
 		"binding": "ASSETS",
-		"directory": "./dist"
+		"directory": "./dist/client"
 	},
 
 	"d1_databases": [

@@ -5,7 +5,7 @@ This blog uses [Keystatic](https://keystatic.com) as a git-backed CMS. Posts are
 **The CMS runs locally only.** It's mounted at:
 
 - <http://127.0.0.1:4321/keystatic> (when running `pnpm dev`)
-- <http://127.0.0.1:8787/keystatic> (when running `pnpm wrangler:dev`)
+- <http://127.0.0.1:4321/blog/keystatic> (when running `pnpm wrangler:dev`)
 
 There is **no `/keystatic` route in production**. The integration isn't even bundled into the prod build — visiting `chernenko.digital/blog/keystatic` returns 404, by construction.
 

@@ -1,6 +1,7 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, envField } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
 import markdoc from '@astrojs/markdoc';
 import keystatic from '@keystatic/astro';
@@ -62,11 +63,17 @@ export default defineConfig({
 	site: SITE,
 	base: BASE_PATH,
 	output: 'server',
-	adapter: cloudflare({
-		platformProxy: { enabled: true },
-		// 'passthrough' avoids bundling sharp into the Worker.
-		imageService: 'passthrough',
-	}),
+	// Adapter is mode-dependent. `pnpm dev` (PUBLIC_KEYSTATIC_MODE=local) needs the
+	// Node runtime: Keystatic local storage reads/writes src/content via `fs`, which
+	// the Cloudflare adapter's `astro dev` can't provide since v13 (it runs on the
+	// workerd runtime, no `fs`). Everything else — `wrangler:dev`, `build`,
+	// production — uses the Cloudflare adapter (workerd). See keystatic.config.ts.
+	adapter: LOCAL_MODE
+		? node({ mode: 'standalone' })
+		: cloudflare({
+				// 'passthrough' avoids bundling sharp into the Worker.
+				imageService: 'passthrough',
+			}),
 	image: {
 		// No-op service prevents sharp from being pulled into the bundle.
 		service: { entrypoint: 'astro/assets/services/noop' },
@@ -80,6 +87,57 @@ export default defineConfig({
 		},
 	},
 	integrations,
+	env: {
+		// validateSecrets defaults to false — so production CI builds without secrets present are fine.
+		// astro:env validates secrets at runtime (worker startup), not build time.
+		schema: {
+			// ── Server secrets (from .dev.vars in dev / wrangler secret put in prod) ──
+			SUBSCRIBE_RATE_LIMIT_SECRET: envField.string({
+				context: 'server',
+				access: 'secret',
+				// min:1 makes astro:env reject an empty string at validation — an empty
+				// HMAC key would otherwise silently produce forgeable tokens. The API
+				// routes also guard defensively, but this closes it at the schema.
+				min: 1,
+			}),
+			TELEGRAM_BOT_TOKEN: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
+			TELEGRAM_CHAT_ID: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
+			// ── Client public vars (build-inlined from process.env via dotenv-cli) ──
+			PUBLIC_GISCUS_REPO: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_GISCUS_REPO_ID: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_GISCUS_CATEGORY: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_GISCUS_CATEGORY_ID: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_CF_ANALYTICS_TOKEN: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+		},
+	},
 	vite: {
 		plugins: [tailwindcss()],
 		// Keystatic UI needs Vite to pre-bundle (CJS→ESM) react-dom/client and the

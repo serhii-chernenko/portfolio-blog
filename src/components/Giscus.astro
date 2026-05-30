@@ -2,6 +2,12 @@
 import type { Locale } from '../i18n/config';
 import { htmlLangAttribute } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
+import {
+  PUBLIC_GISCUS_REPO,
+  PUBLIC_GISCUS_REPO_ID,
+  PUBLIC_GISCUS_CATEGORY,
+  PUBLIC_GISCUS_CATEGORY_ID,
+} from 'astro:env/client';
 
 export interface Props {
   locale: Locale;
@@ -10,10 +16,10 @@ export interface Props {
 const { locale } = Astro.props;
 const t = useTranslations(locale);
 
-const repo = import.meta.env.PUBLIC_GISCUS_REPO as string | undefined;
-const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID as string | undefined;
-const category = import.meta.env.PUBLIC_GISCUS_CATEGORY as string | undefined;
-const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID as string | undefined;
+const repo = PUBLIC_GISCUS_REPO;
+const repoId = PUBLIC_GISCUS_REPO_ID;
+const category = PUBLIC_GISCUS_CATEGORY;
+const categoryId = PUBLIC_GISCUS_CATEGORY_ID;
 
 // Render nothing if not configured
 const isConfigured = repo && repoId && category && categoryId;

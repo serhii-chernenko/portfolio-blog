@@ -3,6 +3,7 @@ import type { Locale } from '../i18n/config';
 import { buildCanonical, buildHreflang, articleJsonLd, websiteJsonLd, ogLocaleFor } from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
 import { useTranslations, withBase } from '../i18n/utils';
+import { PUBLIC_CF_ANALYTICS_TOKEN } from 'astro:env/client';
 
 export interface Props {
   title: string;
@@ -129,11 +130,11 @@ const jsonLd =
 </script>
 
 <!-- Cloudflare Web Analytics (deferred) -->
-{import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN && (
+{PUBLIC_CF_ANALYTICS_TOKEN && (
   <script
     is:inline
     defer
     src="https://static.cloudflareinsights.com/beacon.min.js"
-    data-cf-beacon={JSON.stringify({ token: import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN })}
+    data-cf-beacon={JSON.stringify({ token: PUBLIC_CF_ANALYTICS_TOKEN })}
   />
 )}

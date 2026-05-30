@@ -2,20 +2,26 @@
 
 Two modes live in this repo:
 
-| Where                                  | Mode    | Auth        | Storage                    |
-| -------------------------------------- | ------- | ----------- | -------------------------- |
-| `pnpm dev` (Astro dev server, Node.js) | local   | none        | local files                |
-| `pnpm wrangler:dev` (Workers preview)  | github  | GitHub OAuth| commits → PRs to this repo |
-| Deployed Worker (production)           | github  | GitHub OAuth| commits → PRs to this repo |
+| Where                                              | Adapter       | Mode    | Auth         | Storage                    |
+| -------------------------------------------------- | ------------- | ------- | ------------ | -------------------------- |
+| `pnpm dev` (Astro dev server)                      | `@astrojs/node` | local | none         | local files via `fs`       |
+| `pnpm wrangler:dev` (workerd preview via astro preview) | `@astrojs/cloudflare` | github | GitHub OAuth | commits → PRs to this repo |
+| Deployed Worker (production)                       | `@astrojs/cloudflare` | github | GitHub OAuth | commits → PRs to this repo |
 
-`pnpm dev` sets `PUBLIC_KEYSTATIC_MODE=local`. The Astro dev server runs in
+`pnpm dev` sets `PUBLIC_KEYSTATIC_MODE=local`. `astro.config.mts` branches on
+that flag to select `@astrojs/node` as the adapter. The Node dev server runs in
 real Node.js, so Keystatic's local kind (which needs `fs`) works there and
 writes go straight to `src/content/posts/{en,uk}/`.
 
-`pnpm wrangler:dev` and the deployed Worker both run in the Cloudflare
-Worker runtime, which is not Node.js — local storage cannot work there.
-Both use GitHub OAuth instead, identical flow, different secret sources
-(`.dev.vars` locally vs. `wrangler secret put` in prod).
+**Why not the Cloudflare adapter for local dev?** `@astrojs/cloudflare` v13
+runs `astro dev` on the workerd runtime, which has no Node `fs` module.
+Keystatic local storage would break. The Node adapter solves this without
+changing anything else — the base path, port, and Keystatic UI URL all remain
+the same as before.
+
+`pnpm wrangler:dev` and the deployed Worker both run in the workerd runtime —
+local storage cannot work there. Both use GitHub OAuth instead, identical flow,
+different secret sources (`.dev.vars` locally vs. `wrangler secret put` in prod).
 
 The Admin UI at `/keystatic` is blocked from search engines via `robots.txt`
 and is only accessible to GitHub users with write access to the repo.
@@ -132,7 +138,8 @@ secrets, no GitHub round-trip. The Admin UI lives at
 
 ## Local Worker preview with `pnpm wrangler:dev`
 
-`pnpm wrangler:dev` mirrors production: Keystatic runs in GitHub mode and
+`pnpm wrangler:dev` builds the project and runs `astro preview` on the workerd
+runtime (via `@cloudflare/vite-plugin`). Keystatic runs in GitHub mode and
 needs the same three secrets. Put them in `.dev.vars` (gitignored — copy
 from `.dev.vars.example`):
 
@@ -142,7 +149,7 @@ KEYSTATIC_GITHUB_CLIENT_ID=<from your GitHub App>
 KEYSTATIC_GITHUB_CLIENT_SECRET=<from your GitHub App>
 ```
 
-Then the Admin UI at `http://127.0.0.1:8787/blog/keystatic` will use the
+Then the Admin UI at `http://127.0.0.1:4321/blog/keystatic` will use the
 real GitHub OAuth flow exactly like production.
 
 ---

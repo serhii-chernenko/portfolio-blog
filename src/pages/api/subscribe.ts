@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getDB, getKV, getEnv, upsertPendingSubscriber } from '../../lib/d1';
+import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
+import { getDB, getKV, upsertPendingSubscriber } from '../../lib/d1';
 import { issueToken, hashIp } from '../../lib/tokens';
 import { sendConfirmation } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
@@ -40,10 +41,15 @@ export const POST: APIRoute = async (context) => {
 
   const locale = rawLocale as Locale;
 
+  // Defense-in-depth: astro:env validates undefined but not empty string.
+  if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
+    return jsonError('Service unavailable', 503);
+  }
+
   // Rate limit: 3 requests per IP per 10 minutes
   let kv: KVNamespace;
   try {
-    kv = getKV(context, 'RATE_LIMIT');
+    kv = getKV('RATE_LIMIT');
   } catch {
     return jsonError('Service unavailable', 503);
   }
@@ -53,14 +59,7 @@ export const POST: APIRoute = async (context) => {
     context.request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     'unknown';
 
-  let env: Env;
-  try {
-    env = getEnv(context);
-  } catch {
-    return jsonError('Service unavailable', 503);
-  }
-
-  const ipHash = await hashIp(env.SUBSCRIBE_RATE_LIMIT_SECRET, ip);
+  const ipHash = await hashIp(SUBSCRIBE_RATE_LIMIT_SECRET, ip);
   const rateLimitKey = `subscribe:${ipHash}`;
   const existing = await kv.get(rateLimitKey);
   const count = existing ? parseInt(existing, 10) : 0;
@@ -74,7 +73,7 @@ export const POST: APIRoute = async (context) => {
 
   let db: D1Database;
   try {
-    db = getDB(context);
+    db = getDB();
   } catch {
     return jsonError('Service unavailable', 503);
   }
@@ -89,7 +88,7 @@ export const POST: APIRoute = async (context) => {
     ip_hash: ipHash,
   });
 
-  const token = await issueToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, email, 'confirm');
+  const token = await issueToken(SUBSCRIBE_RATE_LIMIT_SECRET, email, 'confirm');
   // Derive origin from the incoming request so prod, preview Workers, and
   // local `wrangler dev` each produce a link that points back to themselves.
   // Note: `wrangler dev` defaults `request.url`'s host to the first route's
@@ -101,17 +100,14 @@ export const POST: APIRoute = async (context) => {
   const privacyUrl = `${origin}${base}/${locale}/privacy/`;
 
   try {
-    await sendConfirmation({ env, to: email, locale, confirmUrl, privacyUrl });
+    await sendConfirmation({ to: email, locale, confirmUrl, privacyUrl });
   } catch (err) {
     console.error('Failed to send confirmation email:', err);
     return jsonError('Failed to send confirmation email', 500);
   }
 
   // Telegram notify (best-effort)
-  await notify(
-    env,
-    `📬 New pending subscriber: ${escapeHtml(email)} (${locale})`,
-  );
+  await notify(`📬 New pending subscriber: ${escapeHtml(email)} (${locale})`);
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

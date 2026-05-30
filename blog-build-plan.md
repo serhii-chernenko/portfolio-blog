@@ -36,7 +36,8 @@ This document is a complete brief for building a personal technical blog from sc
 | Layer | Choice | Version |
 |---|---|---|
 | Framework | Astro | ^6.0 |
-| Adapter | `@astrojs/cloudflare` | latest compatible with Astro 6 |
+| Adapter | `@astrojs/cloudflare` | 13.x (production/preview) |
+| Adapter (local dev) | `@astrojs/node` | 10.x (pnpm dev only — workerd has no fs) |
 | CMS | Keystatic | ^0.5+ |
 | Keystatic Astro integration | `@keystatic/astro` | ^5.x |
 | React (required by Keystatic Admin UI) | `@astrojs/react` | ^4.x |
@@ -85,9 +86,11 @@ This document is a complete brief for building a personal technical blog from sc
 | Web Analytics | site token | Privacy-friendly analytics |
 
 **Secrets (via `wrangler secret put` for production; preview envs use GitHub Actions secrets):**
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHAT_ID`
-- `SUBSCRIBE_RATE_LIMIT_SECRET`
+Accessed at runtime via `astro:env/server` typed imports:
+- `SUBSCRIBE_RATE_LIMIT_SECRET` — required (min: 1)
+- `TELEGRAM_BOT_TOKEN` — optional (notify() no-ops when absent)
+- `TELEGRAM_CHAT_ID` — optional
+Accessed via Keystatic's own auth layer (not through astro:env):
 - `KEYSTATIC_GITHUB_CLIENT_ID`
 - `KEYSTATIC_GITHUB_CLIENT_SECRET`
 - `KEYSTATIC_SECRET`
@@ -95,6 +98,8 @@ This document is a complete brief for building a personal technical blog from sc
 **Public vars (in `wrangler.jsonc` `vars`):**
 - `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`
 - `MAIL_FROM` (sender address, e.g. `hello@yourdomain.com`)
+Accessed via `cloudflare:workers` env (same as bindings):
+- `MAIL_FROM`
 
 **Bindings (in `wrangler.jsonc`):**
 - `SEND_EMAIL` — Cloudflare Email Service binding for outbound email (replaces Resend)
@@ -174,9 +179,7 @@ blog/
 ├── patches/                       # Patched dependencies (keystatic, react-email)
 ├── scripts/
 │   └── post-build.mjs             # Apex redirect for local wrangler dev
-├── .env                           # Local dev secrets (gitignored)
-├── .env.example                   # Committed
-├── .dev.vars.example              # Wrangler dev secrets template
+├── .dev.vars.example              # Committed template; copy to .dev.vars (gitignored)
 ├── .github/
 │   ├── workflows/
 │   │   ├── deploy.yml             # Production deploy on push to main
@@ -292,6 +295,7 @@ The production site lives at `yourdomain.com/blog` (base path `/blog`). In local
 ```js
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
 import markdoc from '@astrojs/markdoc';
 import keystatic from '@keystatic/astro';
@@ -305,12 +309,16 @@ export default defineConfig({
   site: 'https://yourdomain.com',
   base: BASE_PATH,               // '/blog' in prod/preview, '/' in local dev
   output: 'server',
-  adapter: cloudflare({
-    platformProxy: { enabled: true },
-    // 'passthrough' avoids bundling sharp into the Worker.
-    // sharp cannot run in the Workers runtime.
-    imageService: 'passthrough',
-  }),
+  // adapter branches on PUBLIC_KEYSTATIC_MODE:
+  //   local (pnpm dev)  → @astrojs/node  (workerd has no fs; Keystatic local needs fs)
+  //   otherwise         → @astrojs/cloudflare  (production / wrangler:dev)
+  adapter: LOCAL_MODE
+    ? node({ mode: 'standalone' })
+    : cloudflare({
+        // 'passthrough' avoids bundling sharp into the Worker.
+        // sharp cannot run in the Workers runtime.
+        imageService: 'passthrough',
+      }),
   image: {
     // No-op service prevents sharp from being pulled into the bundle.
     service: { entrypoint: 'astro/assets/services/noop' },
@@ -604,13 +612,13 @@ export default defineMarkdocConfig({
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "blog",
-  "main": "./dist/_worker.js/index.js",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
 
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist"
+    "directory": "./dist/client"
   },
 
   "d1_databases": [
@@ -666,11 +674,10 @@ export default defineMarkdocConfig({
     "PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug"
   },
 
-  // `wrangler dev` defaults its simulated host to the first entry in `routes`
-  // (production), which makes `request.url` resolve to the production domain
-  // even when serving from localhost. Forcing the dev host to localhost makes
-  // request.url match where the browser actually is — so things like
-  // self-referential confirm links work without any env-var indirection.
+  // `dev.host` is only relevant if you run `wrangler dev` directly.
+  // `pnpm wrangler:dev` runs `pnpm build && astro preview` instead (the v13
+  // approach via @cloudflare/vite-plugin, serving at :4321), so this entry
+  // does not affect normal local development.
   "dev": {
     "host": "localhost:8787"
   }
@@ -736,11 +743,12 @@ The full `global.css` also includes:
 /// <reference path="../.astro/types.d.ts" />
 /// <reference types="@cloudflare/workers-types" />
 
-type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
-
-declare namespace App {
-  interface Locals extends Runtime {}
-}
+// NOTE (@astrojs/cloudflare v13): Astro.locals.runtime.env was removed.
+// Bindings are accessed via `import { env } from 'cloudflare:workers'`.
+// Server secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+// SUBSCRIBE_RATE_LIMIT_SECRET) are accessed via `astro:env/server`.
+// This Env interface is kept for wrangler type generation; it is not used
+// directly in app code to read values.
 
 interface Env {
   DB: D1Database;
@@ -748,14 +756,8 @@ interface Env {
   ASSETS: Fetcher;
   /** Cloudflare Email Service binding — see `send_email` in wrangler.jsonc. */
   SEND_EMAIL: SendEmail;
-  /** Sender address, e.g. "hello@yourdomain.com". Set as a wrangler var. */
+  /** Sender address, e.g. "hello@yourdomain.com". Set as a wrangler var (not a secret). */
   MAIL_FROM: string;
-  TELEGRAM_BOT_TOKEN: string;
-  TELEGRAM_CHAT_ID: string;
-  SUBSCRIBE_RATE_LIMIT_SECRET: string;
-  KEYSTATIC_GITHUB_CLIENT_ID: string;
-  KEYSTATIC_GITHUB_CLIENT_SECRET: string;
-  KEYSTATIC_SECRET: string;
   PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
 }
 
@@ -781,10 +783,11 @@ interface ImportMeta {
 ```
 
 **Key differences from the initial plan:**
-- `SEND_EMAIL: SendEmail` and `MAIL_FROM: string` — replaces `RESEND_API_KEY` since we use Cloudflare Email Service instead of the Resend SDK.
+- `SEND_EMAIL: SendEmail` and `MAIL_FROM: string` — replaces `RESEND_API_KEY` since we use Cloudflare Email Service instead of the Resend SDK. Both accessed via `cloudflare:workers` env.
 - `@cloudflare/workers-types` reference — provides `D1Database`, `KVNamespace`, `Fetcher`, `SendEmail` type definitions.
 - `ImportMetaEnv` with `PUBLIC_*` and `PREVIEW_MODE` — these are build-time constants (Vite inlines them). They're needed for Keystatic mode, Giscus, and Cloudflare Analytics configuration.
 - `PREVIEW_MODE` — set to `'true'` in the preview deploy workflow so drafts are visible on preview URLs.
+- Server secrets (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) are no longer in the `Env` interface — they are accessed via `astro:env/server` typed imports instead of `Astro.locals.runtime.env` (which was removed in `@astrojs/cloudflare` v13).
 
 ---
 
@@ -1211,7 +1214,7 @@ Two feeds: `/en/rss.xml` and `/uk/rss.xml`. Use `@astrojs/rss`. Each uses `getPu
 
 - GitHub Discussions enabled on the repo
 - Giscus GitHub App installed
-- Configured via `PUBLIC_GISCUS_*` env vars (set in `.env` for dev, GitHub Actions `vars` for CI, and Cloudflare Worker vars for production)
+- Configured via `PUBLIC_GISCUS_*` env vars (set in `.dev.vars` for local dev, GitHub Actions `vars` for CI, and Cloudflare Worker vars for production)
 - Configured per locale via `data-lang` attribute
 - Theme synced with site theme via `postMessage`
 - Theme synced with site theme via `postMessage`
@@ -1287,13 +1290,18 @@ CREATE INDEX idx_subscribers_email ON subscribers(email);
 ### `src/lib/telegram.ts`
 
 ```ts
-export async function notify(env: Env, text: string, parseMode: 'HTML' | 'Markdown' = 'HTML') {
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+// TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are optional secrets accessed via
+// astro:env/server. notify() no-ops when either is absent.
+import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from 'astro:env/server';
+
+export async function notify(text: string, parseMode: 'HTML' | 'Markdown' = 'HTML') {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
   await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      chat_id: env.TELEGRAM_CHAT_ID,
+      chat_id: TELEGRAM_CHAT_ID,
       text,
       parse_mode: parseMode,
       disable_web_page_preview: true,

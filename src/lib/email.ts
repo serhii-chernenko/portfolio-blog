@@ -10,6 +10,7 @@
  * Sender address: configured via the `MAIL_FROM` env var (default: hello@serhiichernenko.com).
  */
 
+import { env } from 'cloudflare:workers';
 import type { Locale } from '../i18n/config';
 import confirmEn from '../emails/confirm-en.json' with { type: 'json' };
 import confirmUk from '../emails/confirm-uk.json' with { type: 'json' };
@@ -34,7 +35,7 @@ const WELCOME: Record<Locale, EmailTemplateFile> = {
 	uk: welcomeUk,
 };
 
-function fromAddress(env: Env): string {
+function fromAddress(): string {
 	const addr = env.MAIL_FROM || DEFAULT_FROM;
 	return `${FROM_NAME} <${addr}>`;
 }
@@ -46,17 +47,20 @@ function applyVars(html: string, vars: Record<string, string>): string {
 }
 
 export async function sendConfirmation(args: {
-	env: Env;
 	to: string;
 	locale: Locale;
 	confirmUrl: string;
 	privacyUrl: string;
 }): Promise<void> {
+	const sendEmail = env.SEND_EMAIL;
+	if (!sendEmail) {
+		throw new Error('Email binding "SEND_EMAIL" is not available');
+	}
 	const tpl = CONFIRM[args.locale];
 	const html = applyVars(tpl.html, { confirmUrl: args.confirmUrl, privacyUrl: args.privacyUrl });
 
-	await args.env.SEND_EMAIL.send({
-		from: fromAddress(args.env),
+	await sendEmail.send({
+		from: fromAddress(),
 		to: args.to,
 		subject: tpl.subject,
 		html,
@@ -64,17 +68,20 @@ export async function sendConfirmation(args: {
 }
 
 export async function sendWelcome(args: {
-	env: Env;
 	to: string;
 	locale: Locale;
 	unsubscribeUrl: string;
 	privacyUrl: string;
 }): Promise<void> {
+	const sendEmail = env.SEND_EMAIL;
+	if (!sendEmail) {
+		throw new Error('Email binding "SEND_EMAIL" is not available');
+	}
 	const tpl = WELCOME[args.locale];
 	const html = applyVars(tpl.html, { unsubscribeUrl: args.unsubscribeUrl, privacyUrl: args.privacyUrl });
 
-	await args.env.SEND_EMAIL.send({
-		from: fromAddress(args.env),
+	await sendEmail.send({
+		from: fromAddress(),
 		to: args.to,
 		subject: tpl.subject,
 		html,

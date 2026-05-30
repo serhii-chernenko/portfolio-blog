@@ -20,7 +20,7 @@ sendConfirmation({ env, to, locale, confirmUrl })
 sendWelcome({ env, to, locale })
 ```
 
-Both call `env.SEND_EMAIL.send({ from, to, subject, html })`. The `SEND_EMAIL` binding is a Cloudflare `SendEmail` binding declared in `wrangler.jsonc`:
+Both call `env.SEND_EMAIL.send({ from, to, subject, html })`, where `env` is imported from `cloudflare:workers` (`import { env } from 'cloudflare:workers'`). The `SEND_EMAIL` binding is a Cloudflare `SendEmail` binding declared in `wrangler.jsonc`:
 
 ```jsonc
 "send_email": [
@@ -81,9 +81,9 @@ If you don't receive either: check `pnpm wrangler tail` for errors. Common ones 
 
 ## Local development
 
-`pnpm dev` (plain Astro): the runtime has no CF bindings, so `env.SEND_EMAIL` is undefined and the API routes throw before reaching the email module. That's fine — you don't want to send real emails from dev.
+`pnpm dev` (Node adapter, no CF bindings): `cloudflare:workers` bindings are unavailable, so `env.SEND_EMAIL` is undefined and the API routes throw before reaching the email module. That's fine — you don't want to send real emails from dev.
 
-`pnpm wrangler:dev`: the `send_email` binding is simulated locally. **It does not actually send email** — the request is logged to the console only. To test real send, you have to deploy to a preview Worker or production.
+`pnpm wrangler:dev` (workerd runtime via `astro preview`): the `send_email` binding is simulated locally. **It does not actually send email** — the request is logged to the console only. To test real send, you have to deploy to a preview Worker or production.
 
 If you want real email send in local dev: the simplest path is to add a `.dev.vars` flag like `EMAIL_PROVIDER=stub` and write a stub implementation in `src/lib/email.ts` that just logs to console when the flag is set. But honestly, just deploy a preview Worker and test there — it's faster.
 
@@ -130,7 +130,7 @@ The `from` address you passed to `.send()` doesn't match what you verified. Make
 
 If CF Email Service deliverability bites you and you need to switch providers (Resend, Postmark, SES, etc.), here's the minimal-change path:
 
-1. Add the provider SDK / fetch call in `src/lib/email.ts`. Replace the `env.SEND_EMAIL.send(...)` lines with the provider's API.
-2. Add the provider's API key as a wrangler secret. Add it to `Env` in `src/env.d.ts`.
+1. Add the provider SDK / fetch call in `src/lib/email.ts`. Replace the `env.SEND_EMAIL.send(...)` lines with the provider's API (`env` imported from `cloudflare:workers`).
+2. Add the provider's API key as a wrangler secret (and declare it in the `astro:env/server` schema if it should be a typed secret).
 3. Remove the `send_email` binding from `wrangler.jsonc` (or leave it — it's free to have unused bindings).
 4. Done. No callers change because `sendConfirmation()` and `sendWelcome()` keep their signatures.

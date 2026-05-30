@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getDB, getEnv, markUnsubscribed } from '../../lib/d1';
+import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
+import { getDB, markUnsubscribed } from '../../lib/d1';
 import { verifyToken } from '../../lib/tokens';
 import { notify, escapeHtml } from '../../lib/telegram';
 import { isLocale, type Locale } from '../../i18n/config';
@@ -49,10 +50,8 @@ export const GET: APIRoute = async (context) => {
   const rawLocale = url.searchParams.get('locale') ?? 'en';
   const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
 
-  let env: Env;
-  try {
-    env = getEnv(context);
-  } catch {
+  // Defense-in-depth: astro:env validates undefined but not empty string.
+  if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
     return htmlPage(
       ui[locale]['subscribe.unsubscribe.invalid'],
       ui[locale]['subscribe.unsubscribe.invalid'],
@@ -60,7 +59,7 @@ export const GET: APIRoute = async (context) => {
     );
   }
 
-  const result = await verifyToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, token, 'unsubscribe');
+  const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, 'unsubscribe');
 
   if (!result) {
     return htmlPage(
@@ -73,16 +72,13 @@ export const GET: APIRoute = async (context) => {
   const { email } = result;
 
   try {
-    const db = getDB(context);
+    const db = getDB();
     await markUnsubscribed(db, email);
   } catch (err) {
     console.error('Failed to mark unsubscribed:', err);
   }
 
-  await notify(
-    env,
-    `👋 Unsubscribed: ${escapeHtml(email)} (${locale})`,
-  );
+  await notify(`👋 Unsubscribed: ${escapeHtml(email)} (${locale})`);
 
   return htmlPage(
     ui[locale]['subscribe.unsubscribe.title'],

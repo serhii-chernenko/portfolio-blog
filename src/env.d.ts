@@ -1,27 +1,13 @@
 /// <reference path="../.astro/types.d.ts" />
-/// <reference types="@cloudflare/workers-types" />
+/// <reference path="../worker-configuration.d.ts" />
 
-type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
+// @astrojs/cloudflare v13: locals.runtime is removed.
+// The adapter now only provides `cfContext` (ExecutionContext) in locals.
+// Bindings are accessed via `import { env } from 'cloudflare:workers'`.
+type Runtime = import('@astrojs/cloudflare').Runtime;
 
 declare namespace App {
 	interface Locals extends Runtime {}
-}
-
-interface Env {
-	DB: D1Database;
-	RATE_LIMIT: KVNamespace;
-	ASSETS: Fetcher;
-	/** Cloudflare Email Service binding — see `send_email` in wrangler.jsonc. */
-	SEND_EMAIL: SendEmail;
-	/** Sender address, e.g. "hello@serhiichernenko.com". Set as a wrangler var. */
-	MAIL_FROM: string;
-	TELEGRAM_BOT_TOKEN: string;
-	TELEGRAM_CHAT_ID: string;
-	SUBSCRIBE_RATE_LIMIT_SECRET: string;
-	KEYSTATIC_GITHUB_CLIENT_ID: string;
-	KEYSTATIC_GITHUB_CLIENT_SECRET: string;
-	KEYSTATIC_SECRET: string;
-	PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
 }
 
 interface ImportMetaEnv {
@@ -32,12 +18,6 @@ interface ImportMetaEnv {
 	 * (both use GitHub OAuth and base `/blog`).
 	 */
 	readonly PUBLIC_KEYSTATIC_MODE?: 'local';
-	readonly PUBLIC_KEYSTATIC_GITHUB_APP_SLUG?: string;
-	readonly PUBLIC_GISCUS_REPO?: string;
-	readonly PUBLIC_GISCUS_REPO_ID?: string;
-	readonly PUBLIC_GISCUS_CATEGORY?: string;
-	readonly PUBLIC_GISCUS_CATEGORY_ID?: string;
-	readonly PUBLIC_CF_ANALYTICS_TOKEN?: string;
 }
 
 interface ImportMeta {

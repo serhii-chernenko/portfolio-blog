@@ -1,6 +1,30 @@
-# Copy to `.dev.vars` (gitignored) before `pnpm wrangler:dev`.
-# These values are read by wrangler at startup and exposed as Cloudflare-runtime
-# secrets. In production, set the equivalents via `wrangler secret put <NAME>`.
+# =============================================================================
+# Local development environment — the SINGLE env file for local dev.
+# Copy to `.dev.vars` (gitignored), then fill in what you need:
+#
+#   cp .dev.vars.example .dev.vars
+#
+# Both local commands read this one file (no `.env` involved):
+#   • pnpm dev          Astro dev server on the Node adapter (Keystatic local
+#                       editing needs fs). dotenv-cli loads this file into
+#                       process.env: PUBLIC_* client vars are inlined via
+#                       astro:env/client, and server secrets are read via
+#                       astro:env/server (which reads process.env in dev).
+#   • pnpm wrangler:dev Local Worker emulation (workerd). The build step is
+#                       wrapped with dotenv-cli so PUBLIC_* vars get inlined at
+#                       build time, and the Worker runtime reads this file's
+#                       secrets natively (astro:env getSecret / cloudflare:workers).
+#
+# Production never uses this file: runtime secrets are set via
+# `wrangler secret put <NAME>`; public/build vars come from CI env.
+#
+# NOT here: MAIL_FROM and PUBLIC_KEYSTATIC_GITHUB_APP_SLUG live in wrangler.jsonc
+# `vars` (exposed to local dev automatically). PUBLIC_KEYSTATIC_MODE is set
+# inline on the `pnpm dev` script only — it MUST stay unset for wrangler:dev and
+# production so the Worker uses base `/blog` + Keystatic GitHub mode.
+# =============================================================================
+
+# ── Runtime secrets — read from Astro.locals.runtime.env (dev) / wrangler (wrangler:dev) ──
 
 # REQUIRED — any non-empty string works locally. Use a real 32-byte random in prod.
 SUBSCRIBE_RATE_LIMIT_SECRET=local-dev-only-secret-replace-in-prod
@@ -10,9 +34,25 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 
 # Keystatic GitHub mode — REQUIRED for `pnpm wrangler:dev` (the Worker runtime
-# can't use Keystatic local storage; only `pnpm dev` can do that). Get the
-# values from your GitHub App; see docs/KEYSTATIC.md. Same values are set in
-# production via `wrangler secret put`.
+# can't use Keystatic local storage; only `pnpm dev` can). Get the values from
+# your GitHub App; see docs/KEYSTATIC.md. Same values are set in production via
+# `wrangler secret put`.
 KEYSTATIC_SECRET=
 KEYSTATIC_GITHUB_CLIENT_ID=
 KEYSTATIC_GITHUB_CLIENT_SECRET=
+
+# ── Public build-time vars — inlined into the bundle via import.meta.env ──
+# All optional locally; features no-op when empty (comments widget, analytics).
+
+# Giscus comments (https://giscus.app). Empty → comments widget is hidden.
+PUBLIC_GISCUS_REPO=serhii-chernenko/portfolio-blog
+PUBLIC_GISCUS_REPO_ID=
+PUBLIC_GISCUS_CATEGORY=Comments
+PUBLIC_GISCUS_CATEGORY_ID=
+
+# Cloudflare Web Analytics beacon token. Empty → no beacon injected.
+PUBLIC_CF_ANALYTICS_TOKEN=
+
+# Show draft posts. Under `pnpm dev` drafts ALWAYS show (import.meta.env.DEV);
+# this flag only matters for `pnpm wrangler:dev` / preview builds. Leave empty otherwise.
+PREVIEW_MODE=

@@ -17,7 +17,10 @@ pnpm-debug.log*
 .env
 .env.production
 .env.local
-.dev.vars
+.dev.vars*
+
+# generated Cloudflare Worker types (from `wrangler types`)
+worker-configuration.d.ts
 
 # wrangler
 .wrangler/

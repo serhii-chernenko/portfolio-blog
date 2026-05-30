@@ -58,19 +58,27 @@ or you never messaged the bot first).
 
 ## Layer 1 — Worker events (1, 2, 3)
 
-These only fire in a **Cloudflare runtime**, never under plain `pnpm dev` (no
-bindings there). Use `wrangler:dev` locally, or test against the deployed Worker.
+These only fire in a **Cloudflare runtime** (workerd), never under plain `pnpm dev`.
+
+`pnpm dev` runs on the Node adapter with no CF bindings. More precisely: the
+subscribe/confirm/unsubscribe routes need the DB and RATE_LIMIT bindings (from
+`cloudflare:workers`) to proceed past validation, so `notify()` is never reached
+there. This is expected behaviour — use `wrangler:dev` for Worker event testing.
+
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional secrets accessed via
+`astro:env/server`. When unset (or empty), `notify()` in `src/lib/telegram.ts`
+no-ops silently — no error, no notification.
 
 ### Local (`wrangler:dev`)
 
 1. Populate `.dev.vars` with real `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
    (and `SUBSCRIBE_RATE_LIMIT_SECRET`, a local D1, etc. — see `GO-LIVE.md`).
 2. Apply the schema locally: `pnpm d1:apply:local`.
-3. `pnpm wrangler:dev` (builds, then serves at `http://localhost:8787`).
+3. `pnpm wrangler:dev` (builds then serves at `http://127.0.0.1:4321`).
 
 **Event 1 — new subscriber:**
 ```bash
-curl -i -X POST http://localhost:8787/blog/api/subscribe \
+curl -i -X POST http://127.0.0.1:4321/blog/api/subscribe \
   -H 'content-type: application/json' \
   -d '{"email":"you+test@example.com","locale":"en"}'
 ```
@@ -82,14 +90,14 @@ is independent of the email step for event 1.)
 **Event 2 — confirmed:** grab the confirm token. Easiest is the confirmation
 email; or mint one in a `wrangler:dev` session. Then:
 ```bash
-curl -i "http://localhost:8787/blog/api/confirm?token=<TOKEN>&locale=en"
+curl -i "http://127.0.0.1:4321/blog/api/confirm?token=<TOKEN>&locale=en"
 ```
 Expect a 302 redirect to `…/subscribe?confirmed=1` **and** `✅ Subscriber
 confirmed: …`.
 
 **Event 3 — unsubscribe:**
 ```bash
-curl -i "http://localhost:8787/blog/api/unsubscribe?token=<UNSUB_TOKEN>&locale=en"
+curl -i "http://127.0.0.1:4321/blog/api/unsubscribe?token=<UNSUB_TOKEN>&locale=en"
 ```
 Expect an HTML page **and** `👋 Unsubscribed: …`.
 
@@ -128,8 +136,9 @@ output, and Telegram's API returns a JSON body describing any rejection.
 - **Nothing arrives, no error.** `notify()` is silent on success-with-no-delivery
   only if creds are empty (it early-returns). Confirm `wrangler secret list`
   shows both names and they're non-empty.
-- **`pnpm dev` never notifies.** Expected — no Cloudflare runtime. Use
-  `wrangler:dev`.
+- **`pnpm dev` never notifies.** Expected — the Node adapter has no CF bindings,
+  so the subscribe routes fail before `notify()` is ever reached. Use
+  `wrangler:dev` for end-to-end testing.
 - **"chat not found" / "bot was blocked".** Chat ID wrong, or you blocked your
   own bot. See `docs/TELEGRAM.md` troubleshooting.
 

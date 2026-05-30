@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getDB, getEnv, markConfirmed } from '../../lib/d1';
+import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
+import { getDB, markConfirmed } from '../../lib/d1';
 import { verifyToken, issueToken } from '../../lib/tokens';
 import { sendWelcome } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
@@ -50,10 +51,8 @@ export const GET: APIRoute = async (context) => {
   const rawLocale = url.searchParams.get('locale') ?? 'en';
   const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
 
-  let env: Env;
-  try {
-    env = getEnv(context);
-  } catch {
+  // Defense-in-depth: astro:env validates undefined but not empty string.
+  if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
     return htmlPage(
       ui[locale]['subscribe.confirm.invalid'],
       ui[locale]['subscribe.confirm.invalid'],
@@ -61,7 +60,7 @@ export const GET: APIRoute = async (context) => {
     );
   }
 
-  const result = await verifyToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, token, 'confirm');
+  const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, 'confirm');
 
   if (!result) {
     return htmlPage(
@@ -74,27 +73,24 @@ export const GET: APIRoute = async (context) => {
   const { email } = result;
 
   try {
-    const db = getDB(context);
+    const db = getDB();
     await markConfirmed(db, email);
   } catch (err) {
     console.error('Failed to mark confirmed:', err);
   }
 
   try {
-    const unsubscribeToken = await issueToken(env.SUBSCRIBE_RATE_LIMIT_SECRET, email, 'unsubscribe');
+    const unsubscribeToken = await issueToken(SUBSCRIBE_RATE_LIMIT_SECRET, email, 'unsubscribe');
     const origin = new URL(context.request.url).origin;
     const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
     const unsubscribeUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&locale=${locale}`;
     const privacyUrl = `${origin}${homeHrefFor(locale)}privacy/`;
-    await sendWelcome({ env, to: email, locale, unsubscribeUrl, privacyUrl });
+    await sendWelcome({ to: email, locale, unsubscribeUrl, privacyUrl });
   } catch (err) {
     console.error('Failed to send welcome email:', err);
   }
 
-  await notify(
-    env,
-    `✅ Subscriber confirmed: ${escapeHtml(email)} (${locale})`,
-  );
+  await notify(`✅ Subscriber confirmed: ${escapeHtml(email)} (${locale})`);
 
   // Redirect to subscribe page with confirmed flag
   return context.redirect(`${homeHrefFor(locale)}subscribe?confirmed=1`, 302);

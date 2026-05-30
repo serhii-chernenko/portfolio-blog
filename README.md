@@ -4,6 +4,8 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 **Stack:** Astro 6 · Cloudflare Workers · Keystatic · Tailwind 4 · DaisyUI 5 · Markdoc · D1 · KV · Pagefind · Cloudflare Email · Giscus · Telegram notifications.
 
+**Adapter versions:** `@astrojs/cloudflare` 13 · `@astrojs/node` 10 · `wrangler` 4.
+
 **Mounted at `/blog/*`** on `chernenko.digital` — the apex and other paths are served by a separate React portfolio app.
 
 **Docs:**
@@ -18,7 +20,19 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 There are **three** different ways to run this project. Use them deliberately.
 
-> ⚠️ **`pnpm dev` URLs differ from production.** The Astro dev server serves at `/` (e.g. `http://127.0.0.1:4321/en/posts/hello-world/`) so Keystatic local mode works. `pnpm wrangler:dev` and production both serve at `/blog/` (e.g. `https://chernenko.digital/blog/en/posts/hello-world/`). See "Why `pnpm dev` drops `/blog/`" below.
+> ⚠️ **`pnpm dev` URLs differ from production.** The Astro dev server serves at `/` (e.g. `http://127.0.0.1:4321/en/posts/hello-world/`) so Keystatic local mode works. `pnpm wrangler:dev` and production both serve at `/blog/` (e.g. `https://chernenko.digital/blog/en/posts/hello-world/`). See "Why `pnpm dev` uses the Node adapter" and "Why `pnpm dev` drops `/blog/`" below.
+
+### One-time setup — create `.dev.vars` from the example
+
+Both `pnpm dev` and `pnpm wrangler:dev` read from a single `.dev.vars` file (no `.env` involved):
+
+```bash
+cp .dev.vars.example .dev.vars
+# then fill in SUBSCRIBE_RATE_LIMIT_SECRET (any string locally)
+# and the KEYSTATIC_* secrets if you need wrangler:dev / GitHub OAuth
+```
+
+`pnpm dev` uses dotenv-cli to load `.dev.vars` so `PUBLIC_*` vars are available via `import.meta.env`. `pnpm wrangler:dev` loads it the same way at build time, and wrangler reads it natively at runtime.
 
 ### 1. `pnpm dev` — fast iteration on pages, components, styles, and content
 
@@ -27,7 +41,7 @@ pnpm install
 pnpm dev
 ```
 
-Opens at `http://127.0.0.1:4321`. HMR, hot-reload, draft posts visible. Sets `PUBLIC_KEYSTATIC_MODE=local` for you.
+Opens at `http://127.0.0.1:4321`. HMR, hot-reload, draft posts visible. Sets `PUBLIC_KEYSTATIC_MODE=local` for you; reads `PUBLIC_*` and runtime vars from `.dev.vars`.
 
 What this gives you:
 - All pages, layouts, components, Tailwind/DaisyUI
@@ -39,23 +53,25 @@ What this does **not** give you:
 - **Pagefind search.** Pagefind builds its index from the static HTML produced by `pnpm build` — there is no index for it to query until you've built.
 - Real Cloudflare runtime — no D1, KV, secrets, send_email.
 
+### Why `pnpm dev` uses the Node adapter
+
+`astro.config.mts` branches on `PUBLIC_KEYSTATIC_MODE=local`: when that flag is set (`pnpm dev`), it uses `@astrojs/node` as the adapter instead of `@astrojs/cloudflare`.
+
+The reason: `@astrojs/cloudflare` v13 runs `astro dev` on the **workerd** runtime, which has no Node `fs` module. Keystatic's local storage kind writes post files directly to disk via `fs`, so it would break under workerd. The Node adapter keeps local Keystatic editing working exactly as before.
+
+`pnpm wrangler:dev` and production use the Cloudflare adapter (and run in the workerd runtime), where Keystatic switches to GitHub OAuth mode and never touches the filesystem.
+
 ### Why `pnpm dev` drops `/blog/`
 
 Keystatic's React UI hardcodes its API at root-relative `/api/keystatic/...` and doesn't support a base path. With Astro `base: '/blog'`, the UI loads at `/blog/keystatic` but its API calls go to `/api/keystatic/...` (404) — the UI renders blank.
 
 `pnpm dev` (`PUBLIC_KEYSTATIC_MODE=local`) collapses the base to `/` so the paths line up. `pnpm wrangler:dev` and production both keep `base: '/blog'` and rely on `src/middleware.ts` to rewrite apex `/api/keystatic/*` requests onto the prefixed routes — see [`docs/KEYSTATIC.md`](./docs/KEYSTATIC.md).
 
-### 2. `pnpm wrangler:dev` — Worker preview with real CF bindings
+### 2. `pnpm wrangler:dev` — Worker preview on the workerd runtime
 
-Runs the built Worker against local simulations of D1, KV, and Send Email. Closest you can get to production locally — Keystatic (GitHub OAuth), Pagefind, API endpoints, and D1 all work. Same base path (`/blog`) and same auth flow as production.
+Builds the project then runs `astro preview` via `@cloudflare/vite-plugin`, which boots the built Worker locally on the same workerd runtime used in production. Closest you can get to production locally — Keystatic (GitHub OAuth), Pagefind, API endpoints, and D1 all work. Same base path (`/blog`) and same auth flow as production.
 
-**One-time setup** — copy `.dev.vars.example` and fill in the required secrets:
-
-```bash
-cp .dev.vars.example .dev.vars
-```
-
-Required in `.dev.vars`:
+Requires `.dev.vars` (see "One-time setup" above). Required keys for this command:
 - `SUBSCRIBE_RATE_LIMIT_SECRET` — any non-empty string locally
 - `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — needed because the Worker runtime cannot use Keystatic local storage. See [`docs/KEYSTATIC.md`](./docs/KEYSTATIC.md) for the GitHub App setup.
 
@@ -64,10 +80,12 @@ Optional: Telegram bot credentials. Empty values are fine — the helpers no-op 
 **Run:**
 
 ```bash
-pnpm wrangler:dev       # builds then serves at http://127.0.0.1:8787
+pnpm wrangler:dev       # pnpm build && astro preview (workerd runtime)
 ```
 
-Open <http://127.0.0.1:8787/blog/>. Keystatic is at <http://127.0.0.1:8787/blog/keystatic>.
+Open <http://127.0.0.1:4321/blog/>. Keystatic is at <http://127.0.0.1:4321/blog/keystatic>.
+
+> **Note:** `wrangler:dev` no longer calls `wrangler dev` directly. It runs `pnpm build && astro preview`, which is the v13 way to preview the built Worker via `@cloudflare/vite-plugin`. The `dev.host: localhost:8787` entry in `wrangler.jsonc` is only relevant if you invoke `wrangler dev`/deploy directly.
 
 D1 schema applies automatically on first run.
 
@@ -81,15 +99,9 @@ What this does **not** give you:
 - Real email send — log only.
 - Real Telegram notifications (unless `.dev.vars` has real bot creds).
 
-### 3. `pnpm preview` — DOES NOT WORK with the Cloudflare adapter
+### 3. `pnpm preview` — not a recommended standalone command
 
-Astro's built-in preview server doesn't support Cloudflare Workers builds. Don't use it. Use `pnpm wrangler:dev` instead.
-
-```
-[preview] The @astrojs/cloudflare adapter does not support the preview command.
-```
-
-If you see that, you ran the wrong command. Use option 2.
+`pnpm preview` runs `astro preview` in isolation (without a prior build). Use `pnpm wrangler:dev` instead, which builds first and runs on the correct workerd runtime with all CF bindings simulated.
 
 ---
 
@@ -100,7 +112,9 @@ pnpm build         # production build — base /blog, GitHub-mode Keystatic, ful
 pnpm build:astro   # just astro, no pagefind — fastest when iterating
 ```
 
-Build output goes to `dist/`. The Worker entrypoint is `dist/_worker.js/index.js`. Static assets (HTML, CSS, JS, Pagefind, images) are also under `dist/`.
+Build output:
+- `dist/client/` — static assets (HTML, CSS, JS, Pagefind, images). This is what the `ASSETS` binding in `wrangler.jsonc` (`"directory": "./dist/client"`) serves publicly.
+- `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `@astrojs/cloudflare/entrypoints/server`. Files here are never served as public assets.
 
 `pnpm wrangler:dev` and `pnpm wrangler:deploy` both call `pnpm build` — the dev preview and the prod deploy share the exact same artifact.
 
@@ -145,12 +159,44 @@ These are intentionally left as placeholders — none of them have safe defaults
    - Secrets: `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
    - Vars: `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN`
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
-   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-   - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used for HMAC tokens and IP hashing
+   - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used for HMAC tokens and IP hashing. Accessed via `astro:env/server` (required, validated at runtime).
+   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
    - `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — Keystatic runs in GitHub mode in the deployed Worker (and in `wrangler:dev`). See `docs/KEYSTATIC.md` for the GitHub App setup that produces these values.
 7. **`.github/labels.yml`** — apply once: either create the 4 labels manually in repo settings, or wire `crazy-max/ghaction-github-labeler` to do it.
 8. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
 9. **`public/og-default.png`** — replace the 1×1 placeholder with a real 1200×630 PNG. Phase 2 per the plan generates per-post OGs via satori.
+
+---
+
+## Environment variable / secret access model
+
+There are three distinct sources for runtime values — use the right one for each variable:
+
+| Source | What it covers | How to access in code |
+|---|---|---|
+| `astro:env/server` | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
+| `astro:env/client` | Public build-time vars: `PUBLIC_GISCUS_*`, `PUBLIC_CF_ANALYTICS_TOKEN` | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'` |
+| `cloudflare:workers` env | Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) | `import { env } from 'cloudflare:workers'` |
+| `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts` | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
+
+> **Removed in v13:** `Astro.locals.runtime.env` no longer exists. Do not use it. All binding access goes through `cloudflare:workers`.
+
+`PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` and `MAIL_FROM` stay as wrangler.jsonc `vars` (non-secret, inlined into the Worker bundle).
+
+`.dev.vars` is the single local env file for both `pnpm dev` and `pnpm wrangler:dev`. No `.env` file is used. `.gitignore` excludes `.dev.vars*` (all variants).
+
+---
+
+## v13 upgrade notes (@astrojs/cloudflare 12 → 13)
+
+Summary of what changed and why, for future reference:
+
+- **Node adapter for local dev.** `@astrojs/cloudflare` v13 runs `astro dev` on the workerd runtime (no Node `fs`). Because Keystatic local mode needs `fs`, `astro.config.mts` now selects `@astrojs/node` when `PUBLIC_KEYSTATIC_MODE=local` (`pnpm dev`) and `@astrojs/cloudflare` otherwise.
+- **`astro:env` typed imports.** Secrets and public vars are now declared in the `astro:env` schema in `astro.config.mts` and imported from `astro:env/server` or `astro:env/client`. `validateSecrets` defaults to false (build succeeds without secrets; validation happens at runtime).
+- **`cloudflare:workers` for bindings.** Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) are accessed via `import { env } from 'cloudflare:workers'`. `Astro.locals.runtime.env` was removed in v13.
+- **`wrangler:dev` is now `build + astro preview`.** The `pnpm wrangler:dev` script runs `pnpm build && astro preview` (via `@cloudflare/vite-plugin`) instead of `wrangler dev`. It serves at `http://127.0.0.1:4321/blog` (not `:8787`).
+- **React 19 (resolves the `@react-email/render` workerd issue).** `@react-email/render`'s `workerd` export imports `react-dom/server.edge`, a React 19 API. The project was upgraded React 18 → 19 (`react`/`react-dom`/`@types/react*` to 19.x), so that export resolves natively under the Cloudflare adapter — no Vite externalization workaround is needed. Keystatic (`@keystatic/core`/`@keystatic/astro`) and `@astrojs/react@4.4.2` already declare React 19 peer support, so no further bumps were required. The admin email editor remains a `client:only="react"` island.
+- **Build output layout.** v13 outputs `dist/client/` (static assets) + `dist/server/` (Worker script). `wrangler.jsonc` `assets.directory` points to `./dist/client`; `main` points to `@astrojs/cloudflare/entrypoints/server`.
 
 ---
 

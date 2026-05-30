@@ -5,13 +5,16 @@
 // chernenko.digital handles it). But during `wrangler dev`, all requests reach
 // this Worker, and a bare `/` returns 404, which is jarring.
 //
-// This file sits outside `dist/blog/` so the prod Worker never serves it
-// (its route pattern doesn't match `/`). Locally, wrangler's assets binding
-// picks it up before the Worker code runs, giving a clean redirect to `/blog/en/`.
+// This file sits at the static-assets root (`dist/client/`, outside
+// `dist/client/blog/`) so the prod Worker never serves it (its route pattern
+// doesn't match `/`). Locally, the assets binding picks it up before the Worker
+// code runs, giving a clean redirect to `/blog/en/`. As of @astrojs/cloudflare
+// v13 the build emits static assets under `dist/client/`, so this is written
+// there (the ASSETS binding is scoped to ./dist/client in wrangler.jsonc).
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const DIST = new URL('../dist/', import.meta.url);
+const DIST = new URL('../dist/client/', import.meta.url);
 
 if (!existsSync(DIST)) {
 	await mkdir(DIST, { recursive: true });
@@ -33,4 +36,4 @@ const html = `<!doctype html>
 `;
 
 await writeFile(new URL('index.html', DIST), html, 'utf8');
-console.log('post-build: wrote dist/index.html (apex → /blog/en/ redirect for local dev)');
+console.log('post-build: wrote dist/client/index.html (apex → /blog/en/ redirect for local dev)');

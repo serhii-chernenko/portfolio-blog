@@ -1,28 +1,18 @@
-import type { APIContext } from 'astro';
+import { env } from 'cloudflare:workers';
 
-export function getDB(context: APIContext): D1Database {
-	const env = context.locals.runtime?.env as Env | undefined;
-	if (!env?.DB) {
-		throw new Error('D1 binding "DB" is not available on context.locals.runtime.env');
+export function getDB(): D1Database {
+	if (!env.DB) {
+		throw new Error('D1 binding "DB" is not available');
 	}
 	return env.DB;
 }
 
-export function getKV(context: APIContext, binding: 'RATE_LIMIT'): KVNamespace {
-	const env = context.locals.runtime?.env as Env | undefined;
-	const kv = env?.[binding];
+export function getKV(binding: 'RATE_LIMIT'): KVNamespace {
+	const kv = env[binding] as KVNamespace | undefined;
 	if (!kv) {
 		throw new Error(`KV binding "${binding}" is not available`);
 	}
 	return kv;
-}
-
-export function getEnv(context: APIContext): Env {
-	const env = context.locals.runtime?.env as Env | undefined;
-	if (!env) {
-		throw new Error('Cloudflare runtime env is not available');
-	}
-	return env;
 }
 
 export interface SubscriberRow {
