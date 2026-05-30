@@ -148,7 +148,7 @@ These are intentionally left as placeholders — none of them have safe defaults
    pnpm wrangler d1 create portfolio-blog
    pnpm wrangler kv:namespace create RATE_LIMIT
    ```
-2. **`keystatic.config.ts`** — `storage.repo` is set to `inevix/portfolio-blog`. Change if the repo lives elsewhere.
+2. **`keystatic.config.ts`** — `storage.repo` is set to `serhii-chernenko/portfolio-blog`. Change if the repo lives elsewhere.
 3. **`astro.config.mts`** — canonical `SITE` constant (used for sitemap/RSS absolute links) is hardcoded. Edit the file to change it. Runtime URLs (e.g. subscribe confirm links) are derived from the incoming request, so previews and `wrangler dev` self-reference automatically.
 4. **Cloudflare Email Service** — outbound email uses CF's native `send_email` Worker binding (no third-party API key needed). Before the first deploy:
    - Enable **Email Routing** on `chernenko.digital` in the Cloudflare dashboard (Email → Email Routing).
@@ -212,7 +212,7 @@ Summary of what changed and why, for future reference:
 ## Middle decisions I made (override any of these)
 
 1. **Author identity**: `Serhii Chernenko`, site URL `https://blog.chernenko.digital`. Pulled from git config + portfolio URL you shared.
-2. **GitHub repo placeholder**: `inevix/portfolio-blog` (set in `keystatic.config.ts`).
+2. **GitHub repo placeholder**: `serhii-chernenko/portfolio-blog` (set in `keystatic.config.ts`).
 3. **Default theme**: `prefers-color-scheme` (DaisyUI auto-detects from the media query).
 4. **Keystatic GitHub mode**: self-hosted (you create the GitHub App via Keystatic's onboarding flow on first prod visit). Keystatic Cloud is also viable — flip `kind: 'github'` to `kind: 'cloud'`.
 5. **OG image**: single default `og-default.png` for MVP. Per-post OG generation deferred to Phase 2 per plan.
