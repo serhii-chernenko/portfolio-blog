@@ -2,9 +2,9 @@
   "name": "portfolio-blog",
   "type": "module",
   "version": "0.1.0",
-  "private": true,
+  "packageManager": "pnpm@11.5.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "PUBLIC_KEYSTATIC_MODE=local astro dev",
