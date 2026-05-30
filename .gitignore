@@ -34,3 +34,8 @@ dist/client/pagefind/
 
 # keystatic local mode
 keystatic.cache.json
+
+# AI
+.claude/*.lock
+.claude/plans
+.pi
