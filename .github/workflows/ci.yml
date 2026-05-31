@@ -1,0 +1,64 @@
+name: CI
+
+# Quality gate only — NO deployment. Production + PR previews are handled by
+# Cloudflare Workers Builds (dashboard → Worker → Settings → Build, the GitHub
+# Git integration): push to `main` → production deploy, any other branch / PR →
+# preview version with an auto-posted preview URL. This workflow never touches
+# Cloudflare and needs no CF secrets.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, lint, typecheck, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # pnpm version is read from package.json `packageManager`.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # worker-configuration.d.ts is gitignored but referenced by src/env.d.ts,
+      # so a fresh checkout lacks it. `wrangler types` regenerates it purely from
+      # wrangler.jsonc — fully offline, no Cloudflare token — so astro check can
+      # resolve the Worker binding types.
+      - name: Generate Worker types
+        run: pnpm exec wrangler types
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # `build:astro` (astro build only), NOT `pnpm build`: catches build/compile
+      # breakage without running pagefind + post-build. Workers Builds runs the
+      # authoritative full `pnpm build` at deploy time. PUBLIC_* vars are inlined
+      # at build; passed through for parity but not load-bearing for the gate.
+      - name: Build (Astro)
+        env:
+          PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: ${{ vars.PUBLIC_KEYSTATIC_GITHUB_APP_SLUG }}
+          PUBLIC_GISCUS_REPO: ${{ vars.PUBLIC_GISCUS_REPO }}
+          PUBLIC_GISCUS_REPO_ID: ${{ vars.PUBLIC_GISCUS_REPO_ID }}
+          PUBLIC_GISCUS_CATEGORY: ${{ vars.PUBLIC_GISCUS_CATEGORY }}
+          PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.PUBLIC_GISCUS_CATEGORY_ID }}
+          PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
+        run: pnpm build:astro
