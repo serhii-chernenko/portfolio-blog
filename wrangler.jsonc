@@ -52,6 +52,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "portfolio-blog",
 	"main": "@astrojs/cloudflare/entrypoints/server",
+	"preview_urls": true,
 	"compatibility_date": "2026-05-15",
 	"compatibility_flags": ["nodejs_compat"],
 	// Astro v13 Cloudflare build emits static assets to ./dist/client and the
