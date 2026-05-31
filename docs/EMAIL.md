@@ -3,6 +3,7 @@
 The blog sends transactional email (subscription confirmation, welcome) using **Cloudflare's native `send_email` Worker binding** — no third-party API key, no SMTP server, no MailChannels.
 
 There is no marketing-style bulk newsletter sending in MVP — only:
+
 - **Confirmation email** when someone subscribes (`/api/subscribe` flow).
 - **Welcome email** when they click the confirmation link (`/api/confirm` flow).
 - **No unsubscribe email** (the unsubscribe action just flips a D1 row).
@@ -16,8 +17,8 @@ Phase 2 will add newsletter campaign sending — same binding, fan-out over the 
 `src/lib/email.ts` exposes two functions:
 
 ```ts
-sendConfirmation({ env, to, locale, confirmUrl })
-sendWelcome({ env, to, locale })
+sendConfirmation({ env, to, locale, confirmUrl });
+sendWelcome({ env, to, locale });
 ```
 
 Both call `env.SEND_EMAIL.send({ from, to, subject, html })`, where `env` is imported from `cloudflare:workers` (`import { env } from 'cloudflare:workers'`). The `SEND_EMAIL` binding is a Cloudflare `SendEmail` binding declared in `wrangler.jsonc`:
@@ -43,6 +44,7 @@ Cloudflare dashboard → your domain (`chernenko.digital`) → **Email** → **E
 CF adds the required MX, SPF, and DKIM records to the zone automatically.
 
 If your domain already has MX records (you receive email at `you@chernenko.digital`), Email Routing will warn — you can either:
+
 - Replace them with CF's (incoming mail then routes through CF), or
 - Skip — you can still **send** via the binding even if incoming mail goes elsewhere. Sending only needs SPF and DKIM, not MX.
 
@@ -94,8 +96,8 @@ If you want real email send in local dev: the simplest path is to add a `.dev.va
 EN and UK templates live in `src/lib/email.ts`. The structure is:
 
 ```ts
-const CONFIRM_TEMPLATES: Record<Locale, { subject, intro, cta, outro }>;
-const WELCOME_TEMPLATES: Record<Locale, { subject, body }>;
+const CONFIRM_TEMPLATES: Record<Locale, { subject; intro; cta; outro }>;
+const WELCOME_TEMPLATES: Record<Locale, { subject; body }>;
 ```
 
 To edit the copy, change those objects. The HTML wrapper (typography, container width) is in `emailLayout()`.
@@ -113,6 +115,7 @@ The `MAIL_FROM` address isn't verified in Email Routing on the sending zone. Go 
 You skipped Setup step 1. Enable Email Routing on the domain referenced by the `from` address.
 
 **Confirmation email never arrives**
+
 1. Check `pnpm wrangler tail` for errors during the subscribe POST.
 2. Check the recipient's spam folder.
 3. Verify the `MAIL_FROM` domain has DKIM and SPF set correctly (CF auto-sets these when you enable Email Routing — they should be green in the dashboard).

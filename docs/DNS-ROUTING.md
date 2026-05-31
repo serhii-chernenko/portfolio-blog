@@ -10,29 +10,29 @@
 
 ## The moving parts (and who owns each)
 
-| Piece | Where | Purpose |
-|---|---|---|
-| **Worker routes** → `www.serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`) | Bind the Worker to the canonical host. `zone_name` stays the apex `serhiichernenko.com` (the zone) — the *pattern* is what targets `www`. |
-| **`www` DNS record** | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the Worker routes fire. |
-| **apex DNS record** | Cloudflare DNS → `AAAA @ → 100::`, **Proxied** | Makes the bare apex resolve to the edge so the redirect rule can run. `100::` is the reserved discard address for an originless host. |
-| **apex → www redirect** | Cloudflare → **Rules → Redirect Rules** | 301s `serhiichernenko.com/*` → `www.serhiichernenko.com/*` so visitors who type the bare domain land on the canonical host. |
-| **Canonical URL** | `astro.config.mts` → `site: 'https://www.serhiichernenko.com'` | Build-time absolute links (sitemap, RSS) use `www`. Runtime links derive from the request host. |
+| Piece                                                                               | Where                                                           | Purpose                                                                                                                                   |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Worker routes** → `www.serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` stays the apex `serhiichernenko.com` (the zone) — the _pattern_ is what targets `www`. |
+| **`www` DNS record**                                                                | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the Worker routes fire.                                                                       |
+| **apex DNS record**                                                                 | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the redirect rule can run. `100::` is the reserved discard address for an originless host.     |
+| **apex → www redirect**                                                             | Cloudflare → **Rules → Redirect Rules**                         | 301s `serhiichernenko.com/*` → `www.serhiichernenko.com/*` so visitors who type the bare domain land on the canonical host.               |
+| **Canonical URL**                                                                   | `astro.config.mts` → `site: 'https://www.serhiichernenko.com'`  | Build-time absolute links (sitemap, RSS) use `www`. Runtime links derive from the request host.                                           |
 
 **Routes are not DNS.** `wrangler deploy` only binds the Worker to a route
 pattern — it never creates a DNS record. If the matched hostname has no proxied
 DNS record, requests never reach Cloudflare's edge (Cloudflare's docs:
-*"All domains and subdomains must have a DNS record to be proxied on Cloudflare
-and used to invoke a Worker."*). Both `www` and the apex therefore need their own
+_"All domains and subdomains must have a DNS record to be proxied on Cloudflare
+and used to invoke a Worker."_). Both `www` and the apex therefore need their own
 proxied record, as above.
 
 ---
 
 ## DNS records (both must be **Proxied** / orange cloud)
 
-| Type | Name | Content | Proxy |
-|---|---|---|---|
+| Type    | Name  | Content               | Proxy       |
+| ------- | ----- | --------------------- | ----------- |
 | `CNAME` | `www` | `serhiichernenko.com` | **Proxied** |
-| `AAAA` | `@` | `100::` | **Proxied** |
+| `AAAA`  | `@`   | `100::`               | **Proxied** |
 
 - The records **must be Proxied (orange cloud)** — only proxied traffic runs
   Worker routes / Redirect Rules and gets a Universal SSL cert. A DNS-only
@@ -90,8 +90,9 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records
   --data '{"type":"CNAME","name":"www","content":"serhiichernenko.com","proxied":true,"ttl":1}'
 ```
 
-> Don't add DNS write to `deploy.yml` / the CI token — DNS and the redirect rule
-> are one-time infrastructure actions; widening the CI token's scope buys nothing.
+> Don't add DNS write to the Workers Builds deploy credential — DNS and the
+> redirect rule are one-time infrastructure actions; widening the deploy
+> credential's scope buys nothing.
 
 ---
 
@@ -106,8 +107,9 @@ after a rebuild + deploy**:
 pnpm wrangler:deploy      # = pnpm build && wrangler deploy  (regenerates the config, then deploys)
 ```
 
-(Or push to `main` → `.github/workflows/deploy.yml`.) A bare `wrangler deploy`
-without a fresh `pnpm build` will reuse the previously built routes.
+(Or push to `main` → Cloudflare Workers Builds runs `pnpm build` + deploy.) A
+bare `wrangler deploy` without a fresh `pnpm build` will reuse the previously
+built routes.
 
 ---
 
@@ -157,7 +159,7 @@ curl -sS -L -o /dev/null -w '%{http_code} %{url_effective}\n' https://serhiicher
 The most common cause after switching hosts: the Worker `routes` were changed in
 `wrangler.jsonc` but **not redeployed**, so the live Worker is still bound to the
 old host. Run `pnpm wrangler:deploy` (a plain `wrangler deploy` without a fresh
-`pnpm build` reuses the old built routes — see *Deploying a route change*).
+`pnpm build` reuses the old built routes — see _Deploying a route change_).
 Confirm the deployed routes target `www`:
 
 ```bash
@@ -170,7 +172,7 @@ If `www` itself doesn't resolve, check the `www` CNAME exists and is **Proxied**
 ### 2. The apex doesn't redirect to `www` (or 522s without redirecting)
 
 The apex→www **Redirect Rule** is missing or mis-scoped. Recreate it (see
-*The apex → www Redirect Rule*). Make sure the apex `AAAA @ → 100::` record
+_The apex → www Redirect Rule_). Make sure the apex `AAAA @ → 100::` record
 exists and is Proxied — without it the apex doesn't resolve, so the rule never
 runs.
 

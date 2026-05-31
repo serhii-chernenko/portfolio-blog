@@ -6,7 +6,7 @@ import { useTranslations, localeHref } from '../../../i18n/utils';
 import { locales, type Locale } from '../../../i18n/config';
 
 export async function getStaticPaths() {
-  return locales.map((locale) => ({ params: { locale } }));
+	return locales.map((locale) => ({ params: { locale } }));
 }
 
 const { locale } = Astro.params as { locale: Locale };
@@ -14,38 +14,46 @@ const t = useTranslations(locale);
 const tags = await getTagsForLocale(locale);
 ---
 
-<BaseLayout
-  title={t('tags.title')}
-  description={t('site.description')}
-  locale={locale}
->
-  <main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-    <div class="flex flex-col gap-10">
-      <header class="max-w-3xl mx-auto space-y-3 text-center">
-        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">{t('tags.title')}</h1>
-      </header>
+<BaseLayout title={t('tags.title')} description={t('site.description')} locale={locale}>
+	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+		<div class="flex flex-col gap-10">
+			<header class="max-w-3xl mx-auto space-y-3 text-center">
+				<h1 class="text-4xl font-bold tracking-tight sm:text-5xl">{t('tags.title')}</h1>
+			</header>
 
-      {tags.length === 0 ? (
-        <div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto size-10 opacity-50 mb-4" aria-hidden="true">
-            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
-            <path d="M7 7h.01"/>
-          </svg>
-          <h2 class="mt-4 text-xl font-semibold">{t('tags.empty')}</h2>
-        </div>
-      ) : (
-        <div class="flex flex-wrap gap-3 justify-center">
-          {tags.map(({ tag, count }) => (
-            <a
-              href={localeHref(locale, `tags/${tagSlug(tag)}`)}
-              class="badge badge-lg badge-outline hover:badge-primary transition-colors gap-2"
-            >
-              {tag}
-              <span class="opacity-60 text-xs">{count}</span>
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  </main>
+			{
+				tags.length === 0 ? (
+					<div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="mx-auto size-10 opacity-50 mb-4"
+							aria-hidden="true"
+						>
+							<path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+							<path d="M7 7h.01" />
+						</svg>
+						<h2 class="mt-4 text-xl font-semibold">{t('tags.empty')}</h2>
+					</div>
+				) : (
+					<div class="flex flex-wrap gap-3 justify-center">
+						{tags.map(({ tag, count }) => (
+							<a
+								href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+								class="badge badge-lg badge-outline hover:badge-primary transition-colors gap-2"
+							>
+								{tag}
+								<span class="opacity-60 text-xs">{count}</span>
+							</a>
+						))}
+					</div>
+				)
+			}
+		</div>
+	</main>
 </BaseLayout>

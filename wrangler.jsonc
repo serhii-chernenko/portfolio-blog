@@ -53,9 +53,7 @@
 	"name": "portfolio-blog",
 	"main": "@astrojs/cloudflare/entrypoints/server",
 	"compatibility_date": "2026-05-15",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	// Astro v13 Cloudflare build emits static assets to ./dist/client and the
 	// Worker code to ./dist/server. Scope ASSETS to ./dist/client ONLY — never
 	// ./dist — so server-side files (notably dist/server/.dev.vars, which the
@@ -63,26 +61,26 @@
 	// or served as public static assets.
 	"assets": {
 		"binding": "ASSETS",
-		"directory": "./dist/client"
+		"directory": "./dist/client",
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "portfolio-blog",
 			"database_id": "3203b8f1-e6c5-4db7-bdb1-1651b33fb67f",
-			"migrations_dir": "./schema"
-		}
+			"migrations_dir": "./schema",
+		},
 	],
 	"kv_namespaces": [
 		{
 			"binding": "RATE_LIMIT",
-			"id": "a560b7fe8deb44489bc9d276b19c8b2c"
-		}
+			"id": "a560b7fe8deb44489bc9d276b19c8b2c",
+		},
 	],
 	"send_email": [
 		{
-			"name": "SEND_EMAIL"
-		}
+			"name": "SEND_EMAIL",
+		},
 	],
 	// Analytics Engine — server-side newsletter funnel metrics.
 	// Dataset is auto-created on first write; no dashboard (query via SQL API).
@@ -92,11 +90,11 @@
 	"analytics_engine_datasets": [
 		{
 			"binding": "ANALYTICS",
-			"dataset": "portfolio_blog_events"
-		}
+			"dataset": "portfolio_blog_events",
+		},
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	// `wrangler dev` defaults its simulated host to the first entry in `routes`
 	// (production), which makes `request.url` resolve to www.serhiichernenko.com
@@ -104,7 +102,7 @@
 	// request.url match where the browser actually is — so things like
 	// self-referential confirm links work without any env-var indirection.
 	"dev": {
-		"host": "localhost:8787"
+		"host": "localhost:8787",
 	},
 	// Route topology — canonical host is www.serhiichernenko.com.
 	//
@@ -134,28 +132,28 @@
 	"routes": [
 		{
 			"pattern": "www.serhiichernenko.com/blog",
-			"zone_name": "serhiichernenko.com"
+			"zone_name": "serhiichernenko.com",
 		},
 		{
 			"pattern": "www.serhiichernenko.com/blog/*",
-			"zone_name": "serhiichernenko.com"
+			"zone_name": "serhiichernenko.com",
 		},
 		{
 			"pattern": "www.serhiichernenko.com/api/keystatic",
-			"zone_name": "serhiichernenko.com"
+			"zone_name": "serhiichernenko.com",
 		},
 		{
 			"pattern": "www.serhiichernenko.com/api/keystatic/*",
-			"zone_name": "serhiichernenko.com"
+			"zone_name": "serhiichernenko.com",
 		},
 		{
 			"pattern": "www.serhiichernenko.com/keystatic",
-			"zone_name": "serhiichernenko.com"
+			"zone_name": "serhiichernenko.com",
 		},
 		{
 			"pattern": "www.serhiichernenko.com/keystatic/*",
-			"zone_name": "serhiichernenko.com"
-		}
+			"zone_name": "serhiichernenko.com",
+		},
 	],
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
 	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.
@@ -166,6 +164,6 @@
 		// email will fail. Set it up in the CF dashboard before relying on
 		// production sends.
 		"MAIL_FROM": "hello@serhiichernenko.com",
-		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "serhii-chernenko-portfolio-blog"
-	}
+		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "serhii-chernenko-portfolio-blog",
+	},
 }

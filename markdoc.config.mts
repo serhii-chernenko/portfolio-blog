@@ -8,13 +8,13 @@ export default defineMarkdocConfig({
 	// Language badge + copy button are layered on by `src/components/CodeBlockEnhancer.astro`
 	// (or vanilla JS in BaseLayout) — see styles in src/styles/global.css.
 	extends: [
-		shiki({ 
-			themes: { 
-				light: 'github-light', 
-				dark: 'github-dark' 
+		shiki({
+			themes: {
+				light: 'github-light',
+				dark: 'github-dark',
 			},
-			wrap: true, 
-		})
+			wrap: true,
+		}),
 	],
 	nodes: {
 		// Body `![]()` images. Keystatic authors them as `/src/assets/posts/...`

@@ -42,26 +42,21 @@ export const ui = {
 		'post.empty': 'No posts yet. Check back soon.',
 		'post.readMore': 'Read post',
 		'subscribe.title': 'Subscribe',
-		'subscribe.description':
-			'Get new posts in your inbox. No spam, unsubscribe anytime.',
+		'subscribe.description': 'Get new posts in your inbox. No spam, unsubscribe anytime.',
 		'subscribe.email': 'Email address',
 		'subscribe.submit': 'Subscribe',
 		'subscribe.submitting': 'Subscribing…',
-		'subscribe.success':
-			'Check your inbox — we sent you a confirmation link.',
+		'subscribe.success': 'Check your inbox — we sent you a confirmation link.',
 		'subscribe.invalid': 'Please enter a valid email address.',
 		'subscribe.rateLimited': 'Too many attempts. Try again in a few minutes.',
 		'subscribe.error': 'Something went wrong. Please try again.',
 		'subscribe.confirm.title': 'You’re in.',
-		'subscribe.confirm.body':
-			'Your subscription is confirmed. Welcome — first post coming soon.',
-		'subscribe.confirm.invalid':
-			'This confirmation link is invalid or has expired.',
+		'subscribe.confirm.body': 'Your subscription is confirmed. Welcome — first post coming soon.',
+		'subscribe.confirm.invalid': 'This confirmation link is invalid or has expired.',
 		'subscribe.unsubscribe.title': 'You’re unsubscribed.',
 		'subscribe.unsubscribe.body':
 			'You won’t receive any more emails from this blog. You can re-subscribe anytime.',
-		'subscribe.unsubscribe.invalid':
-			'This unsubscribe link is invalid or has expired.',
+		'subscribe.unsubscribe.invalid': 'This unsubscribe link is invalid or has expired.',
 		'search.title': 'Search',
 		'search.placeholder': 'Search posts…',
 		'search.shortcut': 'Press / to search',
@@ -131,22 +126,17 @@ export const ui = {
 		'subscribe.email': 'Електронна пошта',
 		'subscribe.submit': 'Підписатися',
 		'subscribe.submitting': 'Підписуємо…',
-		'subscribe.success':
-			'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
+		'subscribe.success': 'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
 		'subscribe.invalid': 'Введіть коректну адресу електронної пошти.',
-		'subscribe.rateLimited':
-			'Забагато спроб. Спробуйте за кілька хвилин.',
+		'subscribe.rateLimited': 'Забагато спроб. Спробуйте за кілька хвилин.',
 		'subscribe.error': 'Щось пішло не так. Спробуйте ще раз.',
 		'subscribe.confirm.title': 'Готово.',
-		'subscribe.confirm.body':
-			'Вашу підписку підтверджено. Вітаю — перший допис незабаром.',
-		'subscribe.confirm.invalid':
-			'Це посилання для підтвердження недійсне або застаріло.',
+		'subscribe.confirm.body': 'Вашу підписку підтверджено. Вітаю — перший допис незабаром.',
+		'subscribe.confirm.invalid': 'Це посилання для підтвердження недійсне або застаріло.',
 		'subscribe.unsubscribe.title': 'Ви відписані.',
 		'subscribe.unsubscribe.body':
 			'Більше не отримуватимете листів. Можна підписатися знову будь-коли.',
-		'subscribe.unsubscribe.invalid':
-			'Це посилання для відписки недійсне або застаріло.',
+		'subscribe.unsubscribe.invalid': 'Це посилання для відписки недійсне або застаріло.',
 		'search.title': 'Пошук',
 		'search.placeholder': 'Шукати в дописах…',
 		'search.shortcut': 'Натисніть / для пошуку',

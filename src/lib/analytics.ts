@@ -46,9 +46,7 @@ export interface AnalyticsFields {
 const KNOWN_SOURCES = ['home', 'subscribe-page', 'inline'] as const;
 
 function normalizeSource(source?: string): string {
-	return source != null && (KNOWN_SOURCES as readonly string[]).includes(source)
-		? source
-		: 'other';
+	return source != null && (KNOWN_SOURCES as readonly string[]).includes(source) ? source : 'other';
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────────────

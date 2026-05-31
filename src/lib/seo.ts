@@ -65,9 +65,7 @@ export function buildHreflang(
 	const enPath = alternates?.en ?? (locale === 'en' ? pathname : null);
 	out.push({
 		hreflang: 'x-default',
-		href: enPath
-			? ensureTrailingSlash(new URL(enPath, base).toString())
-			: self,
+		href: enPath ? ensureTrailingSlash(new URL(enPath, base).toString()) : self,
 	});
 
 	return out;
@@ -92,13 +90,9 @@ export function articleJsonLd(input: {
 		'@type': 'Article',
 		headline: input.title,
 		description: input.description,
-		...(input.image
-			? { image: new URL(input.image, base).toString() }
-			: {}),
+		...(input.image ? { image: new URL(input.image, base).toString() } : {}),
 		datePublished: input.publishedAt.toISOString(),
-		...(input.updatedAt
-			? { dateModified: input.updatedAt.toISOString() }
-			: {}),
+		...(input.updatedAt ? { dateModified: input.updatedAt.toISOString() } : {}),
 		author: { '@type': 'Person', name: input.authorName, url: authorUrl },
 		publisher: { '@type': 'Person', name: input.authorName },
 		inLanguage: htmlLangAttribute[input.locale],

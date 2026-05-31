@@ -8,31 +8,31 @@ import SearchModal from '../components/SearchModal.astro';
 import '../styles/global.css';
 
 export interface Props {
-  title: string;
-  description: string;
-  locale: Locale;
-  image?: string;
-  type?: 'website' | 'article';
-  publishedAt?: Date;
-  updatedAt?: Date;
-  tags?: string[];
-  alternates?: Partial<Record<Locale, string | null>>;
-  translationKey?: string;
-  /** Pre-resolved translated post URLs for LanguageSwitcher on post pages */
-  translatedUrls?: Partial<Record<Locale, string | null>>;
+	title: string;
+	description: string;
+	locale: Locale;
+	image?: string;
+	type?: 'website' | 'article';
+	publishedAt?: Date;
+	updatedAt?: Date;
+	tags?: string[];
+	alternates?: Partial<Record<Locale, string | null>>;
+	translationKey?: string;
+	/** Pre-resolved translated post URLs for LanguageSwitcher on post pages */
+	translatedUrls?: Partial<Record<Locale, string | null>>;
 }
 
 const {
-  title,
-  description,
-  locale,
-  image,
-  type,
-  publishedAt,
-  updatedAt,
-  tags,
-  alternates,
-  translatedUrls,
+	title,
+	description,
+	locale,
+	image,
+	type,
+	publishedAt,
+	updatedAt,
+	tags,
+	alternates,
+	translatedUrls,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -40,36 +40,28 @@ const lang = htmlLangAttribute[locale];
 
 <!doctype html>
 <html lang={lang} data-theme="light">
-  <head>
-    <BaseHead
-      title={title}
-      description={description}
-      locale={locale}
-      image={image}
-      type={type}
-      publishedAt={publishedAt}
-      updatedAt={updatedAt}
-      tags={tags}
-      alternates={alternates}
-    />
-  </head>
-  <body class="min-h-screen flex flex-col bg-base-100 text-base-content">
-    <Header
-      locale={locale}
-      currentPath={Astro.url.pathname}
-      translatedUrls={translatedUrls}
-    />
+	<head>
+		<BaseHead
+			title={title}
+			description={description}
+			locale={locale}
+			image={image}
+			type={type}
+			publishedAt={publishedAt}
+			updatedAt={updatedAt}
+			tags={tags}
+			alternates={alternates}
+		/>
+	</head>
+	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">
+		<Header locale={locale} currentPath={Astro.url.pathname} translatedUrls={translatedUrls} />
 
-    <main id="content" class="flex-1">
-      <slot />
-    </main>
+		<main id="content" class="flex-1">
+			<slot />
+		</main>
 
-    <Footer
-      locale={locale}
-      currentPath={Astro.url.pathname}
-      translatedUrls={translatedUrls}
-    />
+		<Footer locale={locale} currentPath={Astro.url.pathname} translatedUrls={translatedUrls} />
 
-    <SearchModal locale={locale} />
-  </body>
+		<SearchModal locale={locale} />
+	</body>
 </html>

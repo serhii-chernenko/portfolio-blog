@@ -78,7 +78,10 @@ export async function sendWelcome(args: {
 		throw new Error('Email binding "SEND_EMAIL" is not available');
 	}
 	const tpl = WELCOME[args.locale];
-	const html = applyVars(tpl.html, { unsubscribeUrl: args.unsubscribeUrl, privacyUrl: args.privacyUrl });
+	const html = applyVars(tpl.html, {
+		unsubscribeUrl: args.unsubscribeUrl,
+		privacyUrl: args.privacyUrl,
+	});
 
 	await sendEmail.send({
 		from: fromAddress(),

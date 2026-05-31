@@ -8,15 +8,15 @@ There is no public bot for visitors. This is a one-bot-one-user setup: the bot s
 
 ## Events you get notified about
 
-| Event | Trigger | Source |
-|---|---|---|
-| 📬 New pending subscriber | Someone submitted the subscribe form | `src/pages/api/subscribe.ts` |
-| ✅ Subscriber confirmed | Someone clicked the confirmation link | `src/pages/api/confirm.ts` |
-| 👋 Unsubscribe | Someone clicked the unsubscribe link | `src/pages/api/unsubscribe.ts` |
-| 📝 Preview deployed | PR opened or pushed to | `.github/workflows/preview.yml` |
-| 📝 New article PR opened | PR labeled `new article` by auto-label | `.github/workflows/auto-label.yml` |
-| ✅ Production deployed | Push to `main` succeeded | `.github/workflows/deploy.yml` |
-| ❌ Production deploy failed | Push to `main` failed | `.github/workflows/deploy.yml` |
+| Event                       | Trigger                                | Source                             |
+| --------------------------- | -------------------------------------- | ---------------------------------- |
+| 📬 New pending subscriber   | Someone submitted the subscribe form   | `src/pages/api/subscribe.ts`       |
+| ✅ Subscriber confirmed     | Someone clicked the confirmation link  | `src/pages/api/confirm.ts`         |
+| 👋 Unsubscribe              | Someone clicked the unsubscribe link   | `src/pages/api/unsubscribe.ts`     |
+| 📝 Preview deployed         | PR opened or pushed to                 | `.github/workflows/preview.yml`    |
+| 📝 New article PR opened    | PR labeled `new article` by auto-label | `.github/workflows/auto-label.yml` |
+| ✅ Production deployed      | Push to `main` succeeded               | `.github/workflows/deploy.yml`     |
+| ❌ Production deploy failed | Push to `main` failed                  | `.github/workflows/deploy.yml`     |
 
 Per the plan, Telegram is best-effort: if the API call fails, the request still succeeds. You'll never get a 500 because Telegram is down. Failures are logged via `console.warn` only.
 
@@ -92,10 +92,10 @@ For `pnpm dev` (plain Astro): the runtime has no Cloudflare bindings, so the not
 
 The workflows use these as **repository secrets**:
 
-| Secret name | Purpose |
-|---|---|
+| Secret name          | Purpose                      |
+| -------------------- | ---------------------------- |
 | `TELEGRAM_BOT_TOKEN` | Same as the Wrangler secret. |
-| `TELEGRAM_CHAT_ID` | Same as the Wrangler secret. |
+| `TELEGRAM_CHAT_ID`   | Same as the Wrangler secret. |
 
 To set them:
 
@@ -152,6 +152,7 @@ The site keeps working. Notifications are off.
 
 **No messages arriving in Telegram, no error in logs.**
 The notify helper is silent on failure (best-effort). Check the Worker logs (`pnpm wrangler tail`) — you'll see `Telegram notify failed: <status>` if the API rejected the request. Common causes:
+
 - Chat ID is wrong (check sign — personal chats are positive, groups/channels negative)
 - Bot was kicked from the group
 - You never sent a message to the bot first (Telegram blocks unsolicited bot DMs)

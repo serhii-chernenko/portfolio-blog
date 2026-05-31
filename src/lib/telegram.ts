@@ -2,10 +2,7 @@ import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from 'astro:env/server';
 
 type ParseMode = 'HTML' | 'Markdown';
 
-export async function notify(
-	text: string,
-	parseMode: ParseMode = 'HTML',
-): Promise<void> {
+export async function notify(text: string, parseMode: ParseMode = 'HTML'): Promise<void> {
 	if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
 	const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 	const res = await fetch(url, {
@@ -25,8 +22,5 @@ export async function notify(
 }
 
 export function escapeHtml(text: string): string {
-	return text
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;');
+	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }

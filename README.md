@@ -9,6 +9,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 **Mounted at `/blog/*`** on `chernenko.digital` — the apex and other paths are served by a separate React portfolio app.
 
 **Docs:**
+
 - [`docs/CONTENT.md`](./docs/CONTENT.md) — author flow: how to write, edit, translate, schedule posts via Keystatic
 - [`docs/EMAIL.md`](./docs/EMAIL.md) — Cloudflare Email Workers setup + newsletter constraints
 - [`docs/TELEGRAM.md`](./docs/TELEGRAM.md) — Telegram bot setup + events
@@ -44,12 +45,14 @@ pnpm dev
 Opens at `http://127.0.0.1:4321`. HMR, hot-reload, draft posts visible. Sets `PUBLIC_KEYSTATIC_MODE=local` for you; reads `PUBLIC_*` and runtime vars from `.dev.vars`.
 
 What this gives you:
+
 - All pages, layouts, components, Tailwind/DaisyUI
 - **Keystatic CMS at <http://127.0.0.1:4321/keystatic>** (local kind — writes directly to `src/content/posts/`, no GitHub round-trip)
 - Markdoc rendering, theme toggle, language switcher
 - API routes mount, but **they have no Cloudflare bindings here** (no D1, no KV). The `/api/subscribe`, `/api/confirm`, `/api/unsubscribe` endpoints will throw "D1 binding 'DB' is not available". For full API testing, use option 2.
 
 What this does **not** give you:
+
 - **Pagefind search.** Pagefind builds its index from the static HTML produced by `pnpm build` — there is no index for it to query until you've built.
 - Real Cloudflare runtime — no D1, KV, secrets, send_email.
 
@@ -72,6 +75,7 @@ Keystatic's React UI hardcodes its API at root-relative `/api/keystatic/...` and
 Builds the project then runs `astro preview` via `@cloudflare/vite-plugin`, which boots the built Worker locally on the same workerd runtime used in production. Closest you can get to production locally — Keystatic (GitHub OAuth), Pagefind, API endpoints, and D1 all work. Same base path (`/blog`) and same auth flow as production.
 
 Requires `.dev.vars` (see "One-time setup" above). Required keys for this command:
+
 - `SUBSCRIBE_RATE_LIMIT_SECRET` — any non-empty string locally
 - `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — needed because the Worker runtime cannot use Keystatic local storage. See [`docs/KEYSTATIC.md`](./docs/KEYSTATIC.md) for the GitHub App setup.
 
@@ -90,11 +94,13 @@ Open <http://127.0.0.1:4321/blog/>. Keystatic is at <http://127.0.0.1:4321/blog/
 D1 schema applies automatically on first run.
 
 What this gives you:
+
 - Full CF runtime: Pagefind search, D1, KV, assets binding, send_email binding (logs locally, no real delivery).
 - Keystatic UI with real GitHub OAuth — commits go to a `post/*` branch and open PRs, just like prod.
 - The subscribe/confirm/unsubscribe flow works end-to-end against local D1 (verified: POST returns `{ok:true}`, row lands in `subscribers` table).
 
 What this does **not** give you:
+
 - HMR — every code change needs another `pnpm wrangler:dev` cycle.
 - Real email send — log only.
 - Real Telegram notifications (unless `.dev.vars` has real bot creds).
@@ -113,6 +119,7 @@ pnpm build:astro   # just astro, no pagefind — fastest when iterating
 ```
 
 Build output:
+
 - `dist/client/` — static assets (HTML, CSS, JS, Pagefind, images). This is what the `ASSETS` binding in `wrangler.jsonc` (`"directory": "./dist/client"`) serves publicly.
 - `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `@astrojs/cloudflare/entrypoints/server`. Files here are never served as public assets.
 
@@ -172,12 +179,12 @@ These are intentionally left as placeholders — none of them have safe defaults
 
 There are three distinct sources for runtime values — use the right one for each variable:
 
-| Source | What it covers | How to access in code |
-|---|---|---|
-| `astro:env/server` | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
-| `astro:env/client` | Public build-time vars: `PUBLIC_GISCUS_*` | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'` |
-| `cloudflare:workers` env | Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) | `import { env } from 'cloudflare:workers'` |
-| `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts` | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
+| Source                            | What it covers                                                                                                | How to access in code                                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `astro:env/server`                | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'`                                                                  |
+| `astro:env/client`                | Public build-time vars: `PUBLIC_GISCUS_*`                                                                     | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`                                                                           |
+| `cloudflare:workers` env          | Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                           | `import { env } from 'cloudflare:workers'`                                                                                        |
+| `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts`         | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
 
 > **Removed in v13:** `Astro.locals.runtime.env` no longer exists. Do not use it. All binding access goes through `cloudflare:workers`.
 
@@ -228,21 +235,21 @@ Summary of what changed and why, for future reference:
 
 End-to-end verified with `pnpm wrangler:dev` against the latest build:
 
-| Check | Result |
-|---|---|
-| `pnpm build` | ✅ Clean, all 18 routes prerender, Pagefind indexes 2 pages × 2 locales |
-| `/blog/` → `/blog/en/` redirect | ✅ Static meta-refresh page (no SSR roundtrip) |
-| `/blog/en/`, `/blog/uk/` home pages | ✅ 200 |
-| Post detail (`/blog/en/posts/hello-world/`) | ✅ 200 |
-| Posts index, tags index, tag detail | ✅ 200 |
-| About, Subscribe | ✅ 200 |
-| RSS (`/blog/en/rss.xml`, `/blog/uk/rss.xml`) | ✅ 200 |
-| Sitemap (`/blog/sitemap-index.xml`) | ✅ 200 with `https://chernenko.digital/blog/...` URLs |
-| `robots.txt`, Pagefind bundle | ✅ 200 |
-| Keystatic UI (`/blog/keystatic`) | ✅ 200 |
-| `POST /blog/api/subscribe` valid | ✅ 200 `{ok:true}`, row in D1 |
-| `POST /blog/api/subscribe` invalid | ✅ 400 `{error:"Invalid email address"}` |
-| Drafts/future-dated posts | ✅ filtered out of production builds |
+| Check                                        | Result                                                                  |
+| -------------------------------------------- | ----------------------------------------------------------------------- |
+| `pnpm build`                                 | ✅ Clean, all 18 routes prerender, Pagefind indexes 2 pages × 2 locales |
+| `/blog/` → `/blog/en/` redirect              | ✅ Static meta-refresh page (no SSR roundtrip)                          |
+| `/blog/en/`, `/blog/uk/` home pages          | ✅ 200                                                                  |
+| Post detail (`/blog/en/posts/hello-world/`)  | ✅ 200                                                                  |
+| Posts index, tags index, tag detail          | ✅ 200                                                                  |
+| About, Subscribe                             | ✅ 200                                                                  |
+| RSS (`/blog/en/rss.xml`, `/blog/uk/rss.xml`) | ✅ 200                                                                  |
+| Sitemap (`/blog/sitemap-index.xml`)          | ✅ 200 with `https://chernenko.digital/blog/...` URLs                   |
+| `robots.txt`, Pagefind bundle                | ✅ 200                                                                  |
+| Keystatic UI (`/blog/keystatic`)             | ✅ 200                                                                  |
+| `POST /blog/api/subscribe` valid             | ✅ 200 `{ok:true}`, row in D1                                           |
+| `POST /blog/api/subscribe` invalid           | ✅ 400 `{error:"Invalid email address"}`                                |
+| Drafts/future-dated posts                    | ✅ filtered out of production builds                                    |
 
 - ⚠️ **Not deployed yet** — no Cloudflare/GitHub creds in this session. First `wrangler deploy` needs the placeholders above filled in.
 - ⚠️ **Not visually smoke-tested in a browser** — verify the home page, post page, and theme toggle live before pushing to prod.

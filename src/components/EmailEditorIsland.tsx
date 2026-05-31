@@ -70,10 +70,10 @@ export default function EmailEditorIsland({ slug }: Props) {
 			try {
 				const res = await fetch(`/api/emails/templates/${slug}`);
 				if (!res.ok) {
-					const data = await res.json().catch(() => ({})) as { error?: string };
+					const data = (await res.json().catch(() => ({}))) as { error?: string };
 					throw new Error(data.error ?? `HTTP ${res.status}`);
 				}
-				const data = await res.json() as EmailTemplate;
+				const data = (await res.json()) as EmailTemplate;
 				setTemplate(data);
 				setName(data.name);
 				setSubject(data.subject);
@@ -90,9 +90,12 @@ export default function EmailEditorIsland({ slug }: Props) {
 
 	const handleEditorUpdate = useCallback((ref: EmailEditorRef) => {
 		const json = ref.getJSON();
-		ref.getEmailHTML().then((html) => {
-			setCurrentHtml(html);
-		}).catch(() => {});
+		ref
+			.getEmailHTML()
+			.then((html) => {
+				setCurrentHtml(html);
+			})
+			.catch(() => {});
 		// Silence unused var — json is captured lazily on save via editorRef
 		void json;
 	}, []);
@@ -116,11 +119,11 @@ export default function EmailEditorIsland({ slug }: Props) {
 			});
 
 			if (!res.ok) {
-				const data = await res.json().catch(() => ({})) as { error?: string };
+				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error ?? `HTTP ${res.status}`);
 			}
 
-			const saved = await res.json() as EmailTemplate;
+			const saved = (await res.json()) as EmailTemplate;
 			setTemplate(saved);
 			setCurrentHtml(saved.html);
 			setSaveSuccess(true);
@@ -138,7 +141,7 @@ export default function EmailEditorIsland({ slug }: Props) {
 		try {
 			const res = await fetch(`/api/emails/templates/${slug}`, { method: 'DELETE' });
 			if (!res.ok && res.status !== 204) {
-				const data = await res.json().catch(() => ({})) as { error?: string };
+				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error ?? `HTTP ${res.status}`);
 			}
 			window.location.href = '/admin/emails';
@@ -179,23 +182,15 @@ export default function EmailEditorIsland({ slug }: Props) {
 					</a>
 					<span className="font-mono text-sm text-base-content/50">{slug}</span>
 					<div className="ml-auto flex items-center gap-2">
-						{saveSuccess && (
-							<span className="text-sm text-success font-medium">Saved</span>
-						)}
-						{saveError && (
-							<span className="text-sm text-error truncate max-w-xs">{saveError}</span>
-						)}
+						{saveSuccess && <span className="text-sm text-success font-medium">Saved</span>}
+						{saveError && <span className="text-sm text-error truncate max-w-xs">{saveError}</span>}
 						<button
 							className="btn btn-outline btn-sm"
 							onClick={() => setShowHtmlPreview((v) => !v)}
 						>
 							{showHtmlPreview ? 'Hide HTML' : 'View HTML'}
 						</button>
-						<button
-							className="btn btn-primary btn-sm"
-							onClick={handleSave}
-							disabled={saving}
-						>
+						<button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
 							{saving && <span className="loading loading-spinner loading-xs"></span>}
 							Save
 						</button>
@@ -257,7 +252,9 @@ export default function EmailEditorIsland({ slug }: Props) {
 				{/* Variables hint */}
 				{variables.length > 0 && (
 					<div className="mb-4 flex flex-wrap items-center gap-2">
-						<span className="text-xs text-base-content/50 font-medium uppercase tracking-wide">Variables:</span>
+						<span className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
+							Variables:
+						</span>
 						{variables.map((v) => (
 							<span key={v} className="badge badge-outline badge-sm font-mono">
 								{`{{${v}}}`}
@@ -288,10 +285,7 @@ export default function EmailEditorIsland({ slug }: Props) {
 								<span className="text-xs font-medium text-base-content/50 uppercase tracking-wide">
 									Rendered HTML preview
 								</span>
-								<button
-									className="btn btn-ghost btn-xs"
-									onClick={() => setShowHtmlPreview(false)}
-								>
+								<button className="btn btn-ghost btn-xs" onClick={() => setShowHtmlPreview(false)}>
 									Close
 								</button>
 							</div>

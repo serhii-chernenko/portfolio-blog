@@ -17,9 +17,7 @@
 	"editor.tabSize": 2,
 	"editor.insertSpaces": false,
 	"editor.formatOnSave": false,
-	"tailwindCSS.experimental.classRegex": [
-		["class:list=\"([^\"]*)\"", "[^\"]+"]
-	],
+	"tailwindCSS.experimental.classRegex": [["class:list=\"([^\"]*)\"", "[^\"]+"]],
 	"tailwindCSS.includeLanguages": {
 		"astro": "html",
 		"markdoc": "markdown"
@@ -48,5 +46,5 @@
 		"cloudflare",
 		"workerd"
 	],
-	"cSpell.language": "en,uk",
+	"cSpell.language": "en,uk"
 }

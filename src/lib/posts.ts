@@ -5,8 +5,7 @@ import { getPostSlug } from './post-slug';
 
 export type AnyPost = CollectionEntry<'postsEn'> | CollectionEntry<'postsUk'>;
 
-const showDrafts =
-	import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
+const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
 
 function collectionFor(locale: Locale): 'postsEn' | 'postsUk' {
 	return locale === 'en' ? 'postsEn' : 'postsUk';
@@ -31,22 +30,15 @@ export async function getPublishedPosts(locale: Locale): Promise<AnyPost[]> {
 		if (p.data.publishedAt > now) return false;
 		return true;
 	});
-	return filtered.sort(
-		(a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime(),
-	);
+	return filtered.sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime());
 }
 
 export async function getAllPublishedPosts(): Promise<AnyPost[]> {
-	const [en, uk] = await Promise.all([
-		getPublishedPosts('en'),
-		getPublishedPosts('uk'),
-	]);
+	const [en, uk] = await Promise.all([getPublishedPosts('en'), getPublishedPosts('uk')]);
 	return [...en, ...uk];
 }
 
-export async function getTagsForLocale(
-	locale: Locale,
-): Promise<{ tag: string; count: number }[]> {
+export async function getTagsForLocale(locale: Locale): Promise<{ tag: string; count: number }[]> {
 	const posts = await getPublishedPosts(locale);
 	const counts = new Map<string, number>();
 	for (const p of posts) {

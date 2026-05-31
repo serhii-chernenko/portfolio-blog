@@ -9,7 +9,7 @@ setup). This doc answers two questions: **why is Telegram wired in at all**, and
 ## What it's for
 
 This is a **private, one-bot-one-owner** notification channel. There is no public
-bot and visitors never interact with it. Its only job is to ping *you* the moment
+bot and visitors never interact with it. Its only job is to ping _you_ the moment
 something noteworthy happens, so you don't have to watch dashboards or inboxes.
 
 It is deliberately **best-effort**: `notify()` in `src/lib/telegram.ts` no-ops when
@@ -22,18 +22,18 @@ deploy. That's by design — notifications are a convenience, not a dependency.
 ## The seven events
 
 Two sources fire notifications: the **Worker** (runtime API routes) and **GitHub
-Actions** (CI). They read from *separate* credential stores (Worker secrets vs.
+Actions** (CI). They read from _separate_ credential stores (Worker secrets vs.
 repo Actions secrets) — both must be configured.
 
-| # | Message (prefix) | When | Fired by | Source |
-|---|---|---|---|---|
-| 1 | `📬 New pending subscriber` | Subscribe form submitted, row inserted as `pending` | Worker | `src/pages/api/subscribe.ts:110` |
-| 2 | `✅ Subscriber confirmed` | Confirmation link clicked, row flips to `confirmed` | Worker | `src/pages/api/confirm.ts:93` |
-| 3 | `👋 Unsubscribed` | Unsubscribe link clicked | Worker | `src/pages/api/unsubscribe.ts:82` |
-| 4 | `📝 Preview deployed for PR #<n>` | PR opened/synchronized, preview Worker deployed | GitHub Actions | `.github/workflows/preview.yml` |
-| 5 | `📝 New article PR opened` | PR gets the `new article` label | GitHub Actions | `.github/workflows/auto-label.yml` |
-| 6 | `✅ Production deployed` | Push to `main` deploy succeeds | GitHub Actions | `.github/workflows/deploy.yml` |
-| 7 | `❌ Production deploy failed` | Push to `main` deploy fails | GitHub Actions | `.github/workflows/deploy.yml` |
+| #   | Message (prefix)                  | When                                                | Fired by       | Source                             |
+| --- | --------------------------------- | --------------------------------------------------- | -------------- | ---------------------------------- |
+| 1   | `📬 New pending subscriber`       | Subscribe form submitted, row inserted as `pending` | Worker         | `src/pages/api/subscribe.ts:110`   |
+| 2   | `✅ Subscriber confirmed`         | Confirmation link clicked, row flips to `confirmed` | Worker         | `src/pages/api/confirm.ts:93`      |
+| 3   | `👋 Unsubscribed`                 | Unsubscribe link clicked                            | Worker         | `src/pages/api/unsubscribe.ts:82`  |
+| 4   | `📝 Preview deployed for PR #<n>` | PR opened/synchronized, preview Worker deployed     | GitHub Actions | `.github/workflows/preview.yml`    |
+| 5   | `📝 New article PR opened`        | PR gets the `new article` label                     | GitHub Actions | `.github/workflows/auto-label.yml` |
+| 6   | `✅ Production deployed`          | Push to `main` deploy succeeds                      | GitHub Actions | `.github/workflows/deploy.yml`     |
+| 7   | `❌ Production deploy failed`     | Push to `main` deploy fails                         | GitHub Actions | `.github/workflows/deploy.yml`     |
 
 Events 1–3 carry the email (HTML-escaped via `escapeHtml`) and locale.
 
@@ -77,11 +77,13 @@ no-ops silently — no error, no notification.
 3. `pnpm wrangler:dev` (builds then serves at `http://127.0.0.1:4321`).
 
 **Event 1 — new subscriber:**
+
 ```bash
 curl -i -X POST http://127.0.0.1:4321/blog/api/subscribe \
   -H 'content-type: application/json' \
   -d '{"email":"you+test@example.com","locale":"en"}'
 ```
+
 Expect HTTP 200 **and** a `📬 New pending subscriber: you+test@example.com (en)`
 message. (Note: in local dev the email send may fail unless Email Routing is
 reachable — the Telegram notify still fires because it runs after the insert and
@@ -89,16 +91,20 @@ is independent of the email step for event 1.)
 
 **Event 2 — confirmed:** grab the confirm token. Easiest is the confirmation
 email; or mint one in a `wrangler:dev` session. Then:
+
 ```bash
 curl -i "http://127.0.0.1:4321/blog/api/confirm?token=<TOKEN>&locale=en"
 ```
+
 Expect a 302 redirect to `…/subscribe?confirmed=1` **and** `✅ Subscriber
 confirmed: …`.
 
 **Event 3 — unsubscribe:**
+
 ```bash
 curl -i "http://127.0.0.1:4321/blog/api/unsubscribe?token=<UNSUB_TOKEN>&locale=en"
 ```
+
 Expect an HTML page **and** `👋 Unsubscribed: …`.
 
 ### If a Worker event doesn't arrive
@@ -106,6 +112,7 @@ Expect an HTML page **and** `👋 Unsubscribed: …`.
 ```bash
 wrangler tail            # live-stream Worker logs
 ```
+
 A failed call logs `Telegram notify failed: <status>`. No log line at all means
 the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 400 validation error short-circuits before the notify call).
@@ -117,12 +124,12 @@ the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 These need the repo Actions secrets set (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
 plus the Cloudflare/`CF_*` secrets the deploy steps use). See `GO-LIVE.md` step 8.
 
-| Event | How to trigger | Expected |
-|---|---|---|
-| 4 — Preview deployed | Open a PR (or push a commit to an open PR) | `📝 Preview deployed for PR #<n>` + a PR comment with the preview URL |
-| 5 — New article PR | Open a PR that **adds** a file under `src/content/posts/` | PR gets `new article` label → `📝 New article PR opened` |
-| 6 — Prod deploy OK | Merge to `main` (or run the deploy workflow manually) | `✅ Production deployed: <commit msg>` |
-| 7 — Prod deploy fail | Hard to force safely; temporarily break the build on a throwaway branch→main in a test repo | `❌ Production deploy failed on commit <sha>` |
+| Event                | How to trigger                                                                              | Expected                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 4 — Preview deployed | Open a PR (or push a commit to an open PR)                                                  | `📝 Preview deployed for PR #<n>` + a PR comment with the preview URL |
+| 5 — New article PR   | Open a PR that **adds** a file under `src/content/posts/`                                   | PR gets `new article` label → `📝 New article PR opened`              |
+| 6 — Prod deploy OK   | Merge to `main` (or run the deploy workflow manually)                                       | `✅ Production deployed: <commit msg>`                                |
+| 7 — Prod deploy fail | Hard to force safely; temporarily break the build on a throwaway branch→main in a test repo | `❌ Production deploy failed on commit <sha>`                         |
 
 Debug a CI notification in the Actions run log — the `curl` step prints its own
 output, and Telegram's API returns a JSON body describing any rejection.
@@ -132,7 +139,7 @@ output, and Telegram's API returns a JSON body describing any rejection.
 ## Common gotchas
 
 - **Works in CI but not the Worker (or vice-versa).** Different secret stores.
-  Set both: `wrangler secret put …` *and* repo Actions secrets.
+  Set both: `wrangler secret put …` _and_ repo Actions secrets.
 - **Nothing arrives, no error.** `notify()` is silent on success-with-no-delivery
   only if creds are empty (it early-returns). Confirm `wrangler secret list`
   shows both names and they're non-empty.

@@ -3,7 +3,7 @@ import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
 export interface Props {
-  locale: Locale;
+	locale: Locale;
 }
 
 const { locale } = Astro.props;
@@ -11,115 +11,122 @@ const t = useTranslations(locale);
 ---
 
 <!-- Trigger: other components can use data-search-open attribute or call window.__openSearch() -->
-<dialog
-  id="search-modal"
-  class="modal"
-  aria-label={t('search.title')}
->
-  <div class="modal-box w-11/12 max-w-2xl">
-    <form method="dialog" class="flex justify-end mb-2">
-      <button class="btn btn-ghost btn-sm btn-circle" aria-label="Close search">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5" aria-hidden="true">
-          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-        </svg>
-      </button>
-    </form>
-    <div id="pagefind-ui-container" data-locale={locale}></div>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>Close</button>
-  </form>
+<dialog id="search-modal" class="modal" aria-label={t('search.title')}>
+	<div class="modal-box w-11/12 max-w-2xl">
+		<form method="dialog" class="flex justify-end mb-2">
+			<button class="btn btn-ghost btn-sm btn-circle" aria-label="Close search">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					class="size-5"
+					aria-hidden="true"
+				>
+					<path
+						d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+					></path>
+				</svg>
+			</button>
+		</form>
+		<div id="pagefind-ui-container" data-locale={locale}></div>
+	</div>
+	<form method="dialog" class="modal-backdrop">
+		<button>Close</button>
+	</form>
 </dialog>
 
 <script>
-  let pagefindLoaded = false;
+	let pagefindLoaded = false;
 
-  function loadScript(src: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) return resolve();
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error(`Failed to load ${src}`));
-      document.head.appendChild(s);
-    });
-  }
+	function loadScript(src: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (document.querySelector(`script[src="${src}"]`)) return resolve();
+			const s = document.createElement('script');
+			s.src = src;
+			s.async = true;
+			s.onload = () => resolve();
+			s.onerror = () => reject(new Error(`Failed to load ${src}`));
+			document.head.appendChild(s);
+		});
+	}
 
-  function loadStyle(href: string) {
-    if (document.querySelector(`link[href="${href}"]`)) return;
-    const l = document.createElement('link');
-    l.rel = 'stylesheet';
-    l.href = href;
-    document.head.appendChild(l);
-  }
+	function loadStyle(href: string) {
+		if (document.querySelector(`link[href="${href}"]`)) return;
+		const l = document.createElement('link');
+		l.rel = 'stylesheet';
+		l.href = href;
+		document.head.appendChild(l);
+	}
 
-  async function loadPagefind(locale: string) {
-    if (pagefindLoaded) return;
-    pagefindLoaded = true;
+	async function loadPagefind(locale: string) {
+		if (pagefindLoaded) return;
+		pagefindLoaded = true;
 
-    try {
-      const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-      const pagefindBase = `${base}/pagefind/`;
-      loadStyle(`${pagefindBase}pagefind-ui.css`);
-      await loadScript(`${pagefindBase}pagefind-ui.js`);
-      // Pagefind builds a separate index per <html lang>, so same-language
-      // isolation is automatic — no explicit locale filter needed here.
-      // @ts-expect-error – PagefindUI is a global injected by the script above
-      new PagefindUI({
-        element: '#pagefind-ui-container',
-        bundlePath: pagefindBase,
-        showImages: false,
-        translations: {
-          placeholder: locale === 'uk' ? 'Шукати в дописах…' : 'Search posts…',
-          zero_results:
-            locale === 'uk'
-              ? 'Нічого не знайдено'
-              : 'No results for [SEARCH_TERM]',
-        },
-      });
-    } catch (e) {
-      // Pagefind not available (only after `pnpm build`)
-      const container = document.getElementById('pagefind-ui-container');
-      if (container) {
-        container.textContent =
-          locale === 'uk'
-            ? 'Пошук доступний після білду сайту.'
-            : 'Search is available after building the site.';
-      }
-    }
-  }
+		try {
+			const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+			const pagefindBase = `${base}/pagefind/`;
+			loadStyle(`${pagefindBase}pagefind-ui.css`);
+			await loadScript(`${pagefindBase}pagefind-ui.js`);
+			// Pagefind builds a separate index per <html lang>, so same-language
+			// isolation is automatic — no explicit locale filter needed here.
+			// @ts-expect-error – PagefindUI is a global injected by the script above
+			new PagefindUI({
+				element: '#pagefind-ui-container',
+				bundlePath: pagefindBase,
+				showImages: false,
+				translations: {
+					placeholder: locale === 'uk' ? 'Шукати в дописах…' : 'Search posts…',
+					zero_results: locale === 'uk' ? 'Нічого не знайдено' : 'No results for [SEARCH_TERM]',
+				},
+			});
+		} catch (e) {
+			// Pagefind not available (only after `pnpm build`)
+			const container = document.getElementById('pagefind-ui-container');
+			if (container) {
+				container.textContent =
+					locale === 'uk'
+						? 'Пошук доступний після білду сайту.'
+						: 'Search is available after building the site.';
+			}
+		}
+	}
 
-  function openSearch() {
-    const modal = document.getElementById('search-modal') as HTMLDialogElement | null;
-    if (!modal) return;
-    const locale = document.getElementById('pagefind-ui-container')?.dataset.locale ?? 'en';
-    loadPagefind(locale);
-    modal.showModal();
-  }
+	function openSearch() {
+		const modal = document.getElementById('search-modal') as HTMLDialogElement | null;
+		if (!modal) return;
+		const locale = document.getElementById('pagefind-ui-container')?.dataset.locale ?? 'en';
+		loadPagefind(locale);
+		modal.showModal();
+	}
 
-  // Expose for Header trigger
-  (window as any).__openSearch = openSearch;
+	// Expose for Header trigger
+	(window as any).__openSearch = openSearch;
 
-  // Keyboard shortcut: "/" opens search (skip when typing in inputs)
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== '/') return;
-    const tag = (e.target as HTMLElement).tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) return;
-    e.preventDefault();
-    openSearch();
-  });
+	// Keyboard shortcut: "/" opens search (skip when typing in inputs)
+	document.addEventListener('keydown', (e) => {
+		if (e.key !== '/') return;
+		const tag = (e.target as HTMLElement).tagName;
+		if (
+			tag === 'INPUT' ||
+			tag === 'TEXTAREA' ||
+			tag === 'SELECT' ||
+			(e.target as HTMLElement).isContentEditable
+		)
+			return;
+		e.preventDefault();
+		openSearch();
+	});
 
-  // Allow external buttons with data-search-open attribute
-  document.querySelectorAll('[data-search-open]').forEach((el) => {
-    el.addEventListener('click', openSearch);
-  });
+	// Allow external buttons with data-search-open attribute
+	document.querySelectorAll('[data-search-open]').forEach((el) => {
+		el.addEventListener('click', openSearch);
+	});
 
-  // Re-wire after Astro view transitions
-  document.addEventListener('astro:after-swap', () => {
-    pagefindLoaded = false;
-    document.querySelectorAll('[data-search-open]').forEach((el) => {
-      el.addEventListener('click', openSearch);
-    });
-  });
+	// Re-wire after Astro view transitions
+	document.addEventListener('astro:after-swap', () => {
+		pagefindLoaded = false;
+		document.querySelectorAll('[data-search-open]').forEach((el) => {
+			el.addEventListener('click', openSearch);
+		});
+	});
 </script>

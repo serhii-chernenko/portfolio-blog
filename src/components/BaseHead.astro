@@ -1,31 +1,37 @@
 ---
 import type { Locale } from '../i18n/config';
-import { buildCanonical, buildHreflang, articleJsonLd, websiteJsonLd, ogLocaleFor } from '../lib/seo';
+import {
+	buildCanonical,
+	buildHreflang,
+	articleJsonLd,
+	websiteJsonLd,
+	ogLocaleFor,
+} from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
 import { useTranslations, withBase } from '../i18n/utils';
 
 export interface Props {
-  title: string;
-  description: string;
-  locale: Locale;
-  image?: string;
-  type?: 'website' | 'article';
-  publishedAt?: Date;
-  updatedAt?: Date;
-  tags?: string[];
-  alternates?: Partial<Record<Locale, string | null>>;
+	title: string;
+	description: string;
+	locale: Locale;
+	image?: string;
+	type?: 'website' | 'article';
+	publishedAt?: Date;
+	updatedAt?: Date;
+	tags?: string[];
+	alternates?: Partial<Record<Locale, string | null>>;
 }
 
 const {
-  title,
-  description,
-  locale,
-  image,
-  type = 'website',
-  publishedAt,
-  updatedAt,
-  tags,
-  alternates,
+	title,
+	description,
+	locale,
+	image,
+	type = 'website',
+	publishedAt,
+	updatedAt,
+	tags,
+	alternates,
 } = Astro.props;
 
 const t = useTranslations(locale);
@@ -36,24 +42,24 @@ const ogImage = image ?? defaultOgImage(site);
 const siteName = t('site.name');
 
 const jsonLd =
-  type === 'article' && publishedAt
-    ? articleJsonLd({
-        site,
-        pathname: Astro.url.pathname,
-        locale,
-        title,
-        description,
-        image: ogImage,
-        publishedAt,
-        updatedAt,
-        authorName: 'Serhii Chernenko',
-      })
-    : websiteJsonLd({
-        site,
-        siteName,
-        description,
-        locale,
-      });
+	type === 'article' && publishedAt
+		? articleJsonLd({
+				site,
+				pathname: Astro.url.pathname,
+				locale,
+				title,
+				description,
+				image: ogImage,
+				publishedAt,
+				updatedAt,
+				authorName: 'Serhii Chernenko',
+			})
+		: websiteJsonLd({
+				site,
+				siteName,
+				description,
+				locale,
+			});
 ---
 
 <!-- Character encoding & viewport -->
@@ -69,9 +75,11 @@ const jsonLd =
 <link rel="canonical" href={canonical} />
 
 <!-- Hreflang alternates -->
-{hreflangLinks.map(({ hreflang, href }) => (
-  <link rel="alternate" hreflang={hreflang} href={href} />
-))}
+{
+	hreflangLinks.map(({ hreflang, href }) => (
+		<link rel="alternate" hreflang={hreflang} href={href} />
+	))
+}
 
 <!-- OpenGraph -->
 <meta property="og:type" content={type} />
@@ -81,15 +89,17 @@ const jsonLd =
 <meta property="og:image" content={ogImage} />
 <meta property="og:site_name" content={siteName} />
 <meta property="og:locale" content={ogLocaleFor(locale)} />
-{type === 'article' && publishedAt && (
-  <meta property="article:published_time" content={publishedAt.toISOString()} />
-)}
-{type === 'article' && updatedAt && (
-  <meta property="article:modified_time" content={updatedAt.toISOString()} />
-)}
-{type === 'article' && tags && tags.map((tag) => (
-  <meta property="article:tag" content={tag} />
-))}
+{
+	type === 'article' && publishedAt && (
+		<meta property="article:published_time" content={publishedAt.toISOString()} />
+	)
+}
+{
+	type === 'article' && updatedAt && (
+		<meta property="article:modified_time" content={updatedAt.toISOString()} />
+	)
+}
+{type === 'article' && tags && tags.map((tag) => <meta property="article:tag" content={tag} />)}
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
@@ -102,10 +112,10 @@ const jsonLd =
 
 <!-- RSS auto-discovery -->
 <link
-  rel="alternate"
-  type="application/rss+xml"
-  title={`${siteName} — RSS`}
-  href={new URL(withBase(`${locale}/rss.xml`), site).toString()}
+	rel="alternate"
+	type="application/rss+xml"
+	title={`${siteName} — RSS`}
+	href={new URL(withBase(`${locale}/rss.xml`), site).toString()}
 />
 
 <!-- Theme color -->
@@ -114,16 +124,16 @@ const jsonLd =
 
 <!-- Pre-paint theme script: runs before body to avoid FOUC -->
 <script is:inline>
-  (function () {
-    try {
-      var stored = localStorage.getItem('theme');
-      var theme =
-        stored === 'light' || stored === 'dark'
-          ? stored
-          : window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-      document.documentElement.setAttribute('data-theme', theme);
-    } catch (e) {}
-  })();
+	(function () {
+		try {
+			var stored = localStorage.getItem('theme');
+			var theme =
+				stored === 'light' || stored === 'dark'
+					? stored
+					: window.matchMedia('(prefers-color-scheme: dark)').matches
+						? 'dark'
+						: 'light';
+			document.documentElement.setAttribute('data-theme', theme);
+		} catch (e) {}
+	})();
 </script>

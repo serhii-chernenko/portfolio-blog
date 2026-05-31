@@ -1,5 +1,5 @@
 const EXPIRY_MS: Record<'confirm' | 'unsubscribe', number> = {
-	confirm: 48 * 60 * 60 * 1000,           // 48 hours
+	confirm: 48 * 60 * 60 * 1000, // 48 hours
 	unsubscribe: 10 * 365 * 24 * 60 * 60 * 1000, // ~10 years
 };
 
@@ -26,11 +26,7 @@ async function hmac(secret: string, message: string): Promise<Uint8Array> {
 		false,
 		['sign'],
 	);
-	const sig = await crypto.subtle.sign(
-		'HMAC',
-		key,
-		new TextEncoder().encode(message),
-	);
+	const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
 	return new Uint8Array(sig);
 }
 
@@ -50,9 +46,7 @@ export async function issueToken(
 	const expiresAt = now + EXPIRY_MS[purpose];
 	const payload = `${purpose}:${email}:${expiresAt}`;
 	const sig = await hmac(secret, payload);
-	return b64urlEncode(new TextEncoder().encode(`${payload}:`)) +
-		'.' +
-		b64urlEncode(sig);
+	return b64urlEncode(new TextEncoder().encode(`${payload}:`)) + '.' + b64urlEncode(sig);
 }
 
 export async function verifyToken(

@@ -1,136 +1,136 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
-  themes: false;
-  logs: false;
+	themes: false;
+	logs: false;
 }
 
 @plugin "daisyui/theme" {
-  name: "light";
-  default: true;
-  prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(98% 0 0);
-  --color-base-300: oklch(94% 0 0);
-  --color-base-content: oklch(0% 0 0);
-  --color-primary: oklch(15% 0 0);
-  --color-primary-content: oklch(100% 0 0);
-  --color-secondary: oklch(100% 0 0);
-  --color-secondary-content: oklch(0% 0 0);
-  --color-accent: oklch(26.861% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(0% 0 0);
-  --color-neutral-content: oklch(100% 0 0);
-  --color-info: oklch(79.54% 0.103 205.9);
-  --color-info-content: oklch(15.908% 0.02 205.9);
-  --color-success: oklch(79% 0.209 151.711);
-  --color-success-content: oklch(18.026% 0.03 164.14);
-  --color-warning: oklch(90% 0.199 91.936);
-  --color-warning-content: oklch(17.674% 0.027 79.94);
-  --color-error: oklch(63% 0.237 25.331);
-  --color-error-content: oklch(15.732% 0.03 28.47);
-  --radius-selector: 0.5rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.3rem;
-  --size-field: 0.3rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 1;
+	name: 'light';
+	default: true;
+	prefersdark: false;
+	color-scheme: 'light';
+	--color-base-100: oklch(100% 0 0);
+	--color-base-200: oklch(98% 0 0);
+	--color-base-300: oklch(94% 0 0);
+	--color-base-content: oklch(0% 0 0);
+	--color-primary: oklch(15% 0 0);
+	--color-primary-content: oklch(100% 0 0);
+	--color-secondary: oklch(100% 0 0);
+	--color-secondary-content: oklch(0% 0 0);
+	--color-accent: oklch(26.861% 0 0);
+	--color-accent-content: oklch(100% 0 0);
+	--color-neutral: oklch(0% 0 0);
+	--color-neutral-content: oklch(100% 0 0);
+	--color-info: oklch(79.54% 0.103 205.9);
+	--color-info-content: oklch(15.908% 0.02 205.9);
+	--color-success: oklch(79% 0.209 151.711);
+	--color-success-content: oklch(18.026% 0.03 164.14);
+	--color-warning: oklch(90% 0.199 91.936);
+	--color-warning-content: oklch(17.674% 0.027 79.94);
+	--color-error: oklch(63% 0.237 25.331);
+	--color-error-content: oklch(15.732% 0.03 28.47);
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.5rem;
+	--size-selector: 0.3rem;
+	--size-field: 0.3rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 1;
 }
 
 @plugin "daisyui/theme" {
-  name: "dark";
-  default: false;
-  prefersdark: false;
-  color-scheme: "dark";
-  --color-base-100: oklch(0% 0 0);
-  --color-base-200: oklch(19% 0 0);
-  --color-base-300: oklch(22% 0 0);
-  --color-base-content: oklch(100% 0 0);
-  --color-primary: oklch(100% 0 0);
-  --color-primary-content: oklch(0% 0 0);
-  --color-secondary: oklch(0% 0 0);
-  --color-secondary-content: oklch(100% 0 0);
-  --color-accent: oklch(35% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(35% 0 0);
-  --color-neutral-content: oklch(100% 0 0);
-  --color-info: oklch(48% 0.243 264.376);
-  --color-info-content: oklch(89.04% 0.062 264.052);
-  --color-success: oklch(87% 0.15 154.449);
-  --color-success-content: oklch(19.359% 0.15 154.449);
-  --color-warning: oklch(82% 0.189 84.429);
-  --color-warning-content: oklch(19.359% 0.042 109.769);
-  --color-error: oklch(70% 0.191 22.216);
-  --color-error-content: oklch(12.559% 0.051 29.233);
-  --radius-selector: 0.5rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.3rem;
-  --size-field: 0.3rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 1;
+	name: 'dark';
+	default: false;
+	prefersdark: false;
+	color-scheme: 'dark';
+	--color-base-100: oklch(0% 0 0);
+	--color-base-200: oklch(19% 0 0);
+	--color-base-300: oklch(22% 0 0);
+	--color-base-content: oklch(100% 0 0);
+	--color-primary: oklch(100% 0 0);
+	--color-primary-content: oklch(0% 0 0);
+	--color-secondary: oklch(0% 0 0);
+	--color-secondary-content: oklch(100% 0 0);
+	--color-accent: oklch(35% 0 0);
+	--color-accent-content: oklch(100% 0 0);
+	--color-neutral: oklch(35% 0 0);
+	--color-neutral-content: oklch(100% 0 0);
+	--color-info: oklch(48% 0.243 264.376);
+	--color-info-content: oklch(89.04% 0.062 264.052);
+	--color-success: oklch(87% 0.15 154.449);
+	--color-success-content: oklch(19.359% 0.15 154.449);
+	--color-warning: oklch(82% 0.189 84.429);
+	--color-warning-content: oklch(19.359% 0.042 109.769);
+	--color-error: oklch(70% 0.191 22.216);
+	--color-error-content: oklch(12.559% 0.051 29.233);
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.5rem;
+	--size-selector: 0.3rem;
+	--size-field: 0.3rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 1;
 }
 
 @custom-variant light {
-  &:where([data-theme="light"], [data-theme="light"] *) {
-    @slot;
-  }
+	&:where([data-theme='light'], [data-theme='light'] *) {
+		@slot;
+	}
 }
 
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
-  }
+	&:where([data-theme='dark'], [data-theme='dark'] *) {
+		@slot;
+	}
 }
 
 @utility hitslop {
-  @apply relative cursor-pointer;
+	@apply relative cursor-pointer;
 
-  &::before {
-    @apply content-[''] absolute top-1/2 left-1/2 size-12 -translate-x-1/2 -translate-y-1/2;
-  }
+	&::before {
+		@apply content-[''] absolute top-1/2 left-1/2 size-12 -translate-x-1/2 -translate-y-1/2;
+	}
 }
 
 @utility icon {
-  @apply inline-block size-6;
+	@apply inline-block size-6;
 }
 
 @utility cta-icon {
-  @apply size-4 shrink-0 transition-transform lg:group-hover/cta:motion-safe:translate-x-0.5 group-focus-visible/cta:motion-safe:translate-x-0.5;
+	@apply size-4 shrink-0 transition-transform lg:group-hover/cta:motion-safe:translate-x-0.5 group-focus-visible/cta:motion-safe:translate-x-0.5;
 }
 
 @utility cta-icon-left {
-  @apply size-4 shrink-0 transition-transform lg:group-hover/cta:motion-safe:-translate-x-0.5 group-focus-visible/cta:motion-safe:-translate-x-0.5;
+	@apply size-4 shrink-0 transition-transform lg:group-hover/cta:motion-safe:-translate-x-0.5 group-focus-visible/cta:motion-safe:-translate-x-0.5;
 }
 
 @layer daisyui.l1 {
-  .skeleton {
-    @apply light:bg-base-300 dark:bg-base-content/30;
-  }
+	.skeleton {
+		@apply light:bg-base-300 dark:bg-base-content/30;
+	}
 }
 
 @layer components {
-  :where(a.link) {
-    @apply rounded-field;
-  }
+	:where(a.link) {
+		@apply rounded-field;
+	}
 
-  .skeleton {
-    @apply rounded;
-  }
+	.skeleton {
+		@apply rounded;
+	}
 
-  .skeleton-invert {
-    @apply skeleton rounded light:bg-base-100/40 dark:bg-base-100/20;
-    background-image: linear-gradient(
-      105deg,
-      #0000 0% 40%,
-      var(--color-base-content) 50%,
-      #0000 60% 100%
-    );
-  }
+	.skeleton-invert {
+		@apply skeleton rounded light:bg-base-100/40 dark:bg-base-100/20;
+		background-image: linear-gradient(
+			105deg,
+			#0000 0% 40%,
+			var(--color-base-content) 50%,
+			#0000 60% 100%
+		);
+	}
 }
 
 /* Anchor offset for sticky header */
@@ -227,8 +227,8 @@
 }
 
 /* Shiki dual-theme support — one <pre> emitted with both themes' colors as CSS vars. */
-html[data-theme="dark"] .astro-code,
-html[data-theme="dark"] .astro-code span {
+html[data-theme='dark'] .astro-code,
+html[data-theme='dark'] .astro-code span {
 	color: var(--shiki-dark) !important;
 	font-style: var(--shiki-dark-font-style) !important;
 	font-weight: var(--shiki-dark-font-weight) !important;
@@ -243,7 +243,7 @@ html[data-theme="dark"] .astro-code span {
 	@apply bg-base-200;
 }
 
-html[data-theme="light"] .mockup-code::before {
+html[data-theme='light'] .mockup-code::before {
 	opacity: 80%;
 }
 
@@ -253,7 +253,7 @@ html[data-theme="light"] .mockup-code::before {
 }
 
 /* Pagefind UI dark mode tweak */
-html[data-theme="dark"] .pagefind-ui {
+html[data-theme='dark'] .pagefind-ui {
 	--pagefind-ui-background: var(--color-base-100);
 	--pagefind-ui-text: var(--color-base-content);
 	--pagefind-ui-primary: var(--color-primary);

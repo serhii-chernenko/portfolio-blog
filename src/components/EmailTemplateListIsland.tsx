@@ -35,10 +35,10 @@ export default function EmailTemplateListIsland() {
 		try {
 			const res = await fetch('/api/emails/templates');
 			if (!res.ok) {
-				const data = await res.json().catch(() => ({})) as { error?: string };
+				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error ?? `HTTP ${res.status}`);
 			}
-			const data = await res.json() as { templates: TemplateSummary[] };
+			const data = (await res.json()) as { templates: TemplateSummary[] };
 			setTemplates(data.templates);
 		} catch (err) {
 			setFetchError(err instanceof Error ? err.message : 'Failed to load templates');
@@ -54,7 +54,9 @@ export default function EmailTemplateListIsland() {
 
 		const slug = newSlug.trim();
 		if (!SLUG_RE.test(slug)) {
-			setSlugError('Lowercase letters, digits, and dashes only — must start with a letter or digit');
+			setSlugError(
+				'Lowercase letters, digits, and dashes only — must start with a letter or digit',
+			);
 			slugInputRef.current?.focus();
 			return;
 		}
@@ -64,7 +66,12 @@ export default function EmailTemplateListIsland() {
 			const res = await fetch('/api/emails/templates', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ slug, name: newName.trim(), subject: newSubject.trim(), locale: newLocale }),
+				body: JSON.stringify({
+					slug,
+					name: newName.trim(),
+					subject: newSubject.trim(),
+					locale: newLocale,
+				}),
 			});
 
 			if (res.status === 409) {
@@ -73,7 +80,7 @@ export default function EmailTemplateListIsland() {
 				return;
 			}
 			if (!res.ok) {
-				const data = await res.json().catch(() => ({})) as { error?: string };
+				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error ?? `HTTP ${res.status}`);
 			}
 
@@ -105,7 +112,9 @@ export default function EmailTemplateListIsland() {
 			{fetchError && (
 				<div className="alert alert-error mb-6">
 					<span>{fetchError}</span>
-					<button className="btn btn-sm btn-ghost" onClick={fetchTemplates}>Retry</button>
+					<button className="btn btn-sm btn-ghost" onClick={fetchTemplates}>
+						Retry
+					</button>
 				</div>
 			)}
 
@@ -138,13 +147,17 @@ export default function EmailTemplateListIsland() {
 												<a href={`/admin/emails/${t.slug}`} className="link link-hover">
 													{t.name}
 												</a>
-												<div className="text-xs text-base-content/50 font-mono mt-0.5">{t.slug}</div>
+												<div className="text-xs text-base-content/50 font-mono mt-0.5">
+													{t.slug}
+												</div>
 											</td>
 											<td className="text-base-content/70 max-w-xs truncate">{t.subject}</td>
 											<td>
 												<span className="badge badge-outline badge-sm">{t.locale}</span>
 											</td>
-											<td className="text-xs text-base-content/50 whitespace-nowrap">{formatDate(t.updatedAt)}</td>
+											<td className="text-xs text-base-content/50 whitespace-nowrap">
+												{formatDate(t.updatedAt)}
+											</td>
 											<td>
 												<a href={`/admin/emails/${t.slug}`} className="btn btn-xs btn-ghost">
 													Edit
@@ -163,7 +176,9 @@ export default function EmailTemplateListIsland() {
 
 							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div>
-									<label className="label" htmlFor="new-slug">Slug</label>
+									<label className="label" htmlFor="new-slug">
+										Slug
+									</label>
 									<input
 										id="new-slug"
 										ref={slugInputRef}
@@ -175,14 +190,19 @@ export default function EmailTemplateListIsland() {
 										required
 										pattern="[a-zA-Z0-9][a-zA-Z0-9\-]*"
 									/>
-									{slugError
-										? <p className="text-error text-sm mt-1">{slugError}</p>
-										: <p className="label">Lowercase letters, digits, and dashes — e.g. <code>welcome-email</code></p>
-									}
+									{slugError ? (
+										<p className="text-error text-sm mt-1">{slugError}</p>
+									) : (
+										<p className="label">
+											Lowercase letters, digits, and dashes — e.g. <code>welcome-email</code>
+										</p>
+									)}
 								</div>
 
 								<div>
-									<label className="label" htmlFor="new-name">Name</label>
+									<label className="label" htmlFor="new-name">
+										Name
+									</label>
 									<input
 										id="new-name"
 										type="text"
@@ -195,7 +215,9 @@ export default function EmailTemplateListIsland() {
 								</div>
 
 								<div>
-									<label className="label" htmlFor="new-subject">Subject line</label>
+									<label className="label" htmlFor="new-subject">
+										Subject line
+									</label>
 									<input
 										id="new-subject"
 										type="text"
@@ -208,7 +230,9 @@ export default function EmailTemplateListIsland() {
 								</div>
 
 								<div>
-									<label className="label" htmlFor="new-locale">Locale</label>
+									<label className="label" htmlFor="new-locale">
+										Locale
+									</label>
 									<select
 										id="new-locale"
 										className="select w-full"
@@ -227,11 +251,7 @@ export default function EmailTemplateListIsland() {
 								)}
 
 								<div className="sm:col-span-2 flex justify-end">
-									<button
-										type="submit"
-										className="btn btn-primary"
-										disabled={creating}
-									>
+									<button type="submit" className="btn btn-primary" disabled={creating}>
 										{creating && <span className="loading loading-spinner loading-sm"></span>}
 										Create template
 									</button>

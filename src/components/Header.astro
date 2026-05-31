@@ -5,18 +5,18 @@ import ThemeToggle from './ThemeToggle.astro';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
 export interface Props {
-  locale: Locale;
-  currentPath?: string;
-  translatedUrls?: Partial<Record<Locale, string | null>>;
+	locale: Locale;
+	currentPath?: string;
+	translatedUrls?: Partial<Record<Locale, string | null>>;
 }
 
 const { locale, currentPath, translatedUrls } = Astro.props;
 const t = useTranslations(locale);
 
 const navLinks = [
-  { key: 'nav.posts' as const, href: localeHref(locale, 'posts') },
-  { key: 'nav.tags' as const,  href: localeHref(locale, 'tags') },
-  { key: 'nav.about' as const, href: localeHref(locale, 'about') },
+	{ key: 'nav.posts' as const, href: localeHref(locale, 'posts') },
+	{ key: 'nav.tags' as const, href: localeHref(locale, 'tags') },
+	{ key: 'nav.about' as const, href: localeHref(locale, 'about') },
 ];
 
 const currentPathname = currentPath ?? Astro.url.pathname;
@@ -24,104 +24,129 @@ const currentPathname = currentPath ?? Astro.url.pathname;
 
 <!-- Skip-to-content -->
 <a
-  href="#content"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 btn btn-primary btn-sm"
+	href="#content"
+	class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 btn btn-primary btn-sm"
 >
-  {t('nav.skip')}
+	{t('nav.skip')}
 </a>
 
 <!-- Mobile drawer -->
 <div class="drawer">
-  <input id="nav-drawer" type="checkbox" class="drawer-toggle" aria-hidden="true" />
+	<input id="nav-drawer" type="checkbox" class="drawer-toggle" aria-hidden="true" />
 
-  <div class="drawer-content flex flex-col">
-    <!-- Navbar -->
-    <header class="navbar bg-base-100/90 backdrop-blur-2xl sticky top-0 z-40 px-4 relative z-20">
-      <!-- Left: hamburger (mobile) + logo -->
-      <div class="navbar-start gap-2">
-        <label
-          for="nav-drawer"
-          class="btn btn-ghost btn-square lg:hidden"
-          aria-label={t('nav.menu')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-6" aria-hidden="true">
-            <line x1="4" x2="20" y1="6" y2="6"></line>
-            <line x1="4" x2="20" y1="12" y2="12"></line>
-            <line x1="4" x2="20" y1="18" y2="18"></line>
-          </svg>
-        </label>
+	<div class="drawer-content flex flex-col">
+		<!-- Navbar -->
+		<header class="navbar bg-base-100/90 backdrop-blur-2xl sticky top-0 z-40 px-4 relative z-20">
+			<!-- Left: hamburger (mobile) + logo -->
+			<div class="navbar-start gap-2">
+				<label
+					for="nav-drawer"
+					class="btn btn-ghost btn-square lg:hidden"
+					aria-label={t('nav.menu')}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="size-6"
+						aria-hidden="true"
+					>
+						<line x1="4" x2="20" y1="6" y2="6"></line>
+						<line x1="4" x2="20" y1="12" y2="12"></line>
+						<line x1="4" x2="20" y1="18" y2="18"></line>
+					</svg>
+				</label>
 
-        <a href={localeHref(locale)} class="btn btn-ghost text-xl font-bold">
-          {t('site.name')}
-        </a>
-      </div>
+				<a href={localeHref(locale)} class="btn btn-ghost text-xl font-bold">
+					{t('site.name')}
+				</a>
+			</div>
 
-      <!-- Center: desktop nav links -->
-      <nav class="navbar-center hidden lg:flex" aria-label="Main navigation">
-        <ul class="menu menu-horizontal gap-1 p-0">
-          {navLinks.map(({ key, href }) => (
-            <li>
-              <a
-                href={href}
-                class={currentPathname.startsWith(href) ? 'active font-medium' : 'font-medium'}
-                aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
-              >
-                {t(key)}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+			<!-- Center: desktop nav links -->
+			<nav class="navbar-center hidden lg:flex" aria-label="Main navigation">
+				<ul class="menu menu-horizontal gap-1 p-0">
+					{
+						navLinks.map(({ key, href }) => (
+							<li>
+								<a
+									href={href}
+									class={currentPathname.startsWith(href) ? 'active font-medium' : 'font-medium'}
+									aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+								>
+									{t(key)}
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</nav>
 
-      <!-- Right: search, theme, language -->
-      <div class="navbar-end gap-1">
-        <button
-          class="btn btn-ghost btn-square"
-          data-search-open
-          aria-label={t('nav.search')}
-          title={t('nav.search')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
-        </button>
+			<!-- Right: search, theme, language -->
+			<div class="navbar-end gap-1">
+				<button
+					class="btn btn-ghost btn-square"
+					data-search-open
+					aria-label={t('nav.search')}
+					title={t('nav.search')}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="size-5"
+						aria-hidden="true"
+					>
+						<circle cx="11" cy="11" r="8"></circle>
+						<path d="m21 21-4.35-4.35"></path>
+					</svg>
+				</button>
 
-        <kbd class="kbd kbd-sm hidden lg:inline-flex">
-          /
-        </kbd>
+				<kbd class="kbd kbd-sm hidden lg:inline-flex"> / </kbd>
 
-        <ThemeToggle locale={locale} />
+				<ThemeToggle locale={locale} />
 
-        <LanguageSwitcher
-          locale={locale}
-          currentPath={currentPathname}
-          translatedUrls={translatedUrls}
-        />
-      </div>
-    </header>
-  </div>
+				<LanguageSwitcher
+					locale={locale}
+					currentPath={currentPathname}
+					translatedUrls={translatedUrls}
+				/>
+			</div>
+		</header>
+	</div>
 
-  <!-- Mobile drawer sidebar -->
-  <div class="drawer-side z-50">
-    <label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
-    <nav class="min-h-full w-72 bg-base-100 border-r border-base-300 p-4" aria-label="Mobile navigation">
-      <a href={localeHref(locale)} class="text-xl font-bold block mb-6">
-        {t('site.name')}
-      </a>
-      <ul class="menu w-full">
-        {navLinks.map(({ key, href }) => (
-          <li>
-            <a
-              href={href}
-              class={currentPathname.startsWith(href) ? 'active' : ''}
-              aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
-            >
-              {t(key)}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  </div>
+	<!-- Mobile drawer sidebar -->
+	<div class="drawer-side z-50">
+		<label for="nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+		<nav
+			class="min-h-full w-72 bg-base-100 border-r border-base-300 p-4"
+			aria-label="Mobile navigation"
+		>
+			<a href={localeHref(locale)} class="text-xl font-bold block mb-6">
+				{t('site.name')}
+			</a>
+			<ul class="menu w-full">
+				{
+					navLinks.map(({ key, href }) => (
+						<li>
+							<a
+								href={href}
+								class={currentPathname.startsWith(href) ? 'active' : ''}
+								aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+							>
+								{t(key)}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</nav>
+	</div>
 </div>

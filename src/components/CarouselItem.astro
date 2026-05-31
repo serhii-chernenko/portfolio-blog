@@ -1,11 +1,11 @@
 ---
 export interface Props {
-  class?: string;
+	class?: string;
 }
 
 const { class: className } = Astro.props;
 ---
 
-<li class:list={["carousel-item", className]}>
-  <slot />
+<li class:list={['carousel-item', className]}>
+	<slot />
 </li>

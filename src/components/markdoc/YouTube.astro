@@ -1,7 +1,7 @@
 ---
 export interface Props {
-  id: string;
-  title?: string;
+	id: string;
+	title?: string;
 }
 
 const { id, title = 'YouTube video' } = Astro.props;
@@ -9,22 +9,23 @@ const src = `https://www.youtube-nocookie.com/embed/${id}`;
 ---
 
 <div class="not-prose my-8">
-  <div class="card bg-base-200 border border-base-300 overflow-hidden">
-    <div class="relative w-full" style="padding-bottom: 56.25%;">
-      <iframe
-        src={src}
-        title={title}
-        class="absolute inset-0 w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        loading="lazy"
-        referrerpolicy="strict-origin-when-cross-origin"
-      ></iframe>
-    </div>
-    {title && title !== 'YouTube video' && (
-      <div class="card-body py-2 px-4">
-        <p class="text-sm text-base-content/60">{title}</p>
-      </div>
-    )}
-  </div>
+	<div class="card bg-base-200 border border-base-300 overflow-hidden">
+		<div class="relative w-full" style="padding-bottom: 56.25%;">
+			<iframe
+				src={src}
+				title={title}
+				class="absolute inset-0 w-full h-full"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+				allowfullscreen
+				loading="lazy"
+				referrerpolicy="strict-origin-when-cross-origin"></iframe>
+		</div>
+		{
+			title && title !== 'YouTube video' && (
+				<div class="card-body py-2 px-4">
+					<p class="text-sm text-base-content/60">{title}</p>
+				</div>
+			)
+		}
+	</div>
 </div>

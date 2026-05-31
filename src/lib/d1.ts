@@ -52,13 +52,7 @@ export async function upsertPendingSubscriber(
 			   user_agent = excluded.user_agent,
 			   ip_hash = excluded.ip_hash`,
 		)
-		.bind(
-			row.email,
-			row.locale,
-			row.source ?? null,
-			row.user_agent ?? null,
-			row.ip_hash ?? null,
-		)
+		.bind(row.email, row.locale, row.source ?? null, row.user_agent ?? null, row.ip_hash ?? null)
 		.run();
 
 	const result = await db
@@ -80,10 +74,7 @@ export async function markConfirmed(db: D1Database, email: string): Promise<void
 		.run();
 }
 
-export async function markUnsubscribed(
-	db: D1Database,
-	email: string,
-): Promise<void> {
+export async function markUnsubscribed(db: D1Database, email: string): Promise<void> {
 	await db
 		.prepare(
 			`UPDATE subscribers

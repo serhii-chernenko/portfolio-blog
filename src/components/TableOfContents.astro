@@ -3,14 +3,14 @@ import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
 export interface Heading {
-  depth: number;
-  slug: string;
-  text: string;
+	depth: number;
+	slug: string;
+	text: string;
 }
 
 export interface Props {
-  headings: Heading[];
-  locale: Locale;
+	headings: Heading[];
+	locale: Locale;
 }
 
 const { headings, locale } = Astro.props;
@@ -24,66 +24,68 @@ if (filtered.length < 3) return;
 ---
 
 <nav
-  id="toc"
-  class="toc sticky top-24 text-sm max-h-[calc(100vh-8rem)] overflow-y-auto"
-  aria-label={t('post.toc')}
+	id="toc"
+	class="toc sticky top-24 text-sm max-h-[calc(100vh-8rem)] overflow-y-auto"
+	aria-label={t('post.toc')}
 >
-  <p class="font-semibold text-base-content mb-3 text-xs uppercase tracking-wide">
-    {t('post.toc')}
-  </p>
-  <ol class="space-y-1">
-    {filtered.map((heading) => (
-      <li class={heading.depth === 3 ? 'pl-4' : ''}>
-        <a
-          href={`#${heading.slug}`}
-          class="toc-link block py-0.5 text-base-content/60 hover:text-primary transition-colors focus-visible:outline-2 focus-visible:outline-primary rounded"
-          data-toc-slug={heading.slug}
-        >
-          {heading.text}
-        </a>
-      </li>
-    ))}
-  </ol>
+	<p class="font-semibold text-base-content mb-3 text-xs uppercase tracking-wide">
+		{t('post.toc')}
+	</p>
+	<ol class="space-y-1">
+		{
+			filtered.map((heading) => (
+				<li class={heading.depth === 3 ? 'pl-4' : ''}>
+					<a
+						href={`#${heading.slug}`}
+						class="toc-link block py-0.5 text-base-content/60 hover:text-primary transition-colors focus-visible:outline-2 focus-visible:outline-primary rounded"
+						data-toc-slug={heading.slug}
+					>
+						{heading.text}
+					</a>
+				</li>
+			))
+		}
+	</ol>
 </nav>
 
 <script>
-  function initScrollSpy() {
-    const links = document.querySelectorAll<HTMLAnchorElement>('a[data-toc-slug]');
-    if (!links.length) return;
+	function initScrollSpy() {
+		const links = document.querySelectorAll<HTMLAnchorElement>('a[data-toc-slug]');
+		if (!links.length) return;
 
-    const slugs = Array.from(links).map((l) => l.dataset.tocSlug!);
-    const headingEls = slugs
-      .map((id) => document.getElementById(id))
-      .filter(Boolean) as HTMLElement[];
+		const slugs = Array.from(links).map((l) => l.dataset.tocSlug!);
+		const headingEls = slugs
+			.map((id) => document.getElementById(id))
+			.filter(Boolean) as HTMLElement[];
 
-    function getActiveSlug(): string | null {
-      const scrollY = window.scrollY + 120; // offset for sticky header
-      let active: string | null = null;
-      for (const el of headingEls) {
-        if (el.offsetTop <= scrollY) {
-          active = el.id;
-        }
-      }
-      return active;
-    }
+		function getActiveSlug(): string | null {
+			const scrollY = window.scrollY + 120; // offset for sticky header
+			let active: string | null = null;
+			for (const el of headingEls) {
+				if (el.offsetTop <= scrollY) {
+					active = el.id;
+				}
+			}
+			return active;
+		}
 
-    function highlight() {
-      const active = getActiveSlug();
-      links.forEach((link) => {
-        const isActive = link.dataset.tocSlug === active;
-        link.classList.toggle('text-primary', isActive);
-        link.classList.toggle('font-medium', isActive);
-        link.classList.toggle('text-base-content/60', !isActive);
-        link.setAttribute('aria-current', isActive ? 'true' : 'false');
-      });
-    }
+		function highlight() {
+			const active = getActiveSlug();
+			links.forEach((link) => {
+				const isActive = link.dataset.tocSlug === active;
+				link.classList.toggle('text-primary', isActive);
+				link.classList.toggle('font-medium', isActive);
+				link.classList.toggle('text-base-content/60', !isActive);
+				link.setAttribute('aria-current', isActive ? 'true' : 'false');
+			});
+		}
 
-    window.addEventListener('scroll', highlight, { passive: true });
-    highlight();
+		window.addEventListener('scroll', highlight, { passive: true });
+		highlight();
 
-    return () => window.removeEventListener('scroll', highlight);
-  }
+		return () => window.removeEventListener('scroll', highlight);
+	}
 
-  initScrollSpy();
-  document.addEventListener('astro:after-swap', initScrollSpy);
+	initScrollSpy();
+	document.addEventListener('astro:after-swap', initScrollSpy);
 </script>

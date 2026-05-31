@@ -10,14 +10,14 @@ import { ui } from '../../i18n/ui';
 export const prerender = false;
 
 function homeHrefFor(locale: Locale): string {
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-  return `${base}/${locale}/`;
+	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+	return `${base}/${locale}/`;
 }
 
 function htmlPage(title: string, body: string, locale: Locale): Response {
-  const siteName = ui[locale]['site.name'];
-  const homeHref = homeHrefFor(locale);
-  const html = `<!doctype html>
+	const siteName = ui[locale]['site.name'];
+	const homeHref = homeHrefFor(locale);
+	const html = `<!doctype html>
 <html lang="${locale === 'uk' ? 'uk-UA' : 'en'}">
 <head>
   <meta charset="utf-8" />
@@ -39,54 +39,54 @@ function htmlPage(title: string, body: string, locale: Locale): Response {
   </div>
 </body>
 </html>`;
-  return new Response(html, {
-    status: 200,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  });
+	return new Response(html, {
+		status: 200,
+		headers: { 'content-type': 'text/html; charset=utf-8' },
+	});
 }
 
 export const GET: APIRoute = async (context) => {
-  const url = new URL(context.request.url);
-  const token = url.searchParams.get('token') ?? '';
-  const rawLocale = url.searchParams.get('locale') ?? 'en';
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
+	const url = new URL(context.request.url);
+	const token = url.searchParams.get('token') ?? '';
+	const rawLocale = url.searchParams.get('locale') ?? 'en';
+	const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
 
-  // Defense-in-depth: astro:env validates undefined but not empty string.
-  if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
-    return htmlPage(
-      ui[locale]['subscribe.unsubscribe.invalid'],
-      ui[locale]['subscribe.unsubscribe.invalid'],
-      locale,
-    );
-  }
+	// Defense-in-depth: astro:env validates undefined but not empty string.
+	if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
+		return htmlPage(
+			ui[locale]['subscribe.unsubscribe.invalid'],
+			ui[locale]['subscribe.unsubscribe.invalid'],
+			locale,
+		);
+	}
 
-  const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, 'unsubscribe');
+	const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, 'unsubscribe');
 
-  if (!result) {
-    return htmlPage(
-      ui[locale]['subscribe.unsubscribe.invalid'],
-      ui[locale]['subscribe.unsubscribe.invalid'],
-      locale,
-    );
-  }
+	if (!result) {
+		return htmlPage(
+			ui[locale]['subscribe.unsubscribe.invalid'],
+			ui[locale]['subscribe.unsubscribe.invalid'],
+			locale,
+		);
+	}
 
-  const { email } = result;
+	const { email } = result;
 
-  try {
-    const db = getDB();
-    await markUnsubscribed(db, email);
-  } catch (err) {
-    console.error('Failed to mark unsubscribed:', err);
-  }
+	try {
+		const db = getDB();
+		await markUnsubscribed(db, email);
+	} catch (err) {
+		console.error('Failed to mark unsubscribed:', err);
+	}
 
-  await notify(`👋 Unsubscribed: ${escapeHtml(email)} (${locale})`);
+	await notify(`👋 Unsubscribed: ${escapeHtml(email)} (${locale})`);
 
-  // Analytics Engine event (fire-and-forget, never throws, no PII)
-  trackEvent('unsubscribed', { locale, status: 'unsubscribed' });
+	// Analytics Engine event (fire-and-forget, never throws, no PII)
+	trackEvent('unsubscribed', { locale, status: 'unsubscribed' });
 
-  return htmlPage(
-    ui[locale]['subscribe.unsubscribe.title'],
-    ui[locale]['subscribe.unsubscribe.body'],
-    locale,
-  );
+	return htmlPage(
+		ui[locale]['subscribe.unsubscribe.title'],
+		ui[locale]['subscribe.unsubscribe.body'],
+		locale,
+	);
 };

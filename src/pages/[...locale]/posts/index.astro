@@ -7,27 +7,27 @@ import { useTranslations, localeHref } from '../../../i18n/utils';
 import { locales, type Locale } from '../../../i18n/config';
 
 export async function getStaticPaths() {
-  const PAGE_SIZE = 10;
-  const paths = [];
-  for (const locale of locales) {
-    const posts = await getPublishedPosts(locale);
-    const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE));
-    paths.push({
-      params: { locale },
-      props: {
-        locale,
-        totalPages,
-        pagePosts: posts.slice(0, PAGE_SIZE),
-      },
-    });
-  }
-  return paths;
+	const PAGE_SIZE = 10;
+	const paths = [];
+	for (const locale of locales) {
+		const posts = await getPublishedPosts(locale);
+		const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE));
+		paths.push({
+			params: { locale },
+			props: {
+				locale,
+				totalPages,
+				pagePosts: posts.slice(0, PAGE_SIZE),
+			},
+		});
+	}
+	return paths;
 }
 
 type Props = {
-  locale: Locale;
-  totalPages: number;
-  pagePosts: Awaited<ReturnType<typeof getPublishedPosts>>;
+	locale: Locale;
+	totalPages: number;
+	pagePosts: Awaited<ReturnType<typeof getPublishedPosts>>;
 };
 
 // Pages 2+ live at /[locale]/posts/page/[page]/
@@ -35,52 +35,60 @@ const { locale, totalPages, pagePosts } = Astro.props as Props;
 const t = useTranslations(locale);
 ---
 
-<BaseLayout
-  title={t('nav.posts')}
-  description={t('site.description')}
-  locale={locale}
->
-  <main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-    <div class="flex flex-col gap-10">
-      <!-- Page header: centered title -->
-      <header class="max-w-3xl mx-auto space-y-3 text-center">
-        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">{t('nav.posts')}</h1>
-        <p class="text-base text-base-content/70 sm:text-lg">{t('site.description')}</p>
-      </header>
+<BaseLayout title={t('nav.posts')} description={t('site.description')} locale={locale}>
+	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+		<div class="flex flex-col gap-10">
+			<!-- Page header: centered title -->
+			<header class="max-w-3xl mx-auto space-y-3 text-center">
+				<h1 class="text-4xl font-bold tracking-tight sm:text-5xl">{t('nav.posts')}</h1>
+				<p class="text-base text-base-content/70 sm:text-lg">{t('site.description')}</p>
+			</header>
 
-      <!-- Results -->
-      {pagePosts.length === 0 ? (
-        <div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto size-10 opacity-50 mb-4" aria-hidden="true">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-          <h2 class="mt-4 text-xl font-semibold">{t('post.empty')}</h2>
-        </div>
-      ) : (
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {pagePosts.map((post) => (
-            <PostCard post={post} />
-          ))}
-        </div>
-      )}
+			<!-- Results -->
+			{
+				pagePosts.length === 0 ? (
+					<div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="mx-auto size-10 opacity-50 mb-4"
+							aria-hidden="true"
+						>
+							<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+							<polyline points="14 2 14 8 20 8" />
+						</svg>
+						<h2 class="mt-4 text-xl font-semibold">{t('post.empty')}</h2>
+					</div>
+				) : (
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+						{pagePosts.map((post) => (
+							<PostCard post={post} />
+						))}
+					</div>
+				)
+			}
 
-      <!-- Pagination -->
-      {totalPages > 1 && (
-        <div class="mx-auto max-w-2xl text-center">
-          <div class="flex items-center justify-center gap-4">
-            <span class="btn btn-outline btn-sm btn-disabled">
-              {t('pagination.previous')}
-            </span>
-            <span class="text-sm text-base-content/60">
-              {t('pagination.page', { page: 1, total: totalPages })}
-            </span>
-            <a href={localeHref(locale, 'posts/page/2/')} class="btn btn-outline btn-sm">
-              {t('pagination.next')}
-            </a>
-          </div>
-        </div>
-      )}
-    </div>
-  </main>
+			<!-- Pagination -->
+			{
+				totalPages > 1 && (
+					<div class="mx-auto max-w-2xl text-center">
+						<div class="flex items-center justify-center gap-4">
+							<span class="btn btn-outline btn-sm btn-disabled">{t('pagination.previous')}</span>
+							<span class="text-sm text-base-content/60">
+								{t('pagination.page', { page: 1, total: totalPages })}
+							</span>
+							<a href={localeHref(locale, 'posts/page/2/')} class="btn btn-outline btn-sm">
+								{t('pagination.next')}
+							</a>
+						</div>
+					</div>
+				)
+			}
+		</div>
+	</main>
 </BaseLayout>

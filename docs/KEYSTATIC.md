@@ -2,11 +2,11 @@
 
 Two modes live in this repo:
 
-| Where                                              | Adapter       | Mode    | Auth         | Storage                    |
-| -------------------------------------------------- | ------------- | ------- | ------------ | -------------------------- |
-| `pnpm dev` (Astro dev server)                      | `@astrojs/node` | local | none         | local files via `fs`       |
+| Where                                                   | Adapter               | Mode   | Auth         | Storage                    |
+| ------------------------------------------------------- | --------------------- | ------ | ------------ | -------------------------- |
+| `pnpm dev` (Astro dev server)                           | `@astrojs/node`       | local  | none         | local files via `fs`       |
 | `pnpm wrangler:dev` (workerd preview via astro preview) | `@astrojs/cloudflare` | github | GitHub OAuth | commits → PRs to this repo |
-| Deployed Worker (production)                       | `@astrojs/cloudflare` | github | GitHub OAuth | commits → PRs to this repo |
+| Deployed Worker (production)                            | `@astrojs/cloudflare` | github | GitHub OAuth | commits → PRs to this repo |
 
 `pnpm dev` sets `PUBLIC_KEYSTATIC_MODE=local`. `astro.config.mts` branches on
 that flag to select `@astrojs/node` as the adapter. The Node dev server runs in
@@ -65,8 +65,8 @@ The wizard shows the client ID and secret **only once**. Copy them
 immediately into a password manager.
 
 The app slug is visible at any time at
-`https://github.com/apps/<slug>` (or under your account's *Developer
-settings → GitHub Apps*).
+`https://github.com/apps/<slug>` (or under your account's _Developer
+settings → GitHub Apps_).
 
 ### 4. Generate KEYSTATIC_SECRET
 

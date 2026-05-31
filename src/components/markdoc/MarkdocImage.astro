@@ -2,9 +2,9 @@
 import type { ImageMetadata } from 'astro';
 
 export interface Props {
-  src: string | ImageMetadata;
-  alt?: string;
-  title?: string;
+	src: string | ImageMetadata;
+	alt?: string;
+	title?: string;
 }
 
 const { src, alt = '', title } = Astro.props;
@@ -27,21 +27,21 @@ const { src, alt = '', title } = Astro.props;
 // imports to a *component* rather than ImageMetadata, which would break `.src`
 // below, and Keystatic body uploads are raster anyway.
 const assets = import.meta.glob<{ default: ImageMetadata }>(
-  '/src/assets/**/*.{png,jpg,jpeg,webp,avif,gif}',
-  { eager: true },
+	'/src/assets/**/*.{png,jpg,jpeg,webp,avif,gif}',
+	{ eager: true },
 );
 
 let resolved: string | ImageMetadata = src;
 if (typeof src === 'string') {
-  resolved = assets[src]?.default ?? src;
-  // Surface stale/missing source references at build time instead of silently
-  // shipping a broken `/src/...` path (e.g. a post points at a file that was
-  // never uploaded). Dev-only so prod builds aren't noisy.
-  if (import.meta.env.DEV && src.startsWith('/src/') && !assets[src]) {
-    console.warn(
-      `[MarkdocImage] Unresolved source image "${src}" — file is missing from src/assets or the path is wrong.`,
-    );
-  }
+	resolved = assets[src]?.default ?? src;
+	// Surface stale/missing source references at build time instead of silently
+	// shipping a broken `/src/...` path (e.g. a post points at a file that was
+	// never uploaded). Dev-only so prod builds aren't noisy.
+	if (import.meta.env.DEV && src.startsWith('/src/') && !assets[src]) {
+		console.warn(
+			`[MarkdocImage] Unresolved source image "${src}" — file is missing from src/assets or the path is wrong.`,
+		);
+	}
 }
 
 const url = typeof resolved === 'string' ? resolved : resolved.src;
@@ -50,12 +50,12 @@ const height = typeof resolved === 'string' ? undefined : resolved.height;
 ---
 
 <img
-  src={url}
-  alt={alt}
-  title={title}
-  width={width}
-  height={height}
-  loading="lazy"
-  decoding="async"
-  class="rounded-box"
+	src={url}
+	alt={alt}
+	title={title}
+	width={width}
+	height={height}
+	loading="lazy"
+	decoding="async"
+	class="rounded-box"
 />

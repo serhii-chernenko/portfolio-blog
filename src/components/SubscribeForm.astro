@@ -3,8 +3,8 @@ import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
 export interface Props {
-  locale: Locale;
-  source?: string;
+	locale: Locale;
+	source?: string;
 }
 
 const { locale, source = 'inline' } = Astro.props;
@@ -12,112 +12,112 @@ const t = useTranslations(locale);
 ---
 
 <div class="subscribe-form-wrapper">
-  <form
-    id="subscribe-form"
-    class="flex flex-col sm:flex-row gap-3"
-    novalidate
-    data-locale={locale}
-    data-source={source}
-    aria-label={t('subscribe.title')}
-  >
-    <label for="subscribe-email" class="sr-only">{t('subscribe.email')}</label>
-    <input
-      id="subscribe-email"
-      type="email"
-      name="email"
-      class="input input-bordered flex-1 min-w-0"
-      placeholder={t('subscribe.email')}
-      autocomplete="email"
-      required
-      aria-required="true"
-    />
-    <button type="submit" class="btn btn-primary whitespace-nowrap" id="subscribe-btn">
-      {t('subscribe.submit')}
-    </button>
-  </form>
+	<form
+		id="subscribe-form"
+		class="flex flex-col sm:flex-row gap-3"
+		novalidate
+		data-locale={locale}
+		data-source={source}
+		aria-label={t('subscribe.title')}
+	>
+		<label for="subscribe-email" class="sr-only">{t('subscribe.email')}</label>
+		<input
+			id="subscribe-email"
+			type="email"
+			name="email"
+			class="input input-bordered flex-1 min-w-0"
+			placeholder={t('subscribe.email')}
+			autocomplete="email"
+			required
+			aria-required="true"
+		/>
+		<button type="submit" class="btn btn-primary whitespace-nowrap" id="subscribe-btn">
+			{t('subscribe.submit')}
+		</button>
+	</form>
 
-  <!-- Status messages (hidden initially) -->
-  <div id="subscribe-status" class="mt-3 hidden" role="alert" aria-live="polite"></div>
+	<!-- Status messages (hidden initially) -->
+	<div id="subscribe-status" class="mt-3 hidden" role="alert" aria-live="polite"></div>
 </div>
 
 <script>
-  function initSubscribeForm() {
-    const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
-    const btn = document.getElementById('subscribe-btn') as HTMLButtonElement | null;
-    const statusEl = document.getElementById('subscribe-status') as HTMLDivElement | null;
-    const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null;
+	function initSubscribeForm() {
+		const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+		const btn = document.getElementById('subscribe-btn') as HTMLButtonElement | null;
+		const statusEl = document.getElementById('subscribe-status') as HTMLDivElement | null;
+		const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null;
 
-    if (!form || !btn || !statusEl || !emailInput) return;
+		if (!form || !btn || !statusEl || !emailInput) return;
 
-    const locale = form.dataset.locale ?? 'en';
-    const source = form.dataset.source ?? 'inline';
+		const locale = form.dataset.locale ?? 'en';
+		const source = form.dataset.source ?? 'inline';
 
-    const messages: Record<string, Record<string, string>> = {
-      en: {
-        submitting: 'Subscribing…',
-        submit: 'Subscribe',
-        success: 'Check your inbox — we sent you a confirmation link.',
-        invalid: 'Please enter a valid email address.',
-        rateLimited: 'Too many attempts. Try again in a few minutes.',
-        error: 'Something went wrong. Please try again.',
-      },
-      uk: {
-        submitting: 'Підписуємо…',
-        submit: 'Підписатися',
-        success: 'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
-        invalid: 'Введіть коректну адресу електронної пошти.',
-        rateLimited: 'Забагато спроб. Спробуйте за кілька хвилин.',
-        error: 'Щось пішло не так. Спробуйте ще раз.',
-      },
-    };
+		const messages: Record<string, Record<string, string>> = {
+			en: {
+				submitting: 'Subscribing…',
+				submit: 'Subscribe',
+				success: 'Check your inbox — we sent you a confirmation link.',
+				invalid: 'Please enter a valid email address.',
+				rateLimited: 'Too many attempts. Try again in a few minutes.',
+				error: 'Something went wrong. Please try again.',
+			},
+			uk: {
+				submitting: 'Підписуємо…',
+				submit: 'Підписатися',
+				success: 'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
+				invalid: 'Введіть коректну адресу електронної пошти.',
+				rateLimited: 'Забагато спроб. Спробуйте за кілька хвилин.',
+				error: 'Щось пішло не так. Спробуйте ще раз.',
+			},
+		};
 
-    const msg = messages[locale] ?? messages['en'];
+		const msg = messages[locale] ?? messages['en'];
 
-    function showStatus(type: 'success' | 'error' | 'warning', text: string) {
-      statusEl!.className = `alert alert-${type} mt-3`;
-      statusEl!.textContent = text;
-      statusEl!.classList.remove('hidden');
-    }
+		function showStatus(type: 'success' | 'error' | 'warning', text: string) {
+			statusEl!.className = `alert alert-${type} mt-3`;
+			statusEl!.textContent = text;
+			statusEl!.classList.remove('hidden');
+		}
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = emailInput.value.trim();
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const email = emailInput.value.trim();
 
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showStatus('error', msg.invalid);
-        emailInput.focus();
-        return;
-      }
+			if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				showStatus('error', msg.invalid);
+				emailInput.focus();
+				return;
+			}
 
-      btn.disabled = true;
-      btn.textContent = msg.submitting;
-      statusEl.classList.add('hidden');
+			btn.disabled = true;
+			btn.textContent = msg.submitting;
+			statusEl.classList.add('hidden');
 
-      try {
-        const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-        const res = await fetch(`${base}/api/subscribe`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email, locale, source }),
-        });
+			try {
+				const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+				const res = await fetch(`${base}/api/subscribe`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ email, locale, source }),
+				});
 
-        if (res.ok) {
-          showStatus('success', msg.success);
-          form.reset();
-        } else if (res.status === 429) {
-          showStatus('warning', msg.rateLimited);
-        } else {
-          showStatus('error', msg.error);
-        }
-      } catch {
-        showStatus('error', msg.error);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = msg.submit;
-      }
-    });
-  }
+				if (res.ok) {
+					showStatus('success', msg.success);
+					form.reset();
+				} else if (res.status === 429) {
+					showStatus('warning', msg.rateLimited);
+				} else {
+					showStatus('error', msg.error);
+				}
+			} catch {
+				showStatus('error', msg.error);
+			} finally {
+				btn.disabled = false;
+				btn.textContent = msg.submit;
+			}
+		});
+	}
 
-  initSubscribeForm();
-  document.addEventListener('astro:after-swap', initSubscribeForm);
+	initSubscribeForm();
+	document.addEventListener('astro:after-swap', initSubscribeForm);
 </script>

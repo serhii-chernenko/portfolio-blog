@@ -69,9 +69,9 @@ const markdocComponents = {
 							marginBottom: '8px',
 						},
 					},
-					value.type
+					value.type,
 				),
-				children as ReactNode
+				children as ReactNode,
 			),
 	}),
 	youtube: block({
@@ -98,7 +98,7 @@ const markdocComponents = {
 						borderRadius: '8px',
 					},
 				},
-				`YouTube embed: ${value.title || value.id}`
+				`YouTube embed: ${value.title || value.id}`,
 			),
 	}),
 };

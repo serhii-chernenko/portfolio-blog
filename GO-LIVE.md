@@ -88,18 +88,19 @@ as a `vars` entry there (exposed to local dev automatically) and is NOT in `.dev
 Easiest path — let Keystatic create the app for you:
 
 1. [ ] Deploy once with the other config in place (step 9), then visit
-   `https://www.serhiichernenko.com/blog/keystatic`.
+       `https://www.serhiichernenko.com/blog/keystatic`.
 2. [ ] Keystatic detects no app is connected and walks you through creating one
-   (it pre-fills the callback URLs). This yields: **App slug**, **Client ID**,
-   **Client Secret**.
+       (it pre-fills the callback URLs). This yields: **App slug**, **Client ID**,
+       **Client Secret**.
 3. [ ] Put `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` (the part after `/apps/` in the
-   app URL) into `wrangler.jsonc` → `vars`.
+       app URL) into `wrangler.jsonc` → `vars`.
 4. [ ] Set `KEYSTATIC_GITHUB_CLIENT_ID` and `KEYSTATIC_GITHUB_CLIENT_SECRET` as
-   Worker secrets (step 3).
+       Worker secrets (step 3).
 5. [ ] Confirm `GITHUB_REPO` in `keystatic.config.ts` is `serhii-chernenko/portfolio-blog`. ✅ (already set)
 6. [ ] Re-deploy so the new app slug is baked into the bundle.
 
 See `docs/KEYSTATIC.md` for the full local-vs-GitHub mode explanation.
+
 - **Verify:** log in at `/blog/keystatic`, create a throwaway draft → a
   `post/...` branch + PR appear on GitHub.
 
@@ -113,12 +114,13 @@ works once Email Routing is enabled and the sender is verified. Until then,
 
 1. [x] Cloudflare dashboard → `serhiichernenko.com` → **Email** → **Email Routing** → enable.
 2. [x] Add and verify the sender address `hello@serhiichernenko.com`
-   (this is the `MAIL_FROM` var in `wrangler.jsonc`). Cloudflare requires the
-   destination/sender to be a verified address.
+       (this is the `MAIL_FROM` var in `wrangler.jsonc`). Cloudflare requires the
+       destination/sender to be a verified address.
 3. [x] Ensure the required DNS records (MX, SPF/TXT, DKIM) Cloudflare prompts
-   for are added to the zone.
+       for are added to the zone.
 
 See `docs/EMAIL.md`.
+
 - **Verify:** after deploy, subscribe with a real address → confirmation email
   arrives → clicking the link sends a welcome email.
 
@@ -130,15 +132,16 @@ See `docs/EMAIL.md`.
 Comments render blank without them.
 
 1. [x] Make the GitHub repo **public** (Giscus requires it) and enable
-   **Discussions** (Settings → General → Features).
+       **Discussions** (Settings → General → Features).
 2. [x] Install the [Giscus GitHub App](https://github.com/apps/giscus) on the repo.
 3. [ ] Go to <https://giscus.app>, enter the repo, pick the **Comments**
-   discussion category, and copy the generated `data-repo-id` and
-   `data-category-id`.
+       discussion category, and copy the generated `data-repo-id` and
+       `data-category-id`.
 4. [ ] Set these as **Cloudflare Worker vars** (or `wrangler.jsonc` `vars`, since
-   `PUBLIC_*` values are non-secret and inlined at build):
-   `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`,
-   `PUBLIC_GISCUS_CATEGORY_ID`. They must be present **at build time**.
+       `PUBLIC_*` values are non-secret and inlined at build):
+       `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`,
+       `PUBLIC_GISCUS_CATEGORY_ID`. They must be present **at build time**.
+
 - **Verify:** open any post in production → the Giscus thread loads and matches
   the page's light/dark theme.
 
@@ -160,25 +163,34 @@ to configure here.
 
 ## 8. 🔴 GitHub Actions secrets & vars
 
-The deploy/preview/auto-label workflows need these in the repo
-(**Settings → Secrets and variables → Actions**).
+Deployment (production **and** PR previews) is handled by **Cloudflare Workers
+Builds** — the dashboard Git integration — not GitHub Actions, so **no Cloudflare
+API token lives in the repo**. The only workflows now are `ci.yml`
+(format/lint/typecheck/build — needs no secrets) and `auto-label.yml`
+(PR labels and Telegram).
 
-Secrets:
-- [ ] `CF_API_TOKEN` — Cloudflare API token with Workers + D1 + KV edit scope.
-- [ ] `CF_ACCOUNT_ID` — from the Cloudflare dashboard URL / Workers overview.
-- [ ] `CF_ACCOUNT_SUBDOMAIN` — your `*.workers.dev` subdomain (used to build
-  preview URLs in `preview.yml`).
-- [ ] `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — same values as the Worker
-  secrets (Actions and the Worker read from separate stores).
+Secrets (**Settings → Secrets and variables → Actions**):
+
+- [ ] `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — used by `auto-label.yml` for the
+      "new article" notification (same values as the Worker secrets; Actions and the
+      Worker read from separate stores).
 
 Variables (the `vars.*` context):
-- [ ] `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` — referenced by `deploy.yml` and
-  `preview.yml` build steps.
+
+- [ ] `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` (and the optional `PUBLIC_GISCUS_*` /
+      `PUBLIC_CF_ANALYTICS_TOKEN`) — inlined by the `ci.yml` build step so CI builds
+      match production shape. Not load-bearing for the gate.
+
+> Cloudflare credentials (`CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`)
+> are **no longer GitHub secrets** — Workers Builds authenticates through the
+> dashboard Git integration. Configure deploys/previews at Cloudflare → Workers &
+> Pages → **portfolio-blog → Settings → Build**.
 
 Repo labels (auto-label workflow expects them to exist):
+
 - [ ] Create the four labels from `.github/labels.yml`
-  (`new article`, `edit article`, `dev`, `mixed`) — manually in the repo's
-  Labels UI, or via a labels-sync action.
+      (`new article`, `edit article`, `dev`, `mixed`) — manually in the repo's
+      Labels UI, or via a labels-sync action.
 
 ---
 
@@ -191,36 +203,73 @@ pnpm wrangler:deploy      # pnpm build && wrangler deploy
 ```
 
 The build outputs two directories:
+
 - `dist/client/` — static assets served by the `ASSETS` binding (scoped to `./dist/client` in `wrangler.jsonc`).
 - `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `@astrojs/cloudflare/entrypoints/server`. Files in `dist/server/` are never served publicly as static assets.
 
-Or push to `main` to trigger `.github/workflows/deploy.yml`.
+Or just push to `main` — **Cloudflare Workers Builds** runs `pnpm build` + deploy
+automatically (dashboard Git integration). Non-`main` branches / PRs get a preview
+version with an auto-posted preview URL (see _Preview deployments_ below).
 
-  The canonical host is **`www.serhiichernenko.com`**; the bare apex
-  301-redirects to it. Three things outside the deploy make routing work — see
-  **`docs/DNS-ROUTING.md`** for the full runbook. **Routes do not create DNS**, and
-  the wrangler OAuth token + CI `CF_API_TOKEN` have zone *read* only, so the DNS
-  records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
+The canonical host is **`www.serhiichernenko.com`**; the bare apex
+301-redirects to it. Three things outside the deploy make routing work — see
+**`docs/DNS-ROUTING.md`** for the full runbook. **Routes do not create DNS**, and
+the wrangler OAuth token and the Workers Builds deploy credential have zone
+_read_ only, so the DNS records and the redirect rule are **dashboard/API
+actions** (not `wrangler`/CI):
 
-  - [ ] **DNS — two Proxied (orange-cloud) records** (Cloudflare → `serhiichernenko.com`
-    → **DNS → Records**): `CNAME www → serhiichernenko.com` (so `www` resolves to
-    the edge where the Worker routes fire) **and** `AAAA @ → 100::` (so the bare
-    apex resolves to the edge where the redirect rule runs). Both must be Proxied.
-  - [ ] **Redirect rule — apex → www** (**Rules → Redirect Rules**): when hostname
-    equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
-    path/query. Scope to the apex only (don't match `www`, or it loops).
-  - [ ] **Routes deploy to www.** `wrangler.jsonc` declares
-    `www.serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` (`zone_name`
-    stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
-    (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
-    old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
+- [ ] **DNS — two Proxied (orange-cloud) records** (Cloudflare → `serhiichernenko.com`
+      → **DNS → Records**): `CNAME www → serhiichernenko.com` (so `www` resolves to
+      the edge where the Worker routes fire) **and** `AAAA @ → 100::` (so the bare
+      apex resolves to the edge where the redirect rule runs). Both must be Proxied.
+- [ ] **Redirect rule — apex → www** (**Rules → Redirect Rules**): when hostname
+      equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
+      path/query. Scope to the apex only (don't match `www`, or it loops).
+- [ ] **Routes deploy to www.** `wrangler.jsonc` declares
+      `www.serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` (`zone_name`
+      stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
+      (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
+      old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
 - [ ] Decide what serves the host root `/` (intentionally **not** bound to this
-  Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
+      Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
   checks `www` resolves to a proxied edge IP, `www/blog/en/` returns 2xx, and the
   apex `/blog` 301-redirects to `www`. Then manually confirm
   `www.serhiichernenko.com/blog/keystatic` shows the CMS login. HTTPS may need up
   to 24h for Universal SSL — test `http://` first.
+
+---
+
+## 9b. Preview deployments (Cloudflare Workers Builds)
+
+Once the repo is connected in **Workers & Pages → portfolio-blog → Settings →
+Build**, Cloudflare builds every push: `main` → production deploy; any other
+branch / PR → a **preview version** (`wrangler versions upload`). Cloudflare
+auto-posts a PR comment with the preview URL — no GitHub Action involved.
+
+- [ ] **View content at the `/blog` path.** Preview URLs live on
+      `*.workers.dev`, where the production `/blog*` routes do **not** apply — the
+      whole Worker answers at every path. But Astro has `base: '/blog'`, so the blog
+      is served under `/blog`. The bare preview root **404s by design**:
+  - `https://<version>-portfolio-blog.<subdomain>.workers.dev/` → 404
+  - `https://<version>-portfolio-blog.<subdomain>.workers.dev/blog` → the blog ✅
+
+  Always append `/blog` to the URL in the PR comment. Do **not** add a
+  `/` → `/blog` redirect — the host root is reserved for the future portfolio
+  Worker (see `docs/DNS-ROUTING.md`).
+
+- [ ] **If no preview URL appears:** preview URLs are on by default when
+      `workers.dev` is enabled (Wrangler ≥ 3.91; this repo is on 4.x). Otherwise
+      enable them at **Settings → Domains & Routes → Preview URLs**. No
+      `wrangler.jsonc` change is required.
+- [ ] **Make drafts visible on previews only.** Draft posts render when
+      `PREVIEW_MODE === 'true'` (`src/lib/posts.ts`). Cloudflare has no native
+      "preview-only var" (dashboard vars apply to _all_ builds and would leak drafts
+      to prod). Set it per-build instead — set the **Non-production branch deploy
+      command** (Settings → Build) to export `PREVIEW_MODE=true` before the build on
+      non-`main` branches, then `wrangler versions upload`. (A `wrangler.jsonc`
+      `env.preview` would also work but forces re-declaring **every** binding — D1,
+      KV, send_email, analytics, vars — since named envs don't inherit them.)
 
 ---
 
@@ -230,13 +279,14 @@ Acceptance criteria that can only be checked against the live site
 (see `blog-build-plan.md` §26):
 
 - [ ] Run Lighthouse on `/blog/en/` and a post — confirm the §22 budget
-  (Perf ≥ 95, A11y ≥ 95, SEO 100).
+      (Perf ≥ 95, A11y ≥ 95, SEO 100).
 - [ ] Paste a post URL into <https://app.hreflang.org> — confirm hreflang
-  validates clean (reciprocal + `x-default`, consistent trailing slashes).
+      validates clean (reciprocal + `x-default`, consistent trailing slashes).
 - [ ] Validate `/blog/en/rss.xml` and `/blog/uk/rss.xml` as RSS 2.0.
 - [ ] End-to-end CMS flow: create post in `/blog/keystatic` → PR auto-labeled
-  `new article` → preview Worker deploys → preview URL works (drafts visible) →
-  merge → production redeploys → draft is now hidden on prod.
+      `new article` → Workers Builds uploads a preview version → preview URL works
+      **at its `/blog` path** (drafts visible — see _Preview deployments_) →
+      merge → production redeploys → draft is now hidden on prod.
 - [ ] Newsletter round-trip (subscribe → confirm → welcome → unsubscribe).
 - [ ] Telegram notifications fire for each event — see `docs/TELEGRAM-TESTING.md`.
 
@@ -244,9 +294,9 @@ Acceptance criteria that can only be checked against the live site
 
 ## Quick reference — placeholders to replace
 
-| Placeholder | File | Step |
-|---|---|---|
-| `REPLACE_WITH_REAL_ID` (D1) | `wrangler.jsonc` | 1 |
-| `REPLACE_WITH_REAL_ID` (KV) | `wrangler.jsonc` | 2 |
-| `your-keystatic-github-app-slug` | `wrangler.jsonc` (`vars`) | 4 |
-| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars | 6 |
+| Placeholder                                    | File                      | Step |
+| ---------------------------------------------- | ------------------------- | ---- |
+| `REPLACE_WITH_REAL_ID` (D1)                    | `wrangler.jsonc`          | 1    |
+| `REPLACE_WITH_REAL_ID` (KV)                    | `wrangler.jsonc`          | 2    |
+| `your-keystatic-github-app-slug`               | `wrangler.jsonc` (`vars`) | 4    |
+| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars               | 6    |

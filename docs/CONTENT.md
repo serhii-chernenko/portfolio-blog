@@ -10,6 +10,7 @@ This blog uses [Keystatic](https://keystatic.com) as a git-backed CMS. Posts are
 There is **no `/keystatic` route in production**. The integration isn't even bundled into the prod build — visiting `chernenko.digital/blog/keystatic` returns 404, by construction.
 
 Why local-only:
+
 1. **Security.** Without a deployed admin auth gate, anyone hitting `/keystatic` could read or modify content. Keeping it off prod removes that entire class of risk.
 2. **Crawlers.** No public CMS URL means nothing for search engines to index or leak.
 3. **Keystatic's React UI** hardcodes its API at root-relative `/api/keystatic/...` and doesn't support a base path, so it can't coexist cleanly with our production `/blog/*` mount anyway.
@@ -52,19 +53,19 @@ Both are independent collections. They share the same schema. They're linked by 
 
 Click the collection, then **+ Add Post**. You'll see a form with:
 
-| Field | What it does |
-|---|---|
-| **Title** | The post title. Used in the URL slug, `<h1>`, `<title>`, OG tags. |
-| **Slug** | Auto-generated from the title. You can override. Becomes the URL: `/blog/{locale}/posts/{slug}`. |
-| **Translation Key** | A short identifier that ties EN and UK versions of the same article together. **Use the same string in both languages.** Lowercase, kebab-case, e.g. `astro-on-cloudflare`. Used for hreflang and the language switcher. |
-| **Description** | 50–200 chars. Shows in post listings, RSS, OG, and meta description. |
-| **Published at** | ISO datetime. Posts dated in the future are hidden until that time passes (production only). |
-| **Updated at** | Optional. Set when you make a meaningful edit. Shows as "Updated …" on the post page. |
-| **Tags** | One tag per row. Tags become DaisyUI chips, and each gets its own page at `/blog/{locale}/tags/{slug}`. |
-| **Hero image** | Optional. Drag-drop or paste an image. Keystatic writes it to `src/assets/posts/`. |
-| **Hero image alt text** | Required for accessibility when a hero image is set. |
-| **Draft** | Checkbox. While checked, the post is invisible in production but visible in local dev and on PR preview URLs. |
-| **Content** | The article body — see "Writing the body" below. |
+| Field                   | What it does                                                                                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Title**               | The post title. Used in the URL slug, `<h1>`, `<title>`, OG tags.                                                                                                                                                        |
+| **Slug**                | Auto-generated from the title. You can override. Becomes the URL: `/blog/{locale}/posts/{slug}`.                                                                                                                         |
+| **Translation Key**     | A short identifier that ties EN and UK versions of the same article together. **Use the same string in both languages.** Lowercase, kebab-case, e.g. `astro-on-cloudflare`. Used for hreflang and the language switcher. |
+| **Description**         | 50–200 chars. Shows in post listings, RSS, OG, and meta description.                                                                                                                                                     |
+| **Published at**        | ISO datetime. Posts dated in the future are hidden until that time passes (production only).                                                                                                                             |
+| **Updated at**          | Optional. Set when you make a meaningful edit. Shows as "Updated …" on the post page.                                                                                                                                    |
+| **Tags**                | One tag per row. Tags become DaisyUI chips, and each gets its own page at `/blog/{locale}/tags/{slug}`.                                                                                                                  |
+| **Hero image**          | Optional. Drag-drop or paste an image. Keystatic writes it to `src/assets/posts/`.                                                                                                                                       |
+| **Hero image alt text** | Required for accessibility when a hero image is set.                                                                                                                                                                     |
+| **Draft**               | Checkbox. While checked, the post is invisible in production but visible in local dev and on PR preview URLs.                                                                                                            |
+| **Content**             | The article body — see "Writing the body" below.                                                                                                                                                                         |
 
 Click **Save**. Locally, this writes a `.mdoc` file in `src/content/posts/{locale}/`. The dev server hot-reloads. Open the post URL to verify it looks right.
 
@@ -134,7 +135,7 @@ Keyboard shortcuts: `Cmd/Ctrl-B` (bold), `Cmd/Ctrl-I` (italic), `Cmd/Ctrl-K` (li
 
 Insert via **Insert** → **Code block**, or type ` ``` ` then a language identifier:
 
-```` markdown
+````markdown
 ```ts
 import { something } from 'somewhere';
 ```
@@ -188,18 +189,18 @@ Three things that look related but do different jobs.
 
 There's no `slug:` line in your frontmatter. **The slug IS the filename** (without the `.mdoc` extension). When you set the "Slug" field in Keystatic, it renames the file on disk.
 
-| What you do | Result |
-|---|---|
-| File `src/content/posts/en/hello-world.mdoc` | URL becomes `/blog/en/posts/hello-world/` |
+| What you do                                                | Result                                             |
+| ---------------------------------------------------------- | -------------------------------------------------- |
+| File `src/content/posts/en/hello-world.mdoc`               | URL becomes `/blog/en/posts/hello-world/`          |
 | Rename to `src/content/posts/en/why-i-moved-to-astro.mdoc` | URL becomes `/blog/en/posts/why-i-moved-to-astro/` |
-| In Keystatic UI, change Slug → "moved-to-astro" + save | File renamed to `moved-to-astro.mdoc`, URL updates |
+| In Keystatic UI, change Slug → "moved-to-astro" + save     | File renamed to `moved-to-astro.mdoc`, URL updates |
 
 **The slug is local to each language directory.** Two files at:
 
 - `src/content/posts/en/hello-world.mdoc` → `/blog/en/posts/hello-world/`
 - `src/content/posts/uk/hello-world.mdoc` → `/blog/uk/posts/hello-world/`
 
-…are *different posts* that happen to share a slug. The locale folder is part of the address.
+…are _different posts_ that happen to share a slug. The locale folder is part of the address.
 
 ### **`translationKey`** — pairs one post with its translation
 
@@ -214,7 +215,7 @@ translationKey: astro-on-cloudflare
 ```yaml
 # uk/astro-na-cloudflare.mdoc
 title: Astro на Cloudflare
-translationKey: astro-on-cloudflare    # SAME as the EN version
+translationKey: astro-on-cloudflare # SAME as the EN version
 ```
 
 Note the slugs differ (`astro-on-cloudflare` vs `astro-na-cloudflare`) — that's fine and expected. The `translationKey` is what links them.
@@ -223,11 +224,11 @@ The convention I'd suggest: **use the English slug as the translationKey, always
 
 ### What the `translationKey` actually does
 
-| Feature | Behavior |
-|---|---|
-| Language switcher (header dropdown) on an EN post | If a UK post with the same `translationKey` exists, clicking 🇺🇦 navigates to that exact post. If not, falls back to `/uk/`. |
-| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when a UK translation exists, so SEO doesn't claim a translation that isn't there. |
-| Sitemap | Groups EN and UK URLs as alternates of the same logical article. |
+| Feature                                                          | Behavior                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Language switcher (header dropdown) on an EN post                | If a UK post with the same `translationKey` exists, clicking 🇺🇦 navigates to that exact post. If not, falls back to `/uk/`. |
+| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when a UK translation exists, so SEO doesn't claim a translation that isn't there.                             |
+| Sitemap                                                          | Groups EN and UK URLs as alternates of the same logical article.                                                            |
 
 If `translationKey` is missing or unique, the language switcher just goes to the locale's home page. Nothing breaks; you just don't get the cross-linking magic.
 
@@ -242,7 +243,7 @@ Completely fine. The system is designed to handle it.
 ```yaml
 # en/notes-on-osprey-cameras.mdoc
 title: Notes on Osprey cameras
-translationKey: notes-on-osprey-cameras    # unique — no other post uses this
+translationKey: notes-on-osprey-cameras # unique — no other post uses this
 ```
 
 Behavior:
@@ -257,7 +258,7 @@ Behavior:
 ```yaml
 # uk/zustrich-z-leshchenkom.mdoc
 title: Зустріч із Лещенком
-translationKey: zustrich-z-leshchenkom    # unique — no EN counterpart
+translationKey: zustrich-z-leshchenkom # unique — no EN counterpart
 ```
 
 Same as Case 1, mirrored. The 🇬🇧 link from this post goes to `/blog/en/`.
@@ -268,8 +269,8 @@ Pick a unique value that won't accidentally collide with any future post. The si
 
 ```yaml
 # uk-only post — translationKey === slug
-title: Зустріч із Лещенком     # the "name" of the slug field
-translationKey: zustrich-z-leshchenkom    # same as filename
+title: Зустріч із Лещенком # the "name" of the slug field
+translationKey: zustrich-z-leshchenkom # same as filename
 ```
 
 Filename: `zustrich-z-leshchenkom.mdoc`. Slug: `zustrich-z-leshchenkom`. translationKey: `zustrich-z-leshchenkom`. All three line up. Clean.
@@ -287,7 +288,7 @@ Day 30, you decide to write the UK version. Create a new file in `uk/`, use the 
 
 ```yaml
 # uk/astro-na-cloudflare.mdoc
-translationKey: astro-on-cloudflare    # same as the EN file
+translationKey: astro-on-cloudflare # same as the EN file
 ```
 
 Next build, the language switcher on both posts now cross-links to the other. Hreflang gets emitted on both. No retroactive changes needed on the EN file.
@@ -300,11 +301,11 @@ Totally fine. Your blog is bilingual, not parallel. Most posts may be EN-only, s
 
 ## Quick reference table
 
-| Field | Where it lives | What it controls | Example for EN post | Example for UK translation of that post | Example for UK-only post |
-|---|---|---|---|---|---|
-| Filename | `src/content/posts/{en,uk}/<slug>.mdoc` | The URL slug | `hello-world.mdoc` | `pryvit-svit.mdoc` | `zustrich-z-leshchenkom.mdoc` |
-| `title:` (frontmatter) | Inside the `.mdoc` file | Display title (h1, OG, RSS) | `Hello, world` | `Привіт, світ` | `Зустріч із Лещенком` |
-| `translationKey:` | Inside the `.mdoc` file | Cross-language pairing | `hello-world` | `hello-world` ← SAME | `zustrich-z-leshchenkom` ← unique |
+| Field                  | Where it lives                          | What it controls            | Example for EN post | Example for UK translation of that post | Example for UK-only post          |
+| ---------------------- | --------------------------------------- | --------------------------- | ------------------- | --------------------------------------- | --------------------------------- |
+| Filename               | `src/content/posts/{en,uk}/<slug>.mdoc` | The URL slug                | `hello-world.mdoc`  | `pryvit-svit.mdoc`                      | `zustrich-z-leshchenkom.mdoc`     |
+| `title:` (frontmatter) | Inside the `.mdoc` file                 | Display title (h1, OG, RSS) | `Hello, world`      | `Привіт, світ`                          | `Зустріч із Лещенком`             |
+| `translationKey:`      | Inside the `.mdoc` file                 | Cross-language pairing      | `hello-world`       | `hello-world` ← SAME                    | `zustrich-z-leshchenkom` ← unique |
 
 ---
 
@@ -318,11 +319,11 @@ You don't have to write them at the same time. Publish whichever is ready, write
 
 `Draft: true` and `publishedAt` in the future both mean **not yet published**.
 
-| Where | Behavior |
-|---|---|
-| Local dev (`pnpm dev`, `pnpm wrangler:dev`) | All drafts and future posts visible |
-| Preview deploy (PR Worker, `PREVIEW_MODE=true`) | All drafts and future posts visible |
-| Production (`main` branch deployed) | Drafts and future-dated posts filtered out everywhere: post lists, individual URLs (404), RSS, sitemap, tag pages |
+| Where                                           | Behavior                                                                                                          |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Local dev (`pnpm dev`, `pnpm wrangler:dev`)     | All drafts and future posts visible                                                                               |
+| Preview deploy (PR Worker, `PREVIEW_MODE=true`) | All drafts and future posts visible                                                                               |
+| Production (`main` branch deployed)             | Drafts and future-dated posts filtered out everywhere: post lists, individual URLs (404), RSS, sitemap, tag pages |
 
 Useful patterns:
 
@@ -347,12 +348,12 @@ In GitHub mode, editing creates a new commit on the same `post/<slug>` branch (o
 
 The `.github/workflows/auto-label.yml` workflow inspects every PR and applies exactly one of:
 
-| Label | When |
-|---|---|
-| `new article` | PR adds a new file under `src/content/posts/**` (no dev file changes) |
-| `edit article` | PR only modifies existing posts (no dev files) |
-| `dev` | PR only touches non-content files |
-| `mixed` | Both content and dev files changed — consider splitting |
+| Label          | When                                                                  |
+| -------------- | --------------------------------------------------------------------- |
+| `new article`  | PR adds a new file under `src/content/posts/**` (no dev file changes) |
+| `edit article` | PR only modifies existing posts (no dev files)                        |
+| `dev`          | PR only touches non-content files                                     |
+| `mixed`        | Both content and dev files changed — consider splitting               |
 
 This is just for your sanity when reviewing the PR queue. The actual gate to publish is still merging the PR.
 
@@ -377,7 +378,7 @@ Practical implications:
 
 If you ever edit a `.mdoc` file directly in your editor instead of Keystatic, this is the shape:
 
-```mdoc
+````mdoc
 ---
 title: A Practical Title
 slug: a-practical-title
@@ -407,9 +408,10 @@ A tip callout.
 
 ```ts
 const code = 'goes here';
-```
+````
 
 {% youtube id="abc123" /%}
+
 ```
 
 The Zod schema in `src/content.config.ts` validates this at build time. If the build fails with a content error, the message points to the exact field.
@@ -446,3 +448,4 @@ The `directory` in `keystatic.config.ts` is `src/assets/posts` and the `publicPa
 
 **"Slug already exists" when creating a new post.**
 Two posts can't share a slug within the same locale (they'd both be at the same URL). Pick a different slug, or delete the old post first.
+```

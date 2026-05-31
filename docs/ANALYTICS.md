@@ -6,10 +6,10 @@ This document covers the server-side Analytics Engine integration, which runs al
 
 ## Architecture overview
 
-| Layer | System | What it measures |
-|---|---|---|
+| Layer       | System                                               | What it measures                                               |
+| ----------- | ---------------------------------------------------- | -------------------------------------------------------------- |
 | Client-side | Cloudflare Web Analytics (auto-injected at the edge) | Pageviews, referrers, country, device/browser, Core Web Vitals |
-| Server-side | Cloudflare Analytics Engine | Newsletter funnel events (subscribe / confirm / unsubscribe) |
+| Server-side | Cloudflare Analytics Engine                          | Newsletter funnel events (subscribe / confirm / unsubscribe)   |
 
 These two systems are complementary, not substitutes. Web Analytics (auto-injected by Cloudflare's edge — no app code or token) captures visitor RUM from the browser; Analytics Engine records lifecycle events that happen in API routes where no client JS runs (e.g. a user clicking the confirmation link in their email app).
 
@@ -17,11 +17,11 @@ These two systems are complementary, not substitutes. Web Analytics (auto-inject
 
 ## Binding and dataset
 
-| Field | Value |
-|---|---|
-| Binding name | `ANALYTICS` |
+| Field        | Value                   |
+| ------------ | ----------------------- |
+| Binding name | `ANALYTICS`             |
 | Dataset name | `portfolio_blog_events` |
-| Retention | ~3 months |
+| Retention    | ~3 months               |
 
 The dataset is **auto-created on first write** — no separate provisioning step is needed (unlike D1 or KV, which require `REPLACE_WITH_REAL_ID` values).
 
@@ -35,11 +35,11 @@ pnpm exec wrangler types
 
 ## Events tracked
 
-| Event name (blob1) | Trigger | Dimensions |
-|---|---|---|
-| `subscribe_pending` | `upsertPendingSubscriber` succeeds + confirmation email sent | locale, source, status='pending' |
-| `subscribe_confirmed` | `markConfirmed` succeeds | locale, status='confirmed' |
-| `unsubscribed` | `markUnsubscribed` succeeds | locale, status='unsubscribed' |
+| Event name (blob1)    | Trigger                                                      | Dimensions                       |
+| --------------------- | ------------------------------------------------------------ | -------------------------------- |
+| `subscribe_pending`   | `upsertPendingSubscriber` succeeds + confirmation email sent | locale, source, status='pending' |
+| `subscribe_confirmed` | `markConfirmed` succeeds                                     | locale, status='confirmed'       |
+| `unsubscribed`        | `markUnsubscribed` succeeds                                  | locale, status='unsubscribed'    |
 
 ### Data point shape
 

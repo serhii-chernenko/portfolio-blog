@@ -7,6 +7,7 @@ This document is a complete brief for building a personal technical blog from sc
 ## 1. Project Goals & Non-Goals
 
 ### Goals
+
 - Personal portfolio blog with technical articles
 - Content-first, fast page loads, near-zero JS where possible
 - Bilingual: English (default) + Ukrainian
@@ -20,6 +21,7 @@ This document is a complete brief for building a personal technical blog from sc
 - Markdown/Markdoc content in git, no external CMS database
 
 ### Non-Goals (MVP)
+
 - Paid content / subscriptions
 - Custom comment authentication (Giscus is enough for MVP)
 - Scheduled posts (manual publish via PR merge)
@@ -33,36 +35,37 @@ This document is a complete brief for building a personal technical blog from sc
 
 ## 2. Tech Stack (Exact Versions)
 
-| Layer | Choice | Version |
-|---|---|---|
-| Framework | Astro | ^6.0 |
-| Adapter | `@astrojs/cloudflare` | 13.x (production/preview) |
-| Adapter (local dev) | `@astrojs/node` | 10.x (pnpm dev only — workerd has no fs) |
-| CMS | Keystatic | ^0.5+ |
-| Keystatic Astro integration | `@keystatic/astro` | ^5.x |
-| React (required by Keystatic Admin UI) | `@astrojs/react` | ^4.x |
-| Markdoc | `@astrojs/markdoc` | ^0.13+ |
-| CSS | Tailwind CSS | ^4.0 (via `@tailwindcss/vite`) |
-| CSS typography | `@tailwindcss/typography` | ^0.5 |
-| Component library | DaisyUI | ^5.0 |
-| Content | Astro Content Collections (Content Layer API) | built-in |
-| Code highlighting | Shiki (Astro built-in) | built-in |
-| Search | Pagefind | ^1.x |
-| Comments | Giscus | latest |
-| Newsletter sending | Cloudflare Email Service (`send_email` binding) | built-in |
-| Notifications | Telegram Bot API (no SDK needed) | n/a |
-| Analytics | Cloudflare Web Analytics | n/a |
-| Package manager | pnpm | ^9.x |
-| Node | local dev only | ≥20 |
-| Hosting | Cloudflare Workers (Static Assets + SSR) | n/a |
-| Database | Cloudflare D1 | n/a |
-| Tooling | Wrangler | latest |
-| Type safety | TypeScript (strict) | ^5.x |
-| Workers types | `@cloudflare/workers-types` | ^4.x |
-| Email templates | `@react-email/editor` (admin UI only) | ^1.x |
-| Linting | ESLint + Prettier | latest |
+| Layer                                  | Choice                                          | Version                                  |
+| -------------------------------------- | ----------------------------------------------- | ---------------------------------------- |
+| Framework                              | Astro                                           | ^6.0                                     |
+| Adapter                                | `@astrojs/cloudflare`                           | 13.x (production/preview)                |
+| Adapter (local dev)                    | `@astrojs/node`                                 | 10.x (pnpm dev only — workerd has no fs) |
+| CMS                                    | Keystatic                                       | ^0.5+                                    |
+| Keystatic Astro integration            | `@keystatic/astro`                              | ^5.x                                     |
+| React (required by Keystatic Admin UI) | `@astrojs/react`                                | ^4.x                                     |
+| Markdoc                                | `@astrojs/markdoc`                              | ^0.13+                                   |
+| CSS                                    | Tailwind CSS                                    | ^4.0 (via `@tailwindcss/vite`)           |
+| CSS typography                         | `@tailwindcss/typography`                       | ^0.5                                     |
+| Component library                      | DaisyUI                                         | ^5.0                                     |
+| Content                                | Astro Content Collections (Content Layer API)   | built-in                                 |
+| Code highlighting                      | Shiki (Astro built-in)                          | built-in                                 |
+| Search                                 | Pagefind                                        | ^1.x                                     |
+| Comments                               | Giscus                                          | latest                                   |
+| Newsletter sending                     | Cloudflare Email Service (`send_email` binding) | built-in                                 |
+| Notifications                          | Telegram Bot API (no SDK needed)                | n/a                                      |
+| Analytics                              | Cloudflare Web Analytics                        | n/a                                      |
+| Package manager                        | pnpm                                            | ^9.x                                     |
+| Node                                   | local dev only                                  | ≥20                                      |
+| Hosting                                | Cloudflare Workers (Static Assets + SSR)        | n/a                                      |
+| Database                               | Cloudflare D1                                   | n/a                                      |
+| Tooling                                | Wrangler                                        | latest                                   |
+| Type safety                            | TypeScript (strict)                             | ^5.x                                     |
+| Workers types                          | `@cloudflare/workers-types`                     | ^4.x                                     |
+| Email templates                        | `@react-email/editor` (admin UI only)           | ^1.x                                     |
+| Linting                                | ESLint + Prettier                               | latest                                   |
 
 **Decisions explained briefly:**
+
 - Astro 6 (not Nuxt/Next): Cloudflare-acquired in Jan 2026, first-class Workers support, smallest JS bundle for content sites
 - DaisyUI 5: user is already comfortable with it, theme system fits bilingual + dark mode
 - Tailwind 4 via Vite plugin: replaces the deprecated `@astrojs/tailwind` integration
@@ -76,32 +79,35 @@ This document is a complete brief for building a personal technical blog from sc
 
 ## 3. Cloudflare Resources Required
 
-| Resource | Name | Purpose |
-|---|---|---|
-| Worker | `blog` | Hosts the Astro app (static assets + SSR routes), production |
-| Worker | `blog-pr-*` | Per-PR preview deployments |
-| D1 Database | `portfolio-blog` | Subscribers, future comments |
-| KV Namespace | `RATE_LIMIT` | Rate limiting for subscribe endpoint |
-| Custom Domain | e.g. `yourdomain.com` | Bound to the production Worker |
-| Web Analytics | site token | Privacy-friendly analytics |
+| Resource      | Name                  | Purpose                                                      |
+| ------------- | --------------------- | ------------------------------------------------------------ |
+| Worker        | `blog`                | Hosts the Astro app (static assets + SSR routes), production |
+| Worker        | `blog-pr-*`           | Per-PR preview deployments                                   |
+| D1 Database   | `portfolio-blog`      | Subscribers, future comments                                 |
+| KV Namespace  | `RATE_LIMIT`          | Rate limiting for subscribe endpoint                         |
+| Custom Domain | e.g. `yourdomain.com` | Bound to the production Worker                               |
+| Web Analytics | site token            | Privacy-friendly analytics                                   |
 
 **Secrets (via `wrangler secret put` for production; preview envs use GitHub Actions secrets):**
 Accessed at runtime via `astro:env/server` typed imports:
+
 - `SUBSCRIBE_RATE_LIMIT_SECRET` — required (min: 1)
 - `TELEGRAM_BOT_TOKEN` — optional (notify() no-ops when absent)
 - `TELEGRAM_CHAT_ID` — optional
-Accessed via Keystatic's own auth layer (not through astro:env):
+  Accessed via Keystatic's own auth layer (not through astro:env):
 - `KEYSTATIC_GITHUB_CLIENT_ID`
 - `KEYSTATIC_GITHUB_CLIENT_SECRET`
 - `KEYSTATIC_SECRET`
 
 **Public vars (in `wrangler.jsonc` `vars`):**
+
 - `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`
 - `MAIL_FROM` (sender address, e.g. `hello@yourdomain.com`)
-Accessed via `cloudflare:workers` env (same as bindings):
+  Accessed via `cloudflare:workers` env (same as bindings):
 - `MAIL_FROM`
 
 **Bindings (in `wrangler.jsonc`):**
+
 - `SEND_EMAIL` — Cloudflare Email Service binding for outbound email (replaces Resend)
 
 ---
@@ -306,61 +312,61 @@ const LOCAL_MODE = process.env.PUBLIC_KEYSTATIC_MODE === 'local';
 const BASE_PATH = LOCAL_MODE ? '/' : '/blog';
 
 export default defineConfig({
-  site: 'https://yourdomain.com',
-  base: BASE_PATH,               // '/blog' in prod/preview, '/' in local dev
-  output: 'server',
-  // adapter branches on PUBLIC_KEYSTATIC_MODE:
-  //   local (pnpm dev)  → @astrojs/node  (workerd has no fs; Keystatic local needs fs)
-  //   otherwise         → @astrojs/cloudflare  (production / wrangler:dev)
-  adapter: LOCAL_MODE
-    ? node({ mode: 'standalone' })
-    : cloudflare({
-        // 'passthrough' avoids bundling sharp into the Worker.
-        // sharp cannot run in the Workers runtime.
-        imageService: 'passthrough',
-      }),
-  image: {
-    // No-op service prevents sharp from being pulled into the bundle.
-    service: { entrypoint: 'astro/assets/services/noop' },
-  },
-  i18n: {
-    locales: ['en', 'uk'],
-    defaultLocale: 'en',
-    routing: {
-      prefixDefaultLocale: true,
-      redirectToDefaultLocale: true,
-    },
-  },
-  integrations: [
-    react(),
-    markdoc(),
-    keystatic(),
-    sitemap({
-      i18n: {
-        defaultLocale: 'en',
-        locales: { en: 'en-US', uk: 'uk-UA' },
-      },
-    }),
-  ],
-  vite: {
-    plugins: [tailwindcss()],
-    // Keystatic UI needs Vite to pre-bundle (CJS→ESM) react-dom/client and the
-    // React Spectrum / Keystatic UI modules. Including them eagerly avoids the
-    // "createRoot is not exported" runtime hydration error.
-    optimizeDeps: {
-      include: [
-        'react',
-        'react/jsx-runtime',
-        'react-dom',
-        'react-dom/client',
-        '@keystatic/core/ui',
-        '@keystatic/astro/ui',
-      ],
-    },
-  },
-  markdown: {
-    shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' } },
-  },
+	site: 'https://yourdomain.com',
+	base: BASE_PATH, // '/blog' in prod/preview, '/' in local dev
+	output: 'server',
+	// adapter branches on PUBLIC_KEYSTATIC_MODE:
+	//   local (pnpm dev)  → @astrojs/node  (workerd has no fs; Keystatic local needs fs)
+	//   otherwise         → @astrojs/cloudflare  (production / wrangler:dev)
+	adapter: LOCAL_MODE
+		? node({ mode: 'standalone' })
+		: cloudflare({
+				// 'passthrough' avoids bundling sharp into the Worker.
+				// sharp cannot run in the Workers runtime.
+				imageService: 'passthrough',
+			}),
+	image: {
+		// No-op service prevents sharp from being pulled into the bundle.
+		service: { entrypoint: 'astro/assets/services/noop' },
+	},
+	i18n: {
+		locales: ['en', 'uk'],
+		defaultLocale: 'en',
+		routing: {
+			prefixDefaultLocale: true,
+			redirectToDefaultLocale: true,
+		},
+	},
+	integrations: [
+		react(),
+		markdoc(),
+		keystatic(),
+		sitemap({
+			i18n: {
+				defaultLocale: 'en',
+				locales: { en: 'en-US', uk: 'uk-UA' },
+			},
+		}),
+	],
+	vite: {
+		plugins: [tailwindcss()],
+		// Keystatic UI needs Vite to pre-bundle (CJS→ESM) react-dom/client and the
+		// React Spectrum / Keystatic UI modules. Including them eagerly avoids the
+		// "createRoot is not exported" runtime hydration error.
+		optimizeDeps: {
+			include: [
+				'react',
+				'react/jsx-runtime',
+				'react-dom',
+				'react-dom/client',
+				'@keystatic/core/ui',
+				'@keystatic/astro/ui',
+			],
+		},
+	},
+	markdown: {
+		shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' } },
+	},
 });
 ```
 
@@ -396,176 +402,185 @@ const GITHUB_REPO = 'YOUR_GITHUB_ORG/blog';
 // editor for custom Markdoc blocks. Without these, the editor shows a blank
 // placeholder for {% callout %} and {% youtube %} tags.
 const markdocComponents = {
-  callout: wrapper({
-    label: 'Callout',
-    schema: {
-      type: fields.select({
-        label: 'Type',
-        defaultValue: 'info',
-        options: [
-          { label: 'Info', value: 'info' },
-          { label: 'Tip', value: 'tip' },
-          { label: 'Warning', value: 'warn' },
-          { label: 'Danger', value: 'danger' },
-        ],
-      }),
-    },
-    ContentView: ({ value, children }) =>
-      createElement('div', {
-        style: {
-          borderLeft: '4px solid var(--ks-colors-border-accent)',
-          padding: '12px 16px',
-          margin: '12px 0',
-          background: 'var(--ks-colors-background-secondary)',
-          borderRadius: '8px',
-        },
-      }, children),
-  }),
-  youtube: block({
-    label: 'YouTube',
-    schema: {
-      id: fields.text({ label: 'Video ID', validation: { isRequired: true } }),
-      title: fields.text({ label: 'Title', defaultValue: '' }),
-    },
-    ContentView: ({ value }) =>
-      createElement('div', {
-        style: {
-          padding: '12px 16px',
-          margin: '12px 0',
-          background: 'var(--ks-colors-background-secondary)',
-          border: '1px solid var(--ks-colors-border-muted)',
-          borderRadius: '8px',
-        },
-      }, `YouTube embed: ${value.title || value.id}`),
-  }),
+	callout: wrapper({
+		label: 'Callout',
+		schema: {
+			type: fields.select({
+				label: 'Type',
+				defaultValue: 'info',
+				options: [
+					{ label: 'Info', value: 'info' },
+					{ label: 'Tip', value: 'tip' },
+					{ label: 'Warning', value: 'warn' },
+					{ label: 'Danger', value: 'danger' },
+				],
+			}),
+		},
+		ContentView: ({ value, children }) =>
+			createElement(
+				'div',
+				{
+					style: {
+						borderLeft: '4px solid var(--ks-colors-border-accent)',
+						padding: '12px 16px',
+						margin: '12px 0',
+						background: 'var(--ks-colors-background-secondary)',
+						borderRadius: '8px',
+					},
+				},
+				children,
+			),
+	}),
+	youtube: block({
+		label: 'YouTube',
+		schema: {
+			id: fields.text({ label: 'Video ID', validation: { isRequired: true } }),
+			title: fields.text({ label: 'Title', defaultValue: '' }),
+		},
+		ContentView: ({ value }) =>
+			createElement(
+				'div',
+				{
+					style: {
+						padding: '12px 16px',
+						margin: '12px 0',
+						background: 'var(--ks-colors-background-secondary)',
+						border: '1px solid var(--ks-colors-border-muted)',
+						borderRadius: '8px',
+					},
+				},
+				`YouTube embed: ${value.title || value.id}`,
+			),
+	}),
 };
 
 export default config({
-  storage: useLocal
-    ? { kind: 'local' }
-    : {
-        kind: 'github',
-        repo: GITHUB_REPO,
-        branchPrefix: 'post/',
-      },
+	storage: useLocal
+		? { kind: 'local' }
+		: {
+				kind: 'github',
+				repo: GITHUB_REPO,
+				branchPrefix: 'post/',
+			},
 
-  ui: {
-    brand: { name: 'Your Blog', mark: () => createElement('span', null, '✍️') },
-  },
+	ui: {
+		brand: { name: 'Your Blog', mark: () => createElement('span', null, '✍️') },
+	},
 
-  collections: {
-    postsEn: collection({
-      label: 'Posts (English)',
-      // `slugField: 'title'` tells Keystatic to use the title field's slug part
-      // as the filename. `fields.slug` is a COMPOUND field: it renders a name
-      // input AND a slug input derived from it. So one field, two UI inputs —
-      // no separate `slug` field needed.
-      slugField: 'title',
-      path: 'src/content/posts/en/*',
-      format: { contentField: 'content' },
-      schema: {
-        title: fields.slug({
-          name: {
-            label: 'Title',
-            validation: { length: { min: 1, max: 120 } },
-          },
-          slug: {
-            label: 'Slug',
-            description: 'URL slug — auto-generated from the title. Override if needed.',
-          },
-        }),
-        translationKey: fields.text({
-          label: 'Translation Key',
-          description: 'Shared identifier across translations of the same article.',
-          validation: { length: { min: 1, max: 80 } },
-        }),
-        description: fields.text({
-          label: 'Description',
-          multiline: true,
-          validation: { length: { min: 50, max: 200 } },
-        }),
-        publishedAt: fields.datetime({ label: 'Published at' }),
-        updatedAt: fields.datetime({ label: 'Updated at' }),
-        tags: fields.array(fields.text({ label: 'Tag' }), {
-          label: 'Tags',
-          itemLabel: (props) => props.value,
-        }),
-        heroImage: fields.image({
-          label: 'Hero image',
-          directory: 'src/assets/posts',
-          publicPath: '/src/assets/posts/',
-        }),
-        heroImageAlt: fields.text({ label: 'Hero image alt text' }),
-        draft: fields.checkbox({ label: 'Draft', defaultValue: true }),
-        content: fields.markdoc({
-          label: 'Content',
-          components: markdocComponents,
-          options: {
-            image: {
-              directory: 'src/assets/posts',
-              publicPath: '/src/assets/posts/',
-            },
-          },
-        }),
-      },
-    }),
+	collections: {
+		postsEn: collection({
+			label: 'Posts (English)',
+			// `slugField: 'title'` tells Keystatic to use the title field's slug part
+			// as the filename. `fields.slug` is a COMPOUND field: it renders a name
+			// input AND a slug input derived from it. So one field, two UI inputs —
+			// no separate `slug` field needed.
+			slugField: 'title',
+			path: 'src/content/posts/en/*',
+			format: { contentField: 'content' },
+			schema: {
+				title: fields.slug({
+					name: {
+						label: 'Title',
+						validation: { length: { min: 1, max: 120 } },
+					},
+					slug: {
+						label: 'Slug',
+						description: 'URL slug — auto-generated from the title. Override if needed.',
+					},
+				}),
+				translationKey: fields.text({
+					label: 'Translation Key',
+					description: 'Shared identifier across translations of the same article.',
+					validation: { length: { min: 1, max: 80 } },
+				}),
+				description: fields.text({
+					label: 'Description',
+					multiline: true,
+					validation: { length: { min: 50, max: 200 } },
+				}),
+				publishedAt: fields.datetime({ label: 'Published at' }),
+				updatedAt: fields.datetime({ label: 'Updated at' }),
+				tags: fields.array(fields.text({ label: 'Tag' }), {
+					label: 'Tags',
+					itemLabel: (props) => props.value,
+				}),
+				heroImage: fields.image({
+					label: 'Hero image',
+					directory: 'src/assets/posts',
+					publicPath: '/src/assets/posts/',
+				}),
+				heroImageAlt: fields.text({ label: 'Hero image alt text' }),
+				draft: fields.checkbox({ label: 'Draft', defaultValue: true }),
+				content: fields.markdoc({
+					label: 'Content',
+					components: markdocComponents,
+					options: {
+						image: {
+							directory: 'src/assets/posts',
+							publicPath: '/src/assets/posts/',
+						},
+					},
+				}),
+			},
+		}),
 
-    postsUk: collection({
-      label: 'Статті (Українською)',
-      slugField: 'title',
-      path: 'src/content/posts/uk/*',
-      format: { contentField: 'content' },
-      schema: {
-        title: fields.slug({
-          name: {
-            label: 'Заголовок',
-            validation: { length: { min: 1, max: 120 } },
-          },
-          slug: {
-            label: 'Slug',
-            description: 'URL slug — генерується автоматично, можна змінити вручну.',
-          },
-        }),
-        translationKey: fields.text({
-          label: 'Translation Key',
-          description: 'Спільний ідентифікатор для перекладів однієї статті.',
-          validation: { length: { min: 1, max: 80 } },
-        }),
-        description: fields.text({
-          label: 'Опис',
-          multiline: true,
-          validation: { length: { min: 50, max: 200 } },
-        }),
-        publishedAt: fields.datetime({ label: 'Опубліковано' }),
-        updatedAt: fields.datetime({ label: 'Оновлено' }),
-        tags: fields.array(fields.text({ label: 'Тег' }), {
-          label: 'Теги',
-          itemLabel: (props) => props.value,
-        }),
-        heroImage: fields.image({
-          label: 'Головне зображення',
-          directory: 'src/assets/posts',
-          publicPath: '/src/assets/posts/',
-        }),
-        heroImageAlt: fields.text({ label: 'Alt тексту' }),
-        draft: fields.checkbox({ label: 'Чернетка', defaultValue: true }),
-        content: fields.markdoc({
-          label: 'Текст статті',
-          components: markdocComponents,
-          options: {
-            image: {
-              directory: 'src/assets/posts',
-              publicPath: '/src/assets/posts/',
-            },
-          },
-        }),
-      },
-    }),
-  },
+		postsUk: collection({
+			label: 'Статті (Українською)',
+			slugField: 'title',
+			path: 'src/content/posts/uk/*',
+			format: { contentField: 'content' },
+			schema: {
+				title: fields.slug({
+					name: {
+						label: 'Заголовок',
+						validation: { length: { min: 1, max: 120 } },
+					},
+					slug: {
+						label: 'Slug',
+						description: 'URL slug — генерується автоматично, можна змінити вручну.',
+					},
+				}),
+				translationKey: fields.text({
+					label: 'Translation Key',
+					description: 'Спільний ідентифікатор для перекладів однієї статті.',
+					validation: { length: { min: 1, max: 80 } },
+				}),
+				description: fields.text({
+					label: 'Опис',
+					multiline: true,
+					validation: { length: { min: 50, max: 200 } },
+				}),
+				publishedAt: fields.datetime({ label: 'Опубліковано' }),
+				updatedAt: fields.datetime({ label: 'Оновлено' }),
+				tags: fields.array(fields.text({ label: 'Тег' }), {
+					label: 'Теги',
+					itemLabel: (props) => props.value,
+				}),
+				heroImage: fields.image({
+					label: 'Головне зображення',
+					directory: 'src/assets/posts',
+					publicPath: '/src/assets/posts/',
+				}),
+				heroImageAlt: fields.text({ label: 'Alt тексту' }),
+				draft: fields.checkbox({ label: 'Чернетка', defaultValue: true }),
+				content: fields.markdoc({
+					label: 'Текст статті',
+					components: markdocComponents,
+					options: {
+						image: {
+							directory: 'src/assets/posts',
+							publicPath: '/src/assets/posts/',
+						},
+					},
+				}),
+			},
+		}),
+	},
 });
 ```
 
 **Key differences from a naive Keystatic setup:**
+
 1. **`slugField: 'title'`** — uses the compound `fields.slug({ name, slug })` so the title IS the slug field. There is no separate `slug` field. The `slug` sub-field auto-generates from the `name` sub-field but is manually editable.
 2. **`components: markdocComponents`** — registers Keystatic content components (`block`, `wrapper`) so the Admin UI editor shows live previews for custom Markdoc tags like `{% callout %}` and `{% youtube %}`. Without these, the editor renders a blank placeholder.
 3. **`import.meta.env` instead of `process.env.NODE_ENV`** — Keystatic's storage kind must be a build-time literal (Vite inlines `import.meta.env.PUBLIC_*` into both server and client bundles). Using `process.env.NODE_ENV === 'production'` would fail in the browser bundle where `process` doesn't exist. The `PUBLIC_KEYSTATIC_MODE` flag also drives the Astro base path in `astro.config.mts`.
@@ -580,27 +595,27 @@ import { defineMarkdocConfig, component } from '@astrojs/markdoc/config';
 import shiki from '@astrojs/markdoc/shiki';
 
 export default defineMarkdocConfig({
-  extends: [shiki({ themes: { light: 'github-light', dark: 'github-dark' }, wrap: true })],
-  tags: {
-    youtube: {
-      render: component('./src/components/markdoc/YouTube.astro'),
-      attributes: {
-        id: { type: String, required: true },
-        title: { type: String },
-      },
-    },
-    callout: {
-      render: component('./src/components/markdoc/Callout.astro'),
-      attributes: {
-        type: {
-          type: String,
-          default: 'info',
-          matches: ['info', 'warn', 'tip', 'danger'],
-        },
-      },
-    },
-  },
-  // Do NOT add a `nodes.fence` override here.
+	extends: [shiki({ themes: { light: 'github-light', dark: 'github-dark' }, wrap: true })],
+	tags: {
+		youtube: {
+			render: component('./src/components/markdoc/YouTube.astro'),
+			attributes: {
+				id: { type: String, required: true },
+				title: { type: String },
+			},
+		},
+		callout: {
+			render: component('./src/components/markdoc/Callout.astro'),
+			attributes: {
+				type: {
+					type: String,
+					default: 'info',
+					matches: ['info', 'warn', 'tip', 'danger'],
+				},
+			},
+		},
+	},
+	// Do NOT add a `nodes.fence` override here.
 });
 ```
 
@@ -610,77 +625,77 @@ export default defineMarkdocConfig({
 
 ```jsonc
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "blog",
-  "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2026-05-15",
-  "compatibility_flags": ["nodejs_compat"],
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "blog",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"compatibility_date": "2026-05-15",
+	"compatibility_flags": ["nodejs_compat"],
 
-  "assets": {
-    "binding": "ASSETS",
-    "directory": "./dist/client"
-  },
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist/client",
+	},
 
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "portfolio-blog",
-      "database_id": "REPLACE_WITH_REAL_ID",
-      "migrations_dir": "./schema"
-    }
-  ],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "portfolio-blog",
+			"database_id": "REPLACE_WITH_REAL_ID",
+			"migrations_dir": "./schema",
+		},
+	],
 
-  "kv_namespaces": [
-    {
-      "binding": "RATE_LIMIT",
-      "id": "REPLACE_WITH_REAL_ID"
-    }
-  ],
+	"kv_namespaces": [
+		{
+			"binding": "RATE_LIMIT",
+			"id": "REPLACE_WITH_REAL_ID",
+		},
+	],
 
-  // Cloudflare Email Service binding for outbound email.
-  // Requires Email Routing enabled on the sender domain.
-  "send_email": [
-    {
-      "name": "SEND_EMAIL"
-    }
-  ],
+	// Cloudflare Email Service binding for outbound email.
+	// Requires Email Routing enabled on the sender domain.
+	"send_email": [
+		{
+			"name": "SEND_EMAIL",
+		},
+	],
 
-  "observability": {
-    "enabled": true
-  },
+	"observability": {
+		"enabled": true,
+	},
 
-  // Route topology:
-  //
-  //   /blog, /blog/*   → all blog routes (incl. /blog/keystatic UI)
-  //   /api/keystatic, /api/keystatic/*
-  //                    → apex Keystatic API. The Keystatic React UI
-  //                      fetches these absolute paths; src/middleware.ts
-  //                      rewrites them to /blog/api/keystatic/* so Astro
-  //                      (running with base: '/blog') can serve them.
-  //
-  // Apex `/` is intentionally NOT bound — the root domain serves
-  // a separate site (e.g. portfolio landing page).
-  "routes": [
-    { "pattern": "yourdomain.com/blog", "zone_name": "yourdomain.com" },
-    { "pattern": "yourdomain.com/blog/*", "zone_name": "yourdomain.com" },
-    { "pattern": "yourdomain.com/api/keystatic", "zone_name": "yourdomain.com" },
-    { "pattern": "yourdomain.com/api/keystatic/*", "zone_name": "yourdomain.com" }
-  ],
+	// Route topology:
+	//
+	//   /blog, /blog/*   → all blog routes (incl. /blog/keystatic UI)
+	//   /api/keystatic, /api/keystatic/*
+	//                    → apex Keystatic API. The Keystatic React UI
+	//                      fetches these absolute paths; src/middleware.ts
+	//                      rewrites them to /blog/api/keystatic/* so Astro
+	//                      (running with base: '/blog') can serve them.
+	//
+	// Apex `/` is intentionally NOT bound — the root domain serves
+	// a separate site (e.g. portfolio landing page).
+	"routes": [
+		{ "pattern": "yourdomain.com/blog", "zone_name": "yourdomain.com" },
+		{ "pattern": "yourdomain.com/blog/*", "zone_name": "yourdomain.com" },
+		{ "pattern": "yourdomain.com/api/keystatic", "zone_name": "yourdomain.com" },
+		{ "pattern": "yourdomain.com/api/keystatic/*", "zone_name": "yourdomain.com" },
+	],
 
-  // Public (non-secret) vars. These are inlined into the deployed Worker bundle.
-  // Anything sensitive belongs in `wrangler secret put`.
-  "vars": {
-    "MAIL_FROM": "hello@yourdomain.com",
-    "PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug"
-  },
+	// Public (non-secret) vars. These are inlined into the deployed Worker bundle.
+	// Anything sensitive belongs in `wrangler secret put`.
+	"vars": {
+		"MAIL_FROM": "hello@yourdomain.com",
+		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug",
+	},
 
-  // `dev.host` is only relevant if you run `wrangler dev` directly.
-  // `pnpm wrangler:dev` runs `pnpm build && astro preview` instead (the v13
-  // approach via @cloudflare/vite-plugin, serving at :4321), so this entry
-  // does not affect normal local development.
-  "dev": {
-    "host": "localhost:8787"
-  }
+	// `dev.host` is only relevant if you run `wrangler dev` directly.
+	// `pnpm wrangler:dev` runs `pnpm build && astro preview` instead (the v13
+	// approach via @cloudflare/vite-plugin, serving at :4321), so this entry
+	// does not affect normal local development.
+	"dev": {
+		"host": "localhost:8787",
+	},
 }
 ```
 
@@ -691,44 +706,45 @@ export default defineMarkdocConfig({
 > Uses custom DaisyUI theme definitions instead of the built-in `light`/`dark` presets. The `themes: false` flag disables all built-in themes so only the explicitly-defined custom themes are available. This gives full control over the color palette.
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
-  themes: false;  /* Disable built-in themes; define custom ones below */
-  logs: false;
+	themes: false; /* Disable built-in themes; define custom ones below */
+	logs: false;
 }
 
 @plugin "daisyui/theme" {
-  name: "light";
-  default: true;
-  prefersdark: false;
-  color-scheme: "light";
-  /* ... custom color variables ... */
+	name: 'light';
+	default: true;
+	prefersdark: false;
+	color-scheme: 'light';
+	/* ... custom color variables ... */
 }
 
 @plugin "daisyui/theme" {
-  name: "dark";
-  default: false;
-  prefersdark: false;
-  color-scheme: "dark";
-  /* ... custom color variables ... */
+	name: 'dark';
+	default: false;
+	prefersdark: false;
+	color-scheme: 'dark';
+	/* ... custom color variables ... */
 }
 
 /* Custom variants for data-theme-based light/dark styling */
 @custom-variant light {
-  &:where([data-theme="light"], [data-theme="light"] *) {
-    @slot;
-  }
+	&:where([data-theme='light'], [data-theme='light'] *) {
+		@slot;
+	}
 }
 
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
-  }
+	&:where([data-theme='dark'], [data-theme='dark'] *) {
+		@slot;
+	}
 }
 ```
 
 The full `global.css` also includes:
+
 - Custom utilities: `.hitslop`, `.icon`, `.cta-icon`, `.cta-icon-left`
 - Code block styling: `.code-block-wrap`, `.lang-badge`, `.copy-btn` (hover-to-reveal copy button + language badge, layered over Shiki output via client-side JS in `PostLayout.astro`)
 - Anchor scroll margin for sticky header
@@ -751,38 +767,39 @@ The full `global.css` also includes:
 // directly in app code to read values.
 
 interface Env {
-  DB: D1Database;
-  RATE_LIMIT: KVNamespace;
-  ASSETS: Fetcher;
-  /** Cloudflare Email Service binding — see `send_email` in wrangler.jsonc. */
-  SEND_EMAIL: SendEmail;
-  /** Sender address, e.g. "hello@yourdomain.com". Set as a wrangler var (not a secret). */
-  MAIL_FROM: string;
-  PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
+	DB: D1Database;
+	RATE_LIMIT: KVNamespace;
+	ASSETS: Fetcher;
+	/** Cloudflare Email Service binding — see `send_email` in wrangler.jsonc. */
+	SEND_EMAIL: SendEmail;
+	/** Sender address, e.g. "hello@yourdomain.com". Set as a wrangler var (not a secret). */
+	MAIL_FROM: string;
+	PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: string;
 }
 
 interface ImportMetaEnv {
-  readonly PREVIEW_MODE?: string;
-  /**
-   * Drives Keystatic storage kind AND Astro base path. Set to `'local'`
-   * by `pnpm dev` only. Unset for `pnpm wrangler:dev` and `pnpm build`
-   * (both use GitHub OAuth and base `/blog`).
-   */
-  readonly PUBLIC_KEYSTATIC_MODE?: 'local';
-  readonly PUBLIC_KEYSTATIC_GITHUB_APP_SLUG?: string;
-  readonly PUBLIC_GISCUS_REPO?: string;
-  readonly PUBLIC_GISCUS_REPO_ID?: string;
-  readonly PUBLIC_GISCUS_CATEGORY?: string;
-  readonly PUBLIC_GISCUS_CATEGORY_ID?: string;
-  readonly PUBLIC_CF_ANALYTICS_TOKEN?: string;
+	readonly PREVIEW_MODE?: string;
+	/**
+	 * Drives Keystatic storage kind AND Astro base path. Set to `'local'`
+	 * by `pnpm dev` only. Unset for `pnpm wrangler:dev` and `pnpm build`
+	 * (both use GitHub OAuth and base `/blog`).
+	 */
+	readonly PUBLIC_KEYSTATIC_MODE?: 'local';
+	readonly PUBLIC_KEYSTATIC_GITHUB_APP_SLUG?: string;
+	readonly PUBLIC_GISCUS_REPO?: string;
+	readonly PUBLIC_GISCUS_REPO_ID?: string;
+	readonly PUBLIC_GISCUS_CATEGORY?: string;
+	readonly PUBLIC_GISCUS_CATEGORY_ID?: string;
+	readonly PUBLIC_CF_ANALYTICS_TOKEN?: string;
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
+	readonly env: ImportMetaEnv;
 }
 ```
 
 **Key differences from the initial plan:**
+
 - `SEND_EMAIL: SendEmail` and `MAIL_FROM: string` — replaces `RESEND_API_KEY` since we use Cloudflare Email Service instead of the Resend SDK. Both accessed via `cloudflare:workers` env.
 - `@cloudflare/workers-types` reference — provides `D1Database`, `KVNamespace`, `Fetcher`, `SendEmail` type definitions.
 - `ImportMetaEnv` with `PUBLIC_*` and `PREVIEW_MODE` — these are build-time constants (Vite inlines them). They're needed for Keystatic mode, Giscus, and Cloudflare Analytics configuration.
@@ -794,6 +811,7 @@ interface ImportMeta {
 ## 7. i18n Architecture
 
 ### Locale codes & rationale
+
 - ISO 639-1 requires `uk` for Ukrainian (NOT `ua`, which is a region code only)
 - Internal: `uk`. `<html lang>` and hreflang: `uk-UA` (explicit, removes ambiguity). URL paths: `/uk/`
 
@@ -806,27 +824,27 @@ export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'en';
 
 export const htmlLangAttribute: Record<Locale, string> = {
-  en: 'en',
-  uk: 'uk-UA',
+	en: 'en',
+	uk: 'uk-UA',
 };
 
 export const ogLocale: Record<Locale, string> = {
-  en: 'en_US',
-  uk: 'uk_UA',
+	en: 'en_US',
+	uk: 'uk_UA',
 };
 
 export const localeLabels: Record<Locale, string> = {
-  en: 'English',
-  uk: 'Українська',
+	en: 'English',
+	uk: 'Українська',
 };
 
 export const localeFlags: Record<Locale, string> = {
-  en: '🇬🇧',
-  uk: '🇺🇦',
+	en: '🇬🇧',
+	uk: '🇺🇦',
 };
 
 export function isLocale(value: string): value is Locale {
-  return (locales as readonly string[]).includes(value);
+	return (locales as readonly string[]).includes(value);
 }
 ```
 
@@ -834,6 +852,7 @@ export function isLocale(value: string): value is Locale {
 **`isLocale()`** is a type guard used by API endpoints and `getLocaleFromUrl()` to validate locale strings.
 
 ### `src/i18n/ui.ts`
+
 Contains UI string maps for both locales (`nav.*`, `post.*`, `subscribe.*`, `search.*`, `comments.*`).
 
 ### `src/i18n/utils.ts`
@@ -844,21 +863,21 @@ import { defaultLocale, isLocale, type Locale } from './config';
 import { getPostSlug } from '../lib/post-slug';
 
 export function getLocaleFromUrl(url: URL): Locale {
-  const [, maybeLocale] = url.pathname.split('/');
-  if (maybeLocale && isLocale(maybeLocale)) return maybeLocale;
-  return defaultLocale;
+	const [, maybeLocale] = url.pathname.split('/');
+	if (maybeLocale && isLocale(maybeLocale)) return maybeLocale;
+	return defaultLocale;
 }
 
 export function useTranslations(locale: Locale) {
-  return function t(key: UIKey, vars?: Record<string, string | number>): string {
-    let value: string = ui[locale][key] ?? ui[defaultLocale][key];
-    if (vars) {
-      for (const [k, v] of Object.entries(vars)) {
-        value = value.replaceAll(`{${k}}`, String(v));
-      }
-    }
-    return value;
-  };
+	return function t(key: UIKey, vars?: Record<string, string | number>): string {
+		let value: string = ui[locale][key] ?? ui[defaultLocale][key];
+		if (vars) {
+			for (const [k, v] of Object.entries(vars)) {
+				value = value.replaceAll(`{${k}}`, String(v));
+			}
+		}
+		return value;
+	};
 }
 
 /**
@@ -866,14 +885,14 @@ export function useTranslations(locale: Locale) {
  * Always inserts exactly one slash between base and path.
  */
 export function withBase(path: string): string {
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-  const clean = path.replace(/^\/+/, '');
-  return clean ? `${base}/${clean}` : `${base}/`;
+	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+	const clean = path.replace(/^\/+/, '');
+	return clean ? `${base}/${clean}` : `${base}/`;
 }
 
 export function localeHref(locale: Locale, path = ''): string {
-  const clean = path.replace(/^\/+/, '');
-  return withBase(clean ? `${locale}/${clean}` : `${locale}/`);
+	const clean = path.replace(/^\/+/, '');
+	return withBase(clean ? `${locale}/${clean}` : `${locale}/`);
 }
 
 /**
@@ -881,22 +900,17 @@ export function localeHref(locale: Locale, path = ''): string {
  * Returns null for locales where the translation doesn't exist.
  */
 export async function getTranslatedPostUrls(
-  translationKey: string,
+	translationKey: string,
 ): Promise<Record<Locale, string | null>> {
-  const { getCollection } = await import('astro:content');
-  const all = [
-    ...(await getCollection('postsEn')),
-    ...(await getCollection('postsUk')),
-  ];
-  const matches = all.filter(
-    (p) => p.data.translationKey === translationKey,
-  );
-  const result: Record<Locale, string | null> = { en: null, uk: null };
-  for (const m of matches) {
-    const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';
-    result[locale] = withBase(`${locale}/posts/${getPostSlug(m)}`);
-  }
-  return result;
+	const { getCollection } = await import('astro:content');
+	const all = [...(await getCollection('postsEn')), ...(await getCollection('postsUk'))];
+	const matches = all.filter((p) => p.data.translationKey === translationKey);
+	const result: Record<Locale, string | null> = { en: null, uk: null };
+	for (const m of matches) {
+		const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';
+		result[locale] = withBase(`${locale}/posts/${getPostSlug(m)}`);
+	}
+	return result;
 }
 ```
 
@@ -909,11 +923,13 @@ export async function getTranslatedPostUrls(
 The production blog lives at `yourdomain.com/blog` (not the domain root). This is a deliberate choice: the root domain (`yourdomain.com`) may serve a separate portfolio or landing page in the future.
 
 ### How it works
+
 - `astro.config.mts` sets `base: '/blog'` when `PUBLIC_KEYSTATIC_MODE` is not `local`
 - In local dev (`pnpm dev`), `base` is `/` because Keystatic's React Admin UI hardcodes ~20 fetch URLs to `/api/keystatic/*` (root-relative, no `basePath` option). With `base: '/'`, those paths naturally line up.
 - In production and `wrangler dev`, `base: '/blog'` shifts all Astro routes under `/blog/*`
 
 ### The Keystatic API path mismatch
+
 Keystatic's React client makes absolute fetches to `/api/keystatic/*`. With `base: '/blog'`, the Astro API routes actually live at `/blog/api/keystatic/*`. The mismatch is solved by two pieces:
 
 1. **Apex Worker route binding** — `wrangler.jsonc` binds the Worker to `yourdomain.com/api/keystatic` and `yourdomain.com/api/keystatic/*` in addition to `/blog/*`. So the UI's apex fetches reach this Worker.
@@ -928,26 +944,28 @@ const BASE = '/blog';
 const APEX_PREFIXES = ['/api/keystatic'];
 
 export const onRequest = defineMiddleware((context, next) => {
-  if (import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local') {
-    return next();
-  }
+	if (import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local') {
+		return next();
+	}
 
-  const { pathname, search } = context.url;
+	const { pathname, search } = context.url;
 
-  for (const prefix of APEX_PREFIXES) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return context.rewrite(`${BASE}${pathname}${search}`);
-    }
-  }
+	for (const prefix of APEX_PREFIXES) {
+		if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+			return context.rewrite(`${BASE}${pathname}${search}`);
+		}
+	}
 
-  return next();
+	return next();
 });
 ```
 
 ### URL helpers
+
 All internal links must go through `withBase()` or `localeHref()` (from `src/i18n/utils.ts`) to produce correct paths like `/blog/en/posts/...` in production and `/en/posts/...` in local dev. Never hardcode locale paths.
 
 ### `robots.txt`
+
 Blocks both `/blog/keystatic` and `/keystatic` (and their `/api/` counterparts) from indexing, covering both the base-path and apex-path forms.
 
 ---
@@ -964,30 +982,30 @@ import type { SchemaContext } from 'astro:content';
 import { glob } from 'astro/loaders';
 
 const postSchema = ({ image }: SchemaContext) =>
-  z.object({
-    title: z.string().min(1).max(120),
-    // `slug` is optional in Zod because Keystatic's compound `fields.slug`
-    // writes the slug to the filename (not as a separate frontmatter key).
-    // When absent, `getPostSlug()` falls back to `post.id.replace(/\.mdoc$/, '')`.
-    slug: z.string().optional(),
-    description: z.string().min(50).max(200),
-    translationKey: z.string().regex(/^[a-z0-9-]+$/),
-    publishedAt: z.coerce.date(),
-    updatedAt: z.coerce.date().optional(),
-    tags: z.array(z.string()).default([]),
-    heroImage: image().optional(),
-    heroImageAlt: z.string().optional(),
-    draft: z.boolean().default(true),
-  });
+	z.object({
+		title: z.string().min(1).max(120),
+		// `slug` is optional in Zod because Keystatic's compound `fields.slug`
+		// writes the slug to the filename (not as a separate frontmatter key).
+		// When absent, `getPostSlug()` falls back to `post.id.replace(/\.mdoc$/, '')`.
+		slug: z.string().optional(),
+		description: z.string().min(50).max(200),
+		translationKey: z.string().regex(/^[a-z0-9-]+$/),
+		publishedAt: z.coerce.date(),
+		updatedAt: z.coerce.date().optional(),
+		tags: z.array(z.string()).default([]),
+		heroImage: image().optional(),
+		heroImageAlt: z.string().optional(),
+		draft: z.boolean().default(true),
+	});
 
 const postsEn = defineCollection({
-  loader: glob({ pattern: '*.mdoc', base: './src/content/posts/en' }),
-  schema: postSchema,
+	loader: glob({ pattern: '*.mdoc', base: './src/content/posts/en' }),
+	schema: postSchema,
 });
 
 const postsUk = defineCollection({
-  loader: glob({ pattern: '*.mdoc', base: './src/content/posts/uk' }),
-  schema: postSchema,
+	loader: glob({ pattern: '*.mdoc', base: './src/content/posts/uk' }),
+	schema: postSchema,
 });
 
 export const collections = { postsEn, postsUk };
@@ -996,6 +1014,7 @@ export const collections = { postsEn, postsUk };
 **Note on `slug: z.string().optional()`:** Keystatic's compound `fields.slug({ name, slug })` writes the slug value to the **filename** (e.g. `hello-world.mdoc`), not as a separate `slug:` frontmatter key. The `post.data.slug` field is therefore absent in most `.mdoc` files. The `getPostSlug()` helper in `src/lib/post-slug.ts` resolves this by falling back to `post.id.replace(/\.mdoc$/, '')` when `post.data.slug` is undefined.
 
 ### Why two collections instead of one
+
 Keystatic configures collections as independent units (each tied to a `path`). Mirroring this on the Astro side keeps the data layer aligned with the CMS layer and avoids runtime locale filtering on every query. `translationKey` bridges them when needed.
 
 ---
@@ -1003,6 +1022,7 @@ Keystatic configures collections as independent units (each tied to a `path`). M
 ## 10. Keystatic CMS Setup (Detailed)
 
 ### Local dev workflow
+
 - `pnpm dev` boots Astro at `http://127.0.0.1:4321` (base path `/`)
 - Visit `/keystatic` to open the Admin UI
 - In local mode, saves write directly to `src/content/posts/{locale}/*.mdoc`
@@ -1010,6 +1030,7 @@ Keystatic configures collections as independent units (each tied to a `path`). M
 - `PUBLIC_KEYSTATIC_MODE=local` env var is set by the `dev` script
 
 ### Production workflow (GitHub mode)
+
 1. Deploy the Astro site with Keystatic loaded (it requires the env vars to enable GitHub mode)
 2. Visit `https://yourdomain.com/blog/keystatic` — Keystatic prompts to create a GitHub App if one isn't connected
 3. Create the GitHub App via Keystatic's flow (gives you the 3 secrets + public slug)
@@ -1017,7 +1038,9 @@ Keystatic configures collections as independent units (each tied to a `path`). M
 5. Anyone with write access to the repo can now log in at `/blog/keystatic`
 
 ### Branch behaviour
+
 With `branchPrefix: 'post/'`:
+
 - Creating or editing a post in the Admin UI creates a branch like `post/hello-world`
 - Saving commits to that branch
 - Keystatic auto-opens (or updates) a PR from that branch to `main`
@@ -1028,11 +1051,11 @@ With `branchPrefix: 'post/'`:
 
 The `draft: true` checkbox is the source of truth. Behaviour by environment:
 
-| Environment | Drafts visible? | Future-dated posts visible? |
-|---|---|---|
-| Local dev (`pnpm dev`) | Yes | Yes |
-| Preview deployment (`PREVIEW_MODE=true`) | Yes | Yes |
-| Production | No | No |
+| Environment                              | Drafts visible? | Future-dated posts visible? |
+| ---------------------------------------- | --------------- | --------------------------- |
+| Local dev (`pnpm dev`)                   | Yes             | Yes                         |
+| Preview deployment (`PREVIEW_MODE=true`) | Yes             | Yes                         |
+| Production                               | No              | No                          |
 
 Single helper used by all collection consumers:
 
@@ -1041,26 +1064,25 @@ Single helper used by all collection consumers:
 import { getCollection } from 'astro:content';
 import type { Locale } from '../i18n/config';
 
-const showDrafts =
-  import.meta.env.DEV ||
-  import.meta.env.PREVIEW_MODE === 'true';
+const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
 
 export async function getPublishedPosts(locale: Locale) {
-  const collection = locale === 'en' ? 'postsEn' : 'postsUk';
-  const all = await getCollection(collection);
-  return all.filter((p) => {
-    if (!showDrafts) {
-      if (p.data.draft) return false;
-      if (p.data.publishedAt > new Date()) return false;
-    }
-    return true;
-  });
+	const collection = locale === 'en' ? 'postsEn' : 'postsUk';
+	const all = await getCollection(collection);
+	return all.filter((p) => {
+		if (!showDrafts) {
+			if (p.data.draft) return false;
+			if (p.data.publishedAt > new Date()) return false;
+		}
+		return true;
+	});
 }
 ```
 
 Critical: this filter must also be applied in `getStaticPaths()` for `[slug].astro`, otherwise the route exists and the draft is publicly accessible even if not linked.
 
 ### Image handling (MVP)
+
 - Keystatic image fields commit images to `src/assets/posts/` via the GitHub API on save
 - Astro `<Image />` handles optimization at build time (WebP/AVIF, lazy loading)
 - Tradeoff: images bloat the repo over time, ~50KB per image, but for a personal blog with <500 images this is fine for years
@@ -1069,11 +1091,13 @@ Critical: this filter must also be applied in `getStaticPaths()` for `[slug].ast
 ### Markdoc custom blocks (rich content features)
 
 Defined in `markdoc.config.mts` with corresponding Keystatic content components in `keystatic.config.ts`:
+
 - `{% youtube id="..." title="..." /%}` — privacy-friendly YouTube embed (nocookie). Keystatic content component (`block`) shows a preview card with the video ID/title.
 - `{% callout type="info" %}...{% /callout %}` — info / warn / tip / danger callout boxes. Keystatic content component (`wrapper`) renders a styled preview with a left-border accent.
 - ` ```language ` fenced code blocks — Shiki syntax highlighting. **Do NOT override the `fence` node** — Shiki emits dual-theme HTML that would be discarded by a custom renderer. Language badge + copy button are layered on client-side by `PostLayout.astro`'s script (see `.code-block-wrap`, `.lang-badge`, `.copy-btn` in `global.css`).
 
 ### Keystatic UI features used
+
 - Image paste from clipboard (built-in)
 - Image drag-drop (built-in)
 - Code block with language dropdown (built-in via Markdoc fence)
@@ -1086,38 +1110,38 @@ Defined in `markdoc.config.mts` with corresponding Keystatic content components 
 
 ## 11. Route Inventory
 
-| Route | Type | Notes |
-|---|---|---|
-| `/` | Static meta-refresh | Redirect → `/en/` (or `/blog/en/` in prod) |
-| `/en/` | Prerendered | Home: latest 6 posts (carousel), tags, about teaser, subscribe |
-| `/uk/` | Prerendered | Same, Ukrainian |
-| `/en/about` | Prerendered | Inline content (not Markdoc-driven) |
-| `/uk/about` | Prerendered | " |
-| `/en/posts/` | Prerendered, paginated | 10 posts per page; page 1 |
-| `/uk/posts/` | Prerendered, paginated | " |
-| `/en/posts/page/[page]` | Prerendered | Pagination pages 2+ |
-| `/uk/posts/page/[page]` | Prerendered | " |
-| `/en/posts/[slug]` | Prerendered | Individual post |
-| `/uk/posts/[slug]` | Prerendered | " |
-| `/en/tags/` | Prerendered | Tag index |
-| `/uk/tags/` | Prerendered | " |
-| `/en/tags/[tag]` | Prerendered | Posts by tag |
-| `/uk/tags/[tag]` | Prerendered | " |
-| `/en/subscribe` | Prerendered | Standalone signup |
-| `/uk/subscribe` | Prerendered | " |
-| `/en/rss.xml` | Built at deploy | Locale RSS |
-| `/uk/rss.xml` | Built at deploy | " |
-| `/sitemap-index.xml` | Built at deploy | Auto-generated by `@astrojs/sitemap` with hreflang annotations |
-| `/robots.txt` | Static | Blocks `/keystatic` and `/api/keystatic` in both base-path and apex forms |
-| `/keystatic/*` | SSR | Keystatic Admin UI (auto-mounted by `@keystatic/astro`) |
-| `/api/keystatic/*` | SSR | Keystatic API (auto-mounted by `@keystatic/astro`, apex routes rewritten by middleware) |
-| `/api/subscribe` | SSR | Newsletter subscribe |
-| `/api/confirm` | SSR | Newsletter confirm (redirects to subscribe page with `?confirmed=1`) |
-| `/api/unsubscribe` | SSR | Newsletter unsubscribe (returns HTML page) |
-| `/admin/emails/*` | SSR | Email template management UI (React island) |
-| `/api/emails/templates/*` | SSR | Email template CRUD API |
-| `/404` | Prerendered | Custom 404 |
-| `/pagefind/*` | Static | Built by `pagefind` after Astro build |
+| Route                     | Type                   | Notes                                                                                   |
+| ------------------------- | ---------------------- | --------------------------------------------------------------------------------------- |
+| `/`                       | Static meta-refresh    | Redirect → `/en/` (or `/blog/en/` in prod)                                              |
+| `/en/`                    | Prerendered            | Home: latest 6 posts (carousel), tags, about teaser, subscribe                          |
+| `/uk/`                    | Prerendered            | Same, Ukrainian                                                                         |
+| `/en/about`               | Prerendered            | Inline content (not Markdoc-driven)                                                     |
+| `/uk/about`               | Prerendered            | "                                                                                       |
+| `/en/posts/`              | Prerendered, paginated | 10 posts per page; page 1                                                               |
+| `/uk/posts/`              | Prerendered, paginated | "                                                                                       |
+| `/en/posts/page/[page]`   | Prerendered            | Pagination pages 2+                                                                     |
+| `/uk/posts/page/[page]`   | Prerendered            | "                                                                                       |
+| `/en/posts/[slug]`        | Prerendered            | Individual post                                                                         |
+| `/uk/posts/[slug]`        | Prerendered            | "                                                                                       |
+| `/en/tags/`               | Prerendered            | Tag index                                                                               |
+| `/uk/tags/`               | Prerendered            | "                                                                                       |
+| `/en/tags/[tag]`          | Prerendered            | Posts by tag                                                                            |
+| `/uk/tags/[tag]`          | Prerendered            | "                                                                                       |
+| `/en/subscribe`           | Prerendered            | Standalone signup                                                                       |
+| `/uk/subscribe`           | Prerendered            | "                                                                                       |
+| `/en/rss.xml`             | Built at deploy        | Locale RSS                                                                              |
+| `/uk/rss.xml`             | Built at deploy        | "                                                                                       |
+| `/sitemap-index.xml`      | Built at deploy        | Auto-generated by `@astrojs/sitemap` with hreflang annotations                          |
+| `/robots.txt`             | Static                 | Blocks `/keystatic` and `/api/keystatic` in both base-path and apex forms               |
+| `/keystatic/*`            | SSR                    | Keystatic Admin UI (auto-mounted by `@keystatic/astro`)                                 |
+| `/api/keystatic/*`        | SSR                    | Keystatic API (auto-mounted by `@keystatic/astro`, apex routes rewritten by middleware) |
+| `/api/subscribe`          | SSR                    | Newsletter subscribe                                                                    |
+| `/api/confirm`            | SSR                    | Newsletter confirm (redirects to subscribe page with `?confirmed=1`)                    |
+| `/api/unsubscribe`        | SSR                    | Newsletter unsubscribe (returns HTML page)                                              |
+| `/admin/emails/*`         | SSR                    | Email template management UI (React island)                                             |
+| `/api/emails/templates/*` | SSR                    | Email template CRUD API                                                                 |
+| `/404`                    | Prerendered            | Custom 404                                                                              |
+| `/pagefind/*`             | Static                 | Built by `pagefind` after Astro build                                                   |
 
 Pages set `export const prerender = true` by default; `/api/*`, `/keystatic/*`, and `/admin/*` routes are SSR.
 
@@ -1128,6 +1152,7 @@ Pages set `export const prerender = true` by default; `/api/*`, `/keystatic/*`, 
 ## 12. Styling: Tailwind 4 + DaisyUI
 
 ### Theme
+
 - DaisyUI's `light` and `dark` themes
 - Persisted in localStorage as `theme`, applied via `data-theme` on `<html>`
 - Toggle in header
@@ -1135,11 +1160,13 @@ Pages set `export const prerender = true` by default; `/api/*`, `/keystatic/*`, 
 - Theme change postMessages to Giscus iframe to sync
 
 ### Typography
+
 - `@tailwindcss/typography` plugin for `prose` class (added via `@plugin` in CSS, not as a Vite plugin)
 - Article body: `<article class="prose dark:prose-invert lg:prose-lg">`
 - Callout and YouTube blocks use `not-prose` to escape typography styling
 
 ### Component patterns
+
 - DaisyUI primitives: `btn`, `card`, `alert`, `input`, `toggle`, `dropdown`, `menu`, `modal`, `navbar`
 - Search modal uses DaisyUI `modal`
 - Subscribe form uses DaisyUI `input` + `btn` + `alert` for state feedback
@@ -1150,6 +1177,7 @@ Pages set `export const prerender = true` by default; `/api/*`, `/keystatic/*`, 
 ## 13. SEO Infrastructure
 
 ### `BaseHead.astro` emits, in order:
+
 1. `<meta charset="utf-8">` + viewport
 2. `<title>` and `<meta name="description">`
 3. Canonical (self-referential)
@@ -1161,6 +1189,7 @@ Pages set `export const prerender = true` by default; `/api/*`, `/keystatic/*`, 
 9. `theme-color`
 
 ### Hreflang implementation
+
 For a post in `/en/posts/hello-world` with a translation at `/uk/posts/привіт-світ`:
 
 ```html
@@ -1176,17 +1205,17 @@ Hreflang must be **reciprocal** and only emit for translations that actually exi
 
 ```json
 {
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "Hello, world",
-  "description": "...",
-  "image": "https://yourdomain.com/og/hello-world.png",
-  "datePublished": "2026-06-01",
-  "dateModified": "2026-06-15",
-  "author": { "@type": "Person", "name": "Your Name", "url": "https://yourdomain.com/en/about" },
-  "publisher": { "@type": "Person", "name": "Your Name" },
-  "inLanguage": "en",
-  "mainEntityOfPage": "https://yourdomain.com/en/posts/hello-world"
+	"@context": "https://schema.org",
+	"@type": "Article",
+	"headline": "Hello, world",
+	"description": "...",
+	"image": "https://yourdomain.com/og/hello-world.png",
+	"datePublished": "2026-06-01",
+	"dateModified": "2026-06-15",
+	"author": { "@type": "Person", "name": "Your Name", "url": "https://yourdomain.com/en/about" },
+	"publisher": { "@type": "Person", "name": "Your Name" },
+	"inLanguage": "en",
+	"mainEntityOfPage": "https://yourdomain.com/en/posts/hello-world"
 }
 ```
 
@@ -1245,14 +1274,17 @@ CREATE INDEX idx_subscribers_email ON subscribers(email);
 ```
 
 ### Endpoints
+
 - `POST /api/subscribe` — validate, rate limit (KV: 3 reqs/IP/10min), insert pending, send confirmation via Cloudflare Email Service, Telegram notify
 - `GET /api/confirm?token=...` — verify HMAC token, mark confirmed, send welcome via Cloudflare Email Service, Telegram notify
 - `GET /api/unsubscribe?token=...` — verify token, mark unsubscribed, Telegram notify
 
 ### Token format
+
 `base64url(email + ':' + expiresAt + ':' + hmacSha256(secret, email + ':' + expiresAt))`. 48h expiry for confirm, ~10 years for unsubscribe.
 
 ### Email templates
+
 - JSON files in `src/emails/` (e.g. `confirm-en.json`, `welcome-uk.json`)
 - Loaded at build time via static imports (Worker runtime has no filesystem)
 - Template variables: `{{confirmUrl}}`, `{{unsubscribeUrl}}` replaced at send time
@@ -1260,6 +1292,7 @@ CREATE INDEX idx_subscribers_email ON subscribers(email);
 - Editable via the admin UI at `/admin/emails` (React island using `@react-email/editor`)
 
 ### Cloudflare Email Service setup
+
 1. Enable Cloudflare Email Routing on the sender domain (e.g. `yourdomain.com`)
 2. Verify the sender address (`MAIL_FROM`, e.g. `hello@yourdomain.com`)
 3. The `send_email` binding in `wrangler.jsonc` provides `env.SEND_EMAIL.send({ from, to, subject, html })`
@@ -1283,6 +1316,7 @@ CREATE INDEX idx_subscribers_email ON subscribers(email);
 ## 19. Telegram Notifications
 
 ### Setup
+
 1. Create bot via `@BotFather`, save token
 2. Send `/start` to bot, find chat ID at `https://api.telegram.org/bot<TOKEN>/getUpdates`
 3. Save as Wrangler secrets
@@ -1295,22 +1329,23 @@ CREATE INDEX idx_subscribers_email ON subscribers(email);
 import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from 'astro:env/server';
 
 export async function notify(text: string, parseMode: 'HTML' | 'Markdown' = 'HTML') {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text,
-      parse_mode: parseMode,
-      disable_web_page_preview: true,
-    }),
-  });
+	if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+	const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+	await fetch(url, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({
+			chat_id: TELEGRAM_CHAT_ID,
+			text,
+			parse_mode: parseMode,
+			disable_web_page_preview: true,
+		}),
+	});
 }
 ```
 
 ### Events notified
+
 - New pending subscriber
 - Subscriber confirmed
 - Unsubscribe
@@ -1323,6 +1358,7 @@ export async function notify(text: string, parseMode: 'HTML' | 'Markdown' = 'HTM
 ## 20. Analytics
 
 Cloudflare Web Analytics:
+
 - Enable in CF dashboard, get site token
 - Deferred beacon script in `BaseHead.astro`
 - No cookie banner required
@@ -1333,6 +1369,7 @@ Cloudflare Web Analytics:
 ## 21. Theme & Image Handling
 
 ### Theme
+
 - DaisyUI `light` and `dark`
 - localStorage key `theme`
 - Pre-paint inline `<head>` script sets `data-theme` before render
@@ -1340,6 +1377,7 @@ Cloudflare Web Analytics:
 - postMessage to Giscus on change
 
 ### Images
+
 - Hero images use `<img>` (not `<Image />`) because `imageService: 'passthrough'` + noop service disables Astro's built-in image optimization
 - `loading="lazy"` and `decoding="async"` on all images except hero (which is `loading="eager"`)
 - Markdoc images use the `image` config in `keystatic.config.ts` and resolve via the `publicPath`
@@ -1349,18 +1387,18 @@ Cloudflare Web Analytics:
 
 ## 22. Performance Budget
 
-| Metric | Target |
-|---|---|
-| Lighthouse Performance | ≥ 95 |
-| Lighthouse Accessibility | ≥ 95 |
-| Lighthouse Best Practices | ≥ 95 |
-| Lighthouse SEO | 100 |
-| First Contentful Paint | < 1.0s |
-| Largest Contentful Paint | < 1.5s |
-| Total Blocking Time | < 100ms |
-| Cumulative Layout Shift | < 0.05 |
-| Page weight (HTML+CSS, no images) | < 100 KB |
-| Initial JS | < 30 KB (Pagefind UI lazy-loaded) |
+| Metric                            | Target                            |
+| --------------------------------- | --------------------------------- |
+| Lighthouse Performance            | ≥ 95                              |
+| Lighthouse Accessibility          | ≥ 95                              |
+| Lighthouse Best Practices         | ≥ 95                              |
+| Lighthouse SEO                    | 100                               |
+| First Contentful Paint            | < 1.0s                            |
+| Largest Contentful Paint          | < 1.5s                            |
+| Total Blocking Time               | < 100ms                           |
+| Cumulative Layout Shift           | < 0.05                            |
+| Page weight (HTML+CSS, no images) | < 100 KB                          |
+| Initial JS                        | < 30 KB (Pagefind UI lazy-loaded) |
 
 `/keystatic/*` routes are exempt from this budget (they're a React admin app).
 
@@ -1369,6 +1407,7 @@ Cloudflare Web Analytics:
 ## 23. Branch-based Preview Deployments
 
 ### How it works
+
 1. Keystatic creates a `post/...` branch and opens a PR
 2. `preview.yml` triggers on `pull_request: [opened, synchronize, reopened]`
 3. Workflow builds with `PREVIEW_MODE=true` (drafts render)
@@ -1485,14 +1524,15 @@ jobs:
 
 ### Label definitions
 
-| Label | Color | Description |
-|---|---|---|
-| `new article` | `#0e8a16` (green) | PR adds a new post |
-| `edit article` | `#1d76db` (blue) | PR modifies an existing post |
-| `dev` | `#5319e7` (purple) | PR is dev / infrastructure work |
-| `mixed` | `#fbca04` (yellow) | PR has both content and dev — consider splitting |
+| Label          | Color              | Description                                      |
+| -------------- | ------------------ | ------------------------------------------------ |
+| `new article`  | `#0e8a16` (green)  | PR adds a new post                               |
+| `edit article` | `#1d76db` (blue)   | PR modifies an existing post                     |
+| `dev`          | `#5319e7` (purple) | PR is dev / infrastructure work                  |
+| `mixed`        | `#fbca04` (yellow) | PR has both content and dev — consider splitting |
 
 ### Detection logic
+
 - Look at all files changed in the PR
 - Files matching `src/content/posts/**` are **content files**; everything else is **dev files**
 - If ANY content file is `added` AND no dev files → **new article**
@@ -1652,10 +1692,12 @@ jobs:
 ```
 
 ### D1 Migrations
+
 - New migration files in `schema/` numbered sequentially
 - Apply: `pnpm wrangler d1 migrations apply portfolio-blog --remote`
 
 ### Post-build script
+
 `scripts/post-build.mjs` runs after `astro build` and Pagefind indexing. It writes a `dist/index.html` that meta-refreshes `/` → `/blog/en/`. This redirect is only relevant during `wrangler dev` (where the Worker handles all requests including the apex). In production, the Worker's route pattern (`yourdomain.com/blog/*`) doesn't match the apex, so this file is never served.
 
 ---
@@ -1663,6 +1705,7 @@ jobs:
 ## 26. Acceptance Criteria
 
 ### A. Internationalization
+
 - [ ] Default `/` redirects to `/en/` (or `/blog/en/` in production)
 - [ ] Both `/en/` and `/uk/` render correctly
 - [ ] UI strings switch per locale
@@ -1674,6 +1717,7 @@ jobs:
 - [ ] Base path `/blog` applied correctly to all internal links (nav, PostCard, RSS, etc.)
 
 ### B. Content & CMS
+
 - [ ] Posts authored via Keystatic at `/keystatic` (local) or `/blog/keystatic` (production)
 - [ ] Local mode saves directly to git working tree
 - [ ] Production mode creates `post/...` branches and opens PRs automatically
@@ -1688,6 +1732,7 @@ jobs:
 - [ ] Headings get anchor links; TOC shows for posts with 3+ headings
 
 ### C. Branch Previews
+
 - [ ] PR opened triggers preview deployment within 3 minutes
 - [ ] Preview URL is posted as a PR comment (updated, not duplicated, on subsequent pushes)
 - [ ] Preview URL is accessible publicly (by design)
@@ -1696,6 +1741,7 @@ jobs:
 - [ ] Telegram receives a notification with the preview link
 
 ### D. Auto-labeling
+
 - [ ] PR with only post additions → labeled `new article`
 - [ ] PR with only post modifications → labeled `edit article`
 - [ ] PR with only non-content changes → labeled `dev`
@@ -1705,6 +1751,7 @@ jobs:
 - [ ] `new article` PRs trigger a Telegram notification
 
 ### E. SEO
+
 - [ ] Each page has unique title + description
 - [ ] Canonical is self-referential
 - [ ] OpenGraph tags present
@@ -1714,6 +1761,7 @@ jobs:
 - [ ] RSS validates as RSS 2.0
 
 ### F. Styling & UX
+
 - [ ] DaisyUI light + dark themes work
 - [ ] Theme persists; no FOUC
 - [ ] All interactive elements have visible focus styles
@@ -1721,18 +1769,21 @@ jobs:
 - [ ] WCAG AA color contrast on both themes
 
 ### G. Search
+
 - [ ] Pagefind index builds on `pnpm build`
 - [ ] `/` shortcut and header button open the modal
 - [ ] EN searches return EN results only; UK same
 - [ ] Results link to correct URLs
 
 ### H. Comments
+
 - [ ] Giscus loads on every post page
 - [ ] Theme syncs (light/dark)
 - [ ] `data-lang` matches page locale
 - [ ] EN and UK use separate discussion threads
 
 ### I. Newsletter
+
 - [ ] `POST /api/subscribe` returns 200 for valid, 400 for invalid, 429 when rate-limited
 - [ ] D1 row created `status='pending'`
 - [ ] Confirmation email sent via Cloudflare Email Service (locale-correct template)
@@ -1743,15 +1794,18 @@ jobs:
 - [ ] IP stored only as HMAC hash
 
 ### J. Notifications
+
 - [ ] Telegram receives: new subscriber, confirm, unsubscribe, deploy success/failure, preview deployed, new article PR
 - [ ] Messages are HTML-formatted, concise, actionable
 
 ### K. Analytics
+
 - [ ] CF Web Analytics beacon loaded
 - [ ] No cookie banner
 - [ ] Web Vitals reported
 
 ### L. Build & Deploy
+
 - [ ] `pnpm build` succeeds with no errors
 - [ ] Lighthouse on production hits Section 22 budget
 - [ ] Push to `main` triggers production deploy
@@ -1764,6 +1818,7 @@ jobs:
 ## 27. Implementation Order (6 Milestones)
 
 ### Milestone 1: Skeleton + Local Keystatic (1–2 evenings)
+
 - Bootstrap Astro 6, Cloudflare adapter, React, Markdoc, Tailwind 4, DaisyUI (with custom theme definitions)
 - `pnpm-workspace.yaml` for build allowlists and patched dependencies
 - Keystatic in local mode, two collections (postsEn / postsUk) with compound `fields.slug` and content components
@@ -1777,6 +1832,7 @@ jobs:
 - **Exit criteria:** site live at `/blog`, Keystatic admin works locally, can create posts in both languages
 
 ### Milestone 2: Content Layer & SEO (1 evening)
+
 - Full content collection schemas with Zod
 - PostLayout: reading time, TOC, prose styling, hero image
 - BaseHead: canonical, hreflang, OG, JSON-LD, RSS auto-discovery
@@ -1785,6 +1841,7 @@ jobs:
 - **Exit criteria:** hreflang validates, RSS validates, Lighthouse SEO = 100
 
 ### Milestone 3: Routes & Listings (1 evening)
+
 - Posts list (paginated), tag index, tag detail
 - Language switcher with translation-aware routing
 - PostCard component
@@ -1794,6 +1851,7 @@ jobs:
 - **Exit criteria:** all routes from Section 11 render correctly in both locales
 
 ### Milestone 4: Keystatic Production + Preview Workflow (1–2 evenings)
+
 - Switch Keystatic to GitHub mode with `branchPrefix: 'post/'`
 - GitHub App created via Keystatic flow
 - Secrets set in Cloudflare via Wrangler
@@ -1802,12 +1860,14 @@ jobs:
 - **Exit criteria:** create a post via production Keystatic → branch `post/<name>` created → PR opened and auto-labeled `new article` → preview deployed → preview URL works → merging publishes to production
 
 ### Milestone 5: Search & Comments (1 evening)
+
 - Pagefind in build pipeline
 - Search modal with `/` shortcut
 - Giscus on post pages with theme + lang sync
 - **Exit criteria:** Sections 25.G and 25.H pass
 
 ### Milestone 6: Newsletter & Notifications (1–2 evenings)
+
 - D1 schema applied
 - Cloudflare Email Service configured (sender domain + `send_email` binding in `wrangler.jsonc`)
 - Email templates in `src/emails/` (JSON, per locale)
@@ -1819,6 +1879,7 @@ jobs:
 - **Exit criteria:** Sections 26.I and 26.J pass
 
 ### Polish (parallel)
+
 - Performance tuning to hit budget
 - Accessibility audit (axe-core + manual screen reader pass)
 - Smoke test on clean mobile + desktop browsers
@@ -1890,6 +1951,7 @@ Total estimate: **6–9 focused evenings**.
 - ISO 639-1 reminder: `uk` is Ukrainian, NEVER `ua`
 
 ### Project docs
+
 - `docs/KEYSTATIC.md` — Keystatic setup, local vs GitHub mode, base-path/API-path mismatch solution
 - `docs/CONTENT.md` — Content authoring workflow
 - `docs/EMAIL.md` — Cloudflare Email Service setup
