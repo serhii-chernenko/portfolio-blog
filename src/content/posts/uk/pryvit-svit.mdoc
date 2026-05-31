@@ -7,8 +7,8 @@ description: >-
 publishedAt: 2026-05-15T09:00:00.000Z
 tags:
   - мета
-  - astro
-heroImageAlt: Друкарська машинка на дерев'яному столі
+heroImage: /src/assets/posts/pryvit-svit/heroImage.png
+heroImageAlt: Океан
 draft: false
 ---
 Це перший допис на новому сайті. План простий: писати більше, писати довше, і довіряти індексу знайти все, що варто зберегти.
@@ -32,18 +32,6 @@ draft: false
 1. **Ремесло** — повільніші нотатки про інструменти, процеси та нудні речі, які роблять роботу приємною.
 
 Є англійська та українська версії сайту. Це не машинний переклад — кожна мова написана вручну, і я публікуватиму лише те, що можу написати гідно тією мовою.
-
-```ts
-// Маленький шматочок коду, що рухає це все
-import { getPublishedPosts } from '../lib/posts';
-
-const posts = await getPublishedPosts('uk');
-for (const post of posts) {
-  console.log(post.data.title);
-}
-```
-
-![](/src/assets/posts/pryvit-svit/image.png)
 
 ## Підписка
 
