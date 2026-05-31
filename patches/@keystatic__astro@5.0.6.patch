@@ -1,3 +1,45 @@
+diff --git a/dist/keystatic-astro-api.js b/dist/keystatic-astro-api.js
+index 80131fee419d290a8d6c992d5bfcc355b9d39871..68fa33ec2b2931612426cfa4e40d68f2d170d366 100644
+--- a/dist/keystatic-astro-api.js
++++ b/dist/keystatic-astro-api.js
+@@ -3,8 +3,8 @@ import { parseString } from 'set-cookie-parser';
+ 
+ function makeHandler(_config) {
+   return async function keystaticAPIRoute(context) {
+-    var _context$locals, _ref, _config$clientId, _ref2, _config$clientSecret, _ref3, _config$secret;
+-    const envVarsForCf = (_context$locals = context.locals) === null || _context$locals === void 0 || (_context$locals = _context$locals.runtime) === null || _context$locals === void 0 ? void 0 : _context$locals.env;
++    var _ref, _config$clientId, _ref2, _config$clientSecret, _ref3, _config$secret;
++    const envVarsForCf = undefined; // PATCHED for @astrojs/cloudflare v13: Astro.locals.runtime is a throwing getter; credentials resolve via import.meta.env then @keystatic/core's process.env (populated by Cloudflare nodejs_compat from wrangler secrets).
+     const handler = makeGenericAPIRouteHandler({
+       ..._config,
+       clientId: (_ref = (_config$clientId = _config.clientId) !== null && _config$clientId !== void 0 ? _config$clientId : envVarsForCf === null || envVarsForCf === void 0 ? void 0 : envVarsForCf.KEYSTATIC_GITHUB_CLIENT_ID) !== null && _ref !== void 0 ? _ref : tryOrUndefined(() => {
+@@ -19,11 +19,25 @@ function makeHandler(_config) {
+     }, {
+       slugEnvName: 'PUBLIC_KEYSTATIC_GITHUB_APP_SLUG'
+     });
++    // PATCHED: Keystatic's core handler strips a leading /api/keystatic from the
++    // path, but with Astro base '/blog' the request is /blog/api/keystatic/...,
++    // so strip the base prefix before the handler parses params.
++    let _ksReq = context.request;
++    try {
++      const _ksBase = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
++      if (_ksBase) {
++        const _ksUrl = new URL(context.request.url);
++        if (_ksUrl.pathname.startsWith(_ksBase + '/api/keystatic')) {
++          _ksUrl.pathname = _ksUrl.pathname.slice(_ksBase.length);
++          _ksReq = new Request(_ksUrl, context.request);
++        }
++      }
++    } catch {}
+     const {
+       body,
+       headers,
+       status
+-    } = await handler(context.request);
++    } = await handler(_ksReq);
+     // all this stuff should be able to go away when astro is using a version of undici with getSetCookie
+     let headersInADifferentStructure = new Map();
+     if (headers) {
 diff --git a/internal/keystatic-astro-page.astro b/internal/keystatic-astro-page.astro
 index 75945d14d2d517249f7081de2f49620098bc49e5..e6468b98833ac0788177a2cde30bf3f59133ea35 100644
 --- a/internal/keystatic-astro-page.astro

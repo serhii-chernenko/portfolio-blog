@@ -147,6 +147,14 @@
 		{
 			"pattern": "www.serhiichernenko.com/api/keystatic/*",
 			"zone_name": "serhiichernenko.com"
+		},
+		{
+			"pattern": "www.serhiichernenko.com/keystatic",
+			"zone_name": "serhiichernenko.com"
+		},
+		{
+			"pattern": "www.serhiichernenko.com/keystatic/*",
+			"zone_name": "serhiichernenko.com"
 		}
 	],
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
@@ -158,6 +166,6 @@
 		// email will fail. Set it up in the CF dashboard before relying on
 		// production sends.
 		"MAIL_FROM": "hello@serhiichernenko.com",
-		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "your-keystatic-github-app-slug"
+		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "serhii-chernenko-portfolio-blog"
 	}
 }

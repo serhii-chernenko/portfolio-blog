@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@keystatic/astro@5.0.6': e8706039007ea27dd88a5bb0487292883eff848d6152f88cdf1df2241053b152
+  '@keystatic/astro@5.0.6': f2a4f9279b916ac6577a113d4a6be5e30f41db4238186dc5bb04f7ccdcb05670
   '@react-email/editor@1.4.1': f59291ff962f4ba3216f104bb30a2c9221fccb6893cf8d50c6ab8626b3e65ed2
 
 importers:
@@ -38,7 +38,7 @@ importers:
         version: 3.7.2
       '@keystatic/astro':
         specifier: ^5.0.0
-        version: 5.0.6(patch_hash=e8706039007ea27dd88a5bb0487292883eff848d6152f88cdf1df2241053b152)(@keystatic/core@0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(astro@6.3.5(@types/node@24.12.4)(idb-keyval@6.2.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.4)(yaml@2.9.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 5.0.6(patch_hash=f2a4f9279b916ac6577a113d4a6be5e30f41db4238186dc5bb04f7ccdcb05670)(@keystatic/core@0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(astro@6.3.5(@types/node@24.12.4)(idb-keyval@6.2.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.4)(yaml@2.9.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@keystatic/core':
         specifier: ^0.5.0
         version: 0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -6817,7 +6817,7 @@ snapshots:
       - '@react-spectrum/provider'
       - supports-color
 
-  '@keystatic/astro@5.0.6(patch_hash=e8706039007ea27dd88a5bb0487292883eff848d6152f88cdf1df2241053b152)(@keystatic/core@0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(astro@6.3.5(@types/node@24.12.4)(idb-keyval@6.2.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.4)(yaml@2.9.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@keystatic/astro@5.0.6(patch_hash=f2a4f9279b916ac6577a113d4a6be5e30f41db4238186dc5bb04f7ccdcb05670)(@keystatic/core@0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(astro@6.3.5(@types/node@24.12.4)(idb-keyval@6.2.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.4)(yaml@2.9.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@babel/runtime': 7.29.2
       '@keystatic/core': 0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

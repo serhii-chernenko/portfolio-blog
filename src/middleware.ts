@@ -13,8 +13,14 @@ import { defineMiddleware } from 'astro:middleware';
 // there, so /api/keystatic/* already matches without rewriting.
 //
 // The `/api/keystatic` apex route is also robots-blocked.
+// Keystatic has no base-path support — both its admin UI (`/keystatic`) and its
+// API (`/api/keystatic`) are hardcoded to the host root in the shipped React
+// client. We bind both at the apex (wrangler.jsonc routes) and rewrite them here
+// onto Astro's `/blog`-prefixed routes so the client (which only ever sees apex
+// paths) routes correctly. Access the CMS at https://<host>/keystatic — NOT
+// /blog/keystatic (the React UI can't route under the /blog base and 404s).
 const BASE = '/blog';
-const APEX_PREFIXES = ['/api/keystatic'];
+const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 
 export const onRequest = defineMiddleware((context, next) => {
 	if (import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local') {
