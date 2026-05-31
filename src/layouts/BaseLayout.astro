@@ -20,6 +20,8 @@ export interface Props {
 	translationKey?: string;
 	/** Pre-resolved translated post URLs for LanguageSwitcher on post pages */
 	translatedUrls?: Partial<Record<Locale, string | null>>;
+	/** Pre-resolved author page URL for JSON-LD on article pages */
+	authorUrl?: string;
 }
 
 const {
@@ -33,6 +35,7 @@ const {
 	tags,
 	alternates,
 	translatedUrls,
+	authorUrl,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -51,6 +54,7 @@ const lang = htmlLangAttribute[locale];
 			updatedAt={updatedAt}
 			tags={tags}
 			alternates={alternates}
+			authorUrl={authorUrl}
 		/>
 	</head>
 	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">

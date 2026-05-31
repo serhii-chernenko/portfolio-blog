@@ -1,6 +1,7 @@
 ---
 import type { Locale } from '../i18n/config';
-import { useTranslations, withBase, localeHref } from '../i18n/utils';
+import { useTranslations, withBase } from '../i18n/utils';
+import { getPagePath } from '../lib/pages';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
 export interface Props {
@@ -13,6 +14,7 @@ const { locale, currentPath, translatedUrls } = Astro.props;
 const t = useTranslations(locale);
 const year = new Date().getFullYear();
 const rssHref = new URL(withBase(`${locale}/rss.xml`), Astro.site).toString();
+const privacyHref = await getPagePath('privacy', locale);
 ---
 
 <footer
@@ -25,7 +27,7 @@ const rssHref = new URL(withBase(`${locale}/rss.xml`), Astro.site).toString();
 		<!-- Right: links + lang switcher -->
 		<div class="flex items-center gap-4 flex-wrap">
 			<a
-				href={localeHref(locale, 'privacy')}
+				href={privacyHref}
 				class="link link-hover light:opacity-80 light:hover:opacity-100"
 			>
 				{t('footer.privacy')}

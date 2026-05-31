@@ -117,6 +117,10 @@ export default config({
 			name: 'Serhii Chernenko · Blog',
 			mark: () => createElement('span', null, '✍️'),
 		},
+		navigation: {
+			Blog: ['postsEn', 'postsUk'],
+			Pages: ['pagesEn', 'pagesUk'],
+		},
 	},
 
 	collections: {
@@ -222,6 +226,107 @@ export default config({
 						image: {
 							directory: 'src/assets/posts',
 							publicPath: '/src/assets/posts/',
+						},
+					},
+				}),
+			},
+		}),
+
+		pagesEn: collection({
+			label: 'Pages (English)',
+			slugField: 'title',
+			path: 'src/content/pages/en/*',
+			format: { contentField: 'content' },
+			schema: {
+				title: fields.slug({
+					name: {
+						label: 'Title',
+						validation: { length: { min: 1, max: 120 } },
+					},
+					slug: {
+						label: 'Slug',
+						description: 'URL slug — edit to change the page URL (e.g. about, privacy).',
+					},
+				}),
+				translationKey: fields.text({
+					label: 'Translation Key',
+					description:
+						'Shared identifier across locales of the same page (e.g. "about", "privacy"). Links EN↔UK.',
+					validation: { length: { min: 1, max: 80 } },
+				}),
+				description: fields.text({
+					label: 'Description',
+					multiline: true,
+					validation: { length: { min: 50, max: 200 } },
+				}),
+				category: fields.select({
+					label: 'Category',
+					defaultValue: 'static',
+					options: [
+						{ label: 'Static', value: 'static' },
+						{ label: 'Legal', value: 'legal' },
+					],
+				}),
+				updatedAt: fields.datetime({ label: 'Updated at' }),
+				draft: fields.checkbox({ label: 'Draft', defaultValue: false }),
+				content: fields.markdoc({
+					label: 'Content',
+					components: markdocComponents,
+					options: {
+						image: {
+							directory: 'src/assets/pages',
+							publicPath: '/src/assets/pages/',
+						},
+					},
+				}),
+			},
+		}),
+
+		pagesUk: collection({
+			label: 'Сторінки (Українською)',
+			slugField: 'title',
+			path: 'src/content/pages/uk/*',
+			format: { contentField: 'content' },
+			schema: {
+				title: fields.slug({
+					name: {
+						label: 'Заголовок',
+						validation: { length: { min: 1, max: 120 } },
+					},
+					slug: {
+						label: 'Slug',
+						description:
+							'URL slug — змініть, щоб оновити адресу сторінки (напр. pro-mene, pryvatnist).',
+					},
+				}),
+				translationKey: fields.text({
+					label: 'Translation Key',
+					description:
+						'Shared identifier across locales of the same page (e.g. "about", "privacy"). Links EN↔UK.',
+					validation: { length: { min: 1, max: 80 } },
+				}),
+				description: fields.text({
+					label: 'Опис',
+					multiline: true,
+					validation: { length: { min: 50, max: 200 } },
+				}),
+				category: fields.select({
+					label: 'Category',
+					defaultValue: 'static',
+					options: [
+						{ label: 'Static', value: 'static' },
+						{ label: 'Legal', value: 'legal' },
+					],
+				}),
+				updatedAt: fields.datetime({ label: 'Оновлено' }),
+				draft: fields.checkbox({ label: 'Чернетка', defaultValue: false }),
+				content: fields.markdoc({
+					label: 'Текст сторінки',
+					components: markdocComponents,
+					options: {
+						image: {
+							directory: 'src/assets/pages',
+							publicPath: '/src/assets/pages/',
 						},
 					},
 				}),

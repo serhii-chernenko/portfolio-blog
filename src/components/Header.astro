@@ -1,6 +1,7 @@
 ---
 import type { Locale } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
+import { getPagePath } from '../lib/pages';
 import ThemeToggle from './ThemeToggle.astro';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
@@ -13,10 +14,12 @@ export interface Props {
 const { locale, currentPath, translatedUrls } = Astro.props;
 const t = useTranslations(locale);
 
+const aboutHref = await getPagePath('about', locale);
+
 const navLinks = [
 	{ key: 'nav.posts' as const, href: localeHref(locale, 'posts') },
 	{ key: 'nav.tags' as const, href: localeHref(locale, 'tags') },
-	{ key: 'nav.about' as const, href: localeHref(locale, 'about') },
+	{ key: 'nav.about' as const, href: aboutHref },
 ];
 
 const currentPathname = currentPath ?? Astro.url.pathname;

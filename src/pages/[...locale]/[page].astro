@@ -1,0 +1,65 @@
+---
+export const prerender = true;
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Prose from '../../components/Prose.astro';
+import { locales, type Locale } from '../../i18n/config';
+import { getPages, localeOf, type AnyPage } from '../../lib/pages';
+import { getPageSlug } from '../../lib/page-slug';
+import { getTranslatedPageUrls } from '../../i18n/utils';
+
+export async function getStaticPaths() {
+	// Note: a Keystatic page whose slug equals a sibling route (`posts`, `tags`,
+	// `subscribe`, `rss.xml`, or the locale index) will be shadowed by that
+	// higher-priority route and won't be served from this dynamic [page] route.
+	const paths = [];
+	for (const locale of locales) {
+		const pages = await getPages(locale);
+		for (const page of pages) {
+			paths.push({
+				params: { locale, page: getPageSlug(page) },
+				props: {
+					page,
+					alternates: await getTranslatedPageUrls(page.data.translationKey),
+				},
+			});
+		}
+	}
+	return paths;
+}
+
+type Props = {
+	page: AnyPage;
+	alternates: Record<Locale, string | null>;
+};
+
+const { page, alternates } = Astro.props as Props;
+const locale = localeOf(page) as Locale;
+
+const { Content } = await render(page);
+---
+
+<BaseLayout
+	title={page.data.title}
+	description={page.data.description}
+	locale={locale}
+	translatedUrls={alternates}
+>
+	<!-- Header section with bg-base-200 -->
+	<section class="bg-base-200">
+		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-14">
+			<h1 class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl">
+				{page.data.title}
+			</h1>
+		</div>
+	</section>
+
+	<!-- Prose content -->
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16">
+		<div class="max-w-3xl">
+			<Prose>
+				<Content />
+			</Prose>
+		</div>
+	</div>
+</BaseLayout>

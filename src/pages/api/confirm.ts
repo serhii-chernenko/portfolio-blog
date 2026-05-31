@@ -7,6 +7,7 @@ import { notify, escapeHtml } from '../../lib/telegram';
 import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 import { ui } from '../../i18n/ui';
+import { resolvePageSlug } from '../../lib/pages';
 
 export const prerender = false;
 
@@ -85,7 +86,8 @@ export const GET: APIRoute = async (context) => {
 		const origin = new URL(context.request.url).origin;
 		const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 		const unsubscribeUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&locale=${locale}`;
-		const privacyUrl = `${origin}${homeHrefFor(locale)}privacy/`;
+		const privacySlug = await resolvePageSlug('privacy', locale, 'privacy');
+		const privacyUrl = `${origin}${homeHrefFor(locale)}${privacySlug}/`;
 		await sendWelcome({ to: email, locale, unsubscribeUrl, privacyUrl });
 	} catch (err) {
 		console.error('Failed to send welcome email:', err);

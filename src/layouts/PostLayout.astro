@@ -3,6 +3,7 @@ import type { Locale } from '../i18n/config';
 import type { AnyPost } from '../lib/posts';
 import { tagSlug } from '../lib/posts';
 import { getTranslatedPostUrls, useTranslations, localeHref } from '../i18n/utils';
+import { getPagePath } from '../lib/pages';
 import BaseLayout from './BaseLayout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import Giscus from '../components/Giscus.astro';
@@ -24,6 +25,8 @@ let translatedUrls: Partial<Record<Locale, string | null>> | undefined;
 if (translationKey) {
 	translatedUrls = await getTranslatedPostUrls(translationKey);
 }
+
+const authorUrl = await getPagePath('about', locale);
 
 const isDraft = post.data.draft;
 const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true');
@@ -49,6 +52,7 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 	tags={tags}
 	alternates={alternates ?? translatedUrls}
 	translatedUrls={translatedUrls}
+	authorUrl={authorUrl}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">

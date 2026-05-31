@@ -9,6 +9,7 @@ import {
 } from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
 import { useTranslations, withBase } from '../i18n/utils';
+import { getPagePath } from '../lib/pages';
 
 export interface Props {
 	title: string;
@@ -20,6 +21,7 @@ export interface Props {
 	updatedAt?: Date;
 	tags?: string[];
 	alternates?: Partial<Record<Locale, string | null>>;
+	authorUrl?: string;
 }
 
 const {
@@ -32,6 +34,7 @@ const {
 	updatedAt,
 	tags,
 	alternates,
+	authorUrl,
 } = Astro.props;
 
 const t = useTranslations(locale);
@@ -53,6 +56,11 @@ const jsonLd =
 				publishedAt,
 				updatedAt,
 				authorName: 'Serhii Chernenko',
+				// Author URL points at the About page, resolved dynamically from
+				// Keystatic content so it tracks the per-locale About slug.
+				// PostLayout passes a pre-resolved authorUrl; the content lookup
+				// is only the fallback when a caller omits it.
+				authorUrl: authorUrl ?? (await getPagePath('about', locale)),
 			})
 		: websiteJsonLd({
 				site,

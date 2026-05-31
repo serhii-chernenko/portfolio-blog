@@ -1,6 +1,7 @@
 import { ui, type UIKey } from './ui';
 import { defaultLocale, isLocale, type Locale } from './config';
 import { getPostSlug } from '../lib/post-slug';
+import { getPageSlug } from '../lib/page-slug';
 
 export function getLocaleFromUrl(url: URL): Locale {
 	const [, maybeLocale] = url.pathname.split('/');
@@ -49,6 +50,27 @@ export async function getTranslatedPostUrls(
 	for (const m of matches) {
 		const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';
 		result[locale] = withBase(`${locale}/posts/${getPostSlug(m)}`);
+	}
+	return result;
+}
+
+/**
+ * Returns the URL for the same page in each locale.
+ * Returns null for locales where the translation doesn't exist.
+ */
+export async function getTranslatedPageUrls(
+	translationKey: string,
+): Promise<Record<Locale, string | null>> {
+	const { getCollection } = await import('astro:content');
+	const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
+	const all = [...(await getCollection('pagesEn')), ...(await getCollection('pagesUk'))];
+	const matches = all
+		.filter((p) => showDrafts || !p.data.draft)
+		.filter((p) => p.data.translationKey === translationKey);
+	const result: Record<Locale, string | null> = { en: null, uk: null };
+	for (const m of matches) {
+		const locale: Locale = m.collection === 'pagesEn' ? 'en' : 'uk';
+		result[locale] = withBase(`${locale}/${getPageSlug(m)}`);
 	}
 	return result;
 }

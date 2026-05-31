@@ -81,10 +81,11 @@ export function articleJsonLd(input: {
 	publishedAt: Date;
 	updatedAt?: Date;
 	authorName: string;
+	authorUrl: string;
 }) {
 	const base = typeof input.site === 'string' ? new URL(input.site) : input.site;
 	const url = new URL(input.pathname, base).toString();
-	const authorUrl = new URL(withBase(`${input.locale}/about`), base).toString();
+	const authorUrl = new URL(input.authorUrl, base).toString();
 	return {
 		'@context': 'https://schema.org',
 		'@type': 'Article',

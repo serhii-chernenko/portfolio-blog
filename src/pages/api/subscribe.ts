@@ -6,6 +6,7 @@ import { sendConfirmation } from '../../lib/email';
 import { notify, escapeHtml } from '../../lib/telegram';
 import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
+import { resolvePageSlug } from '../../lib/pages';
 
 export const prerender = false;
 
@@ -98,7 +99,8 @@ export const POST: APIRoute = async (context) => {
 	// Astro injects the base path (e.g. `/blog/` in prod, `/` locally).
 	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 	const confirmUrl = `${origin}${base}/api/confirm?token=${encodeURIComponent(token)}&locale=${locale}`;
-	const privacyUrl = `${origin}${base}/${locale}/privacy/`;
+	const privacySlug = await resolvePageSlug('privacy', locale, 'privacy');
+	const privacyUrl = `${origin}${base}/${locale}/${privacySlug}/`;
 
 	try {
 		await sendConfirmation({ to: email, locale, confirmUrl, privacyUrl });

@@ -26,4 +26,24 @@ const postsUk = defineCollection({
 	schema: postSchema,
 });
 
-export const collections = { postsEn, postsUk };
+const pageSchema = z.object({
+	title: z.string().min(1).max(120),
+	slug: z.string().optional(),
+	description: z.string().min(50).max(200),
+	translationKey: z.string().regex(/^[a-z0-9-]+$/),
+	category: z.enum(['static', 'legal']).default('static'),
+	updatedAt: z.coerce.date().optional(),
+	draft: z.boolean().default(false),
+});
+
+const pagesEn = defineCollection({
+	loader: glob({ pattern: '*.mdoc', base: './src/content/pages/en' }),
+	schema: pageSchema,
+});
+
+const pagesUk = defineCollection({
+	loader: glob({ pattern: '*.mdoc', base: './src/content/pages/uk' }),
+	schema: pageSchema,
+});
+
+export const collections = { postsEn, postsUk, pagesEn, pagesUk };
