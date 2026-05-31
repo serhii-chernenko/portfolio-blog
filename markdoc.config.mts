@@ -1,4 +1,4 @@
-import { defineMarkdocConfig, component } from '@astrojs/markdoc/config';
+import { defineMarkdocConfig, component, nodes } from '@astrojs/markdoc/config';
 import shiki from '@astrojs/markdoc/shiki';
 
 export default defineMarkdocConfig({
@@ -16,6 +16,17 @@ export default defineMarkdocConfig({
 			wrap: true, 
 		})
 	],
+	nodes: {
+		// Body `![]()` images. Keystatic authors them as `/src/assets/posts/...`
+		// source paths (its `publicPath`), which the default image node ships
+		// verbatim — no file emitted, 404 in prod. MarkdocImage.astro resolves
+		// that string to the hashed, base-aware `_astro` URL via the asset
+		// pipeline. `...nodes.image` keeps the default src/alt/title attributes.
+		image: {
+			...nodes.image,
+			render: component('./src/components/markdoc/MarkdocImage.astro'),
+		},
+	},
 	tags: {
 		youtube: {
 			render: component('./src/components/markdoc/YouTube.astro'),

@@ -1,0 +1,61 @@
+---
+import type { ImageMetadata } from 'astro';
+
+export interface Props {
+  src: string | ImageMetadata;
+  alt?: string;
+  title?: string;
+}
+
+const { src, alt = '', title } = Astro.props;
+
+// Keystatic writes body images as root-relative *source* paths — its configured
+// `publicPath: '/src/assets/posts/'` produces e.g. `/src/assets/posts/<slug>/image.png`.
+// Astro's Markdoc `image` node does NOT run those through the asset pipeline
+// (only the frontmatter `image()` schema does), so the literal `/src/...` path
+// shipped verbatim, had no file emitted, and 404'd in production.
+//
+// Resolve the string against a build-time glob of `src/assets`. Vite keys each
+// entry by its project-root-absolute path (matching exactly what Keystatic
+// writes), and the value's `default` is the processed `ImageMetadata` whose
+// `.src` is the hashed, base-prefixed `_astro/...` URL. Importing the assets
+// here is what makes Astro emit the files into the build output.
+//
+// Already-resolved `ImageMetadata` (e.g. a relative `![](../x.png)` the node
+// resolved itself) and remote/other strings pass through untouched.
+// Raster formats only — `.svg` is intentionally excluded: Astro can resolve SVG
+// imports to a *component* rather than ImageMetadata, which would break `.src`
+// below, and Keystatic body uploads are raster anyway.
+const assets = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/assets/**/*.{png,jpg,jpeg,webp,avif,gif}',
+  { eager: true },
+);
+
+let resolved: string | ImageMetadata = src;
+if (typeof src === 'string') {
+  resolved = assets[src]?.default ?? src;
+  // Surface stale/missing source references at build time instead of silently
+  // shipping a broken `/src/...` path (e.g. a post points at a file that was
+  // never uploaded). Dev-only so prod builds aren't noisy.
+  if (import.meta.env.DEV && src.startsWith('/src/') && !assets[src]) {
+    console.warn(
+      `[MarkdocImage] Unresolved source image "${src}" — file is missing from src/assets or the path is wrong.`,
+    );
+  }
+}
+
+const url = typeof resolved === 'string' ? resolved : resolved.src;
+const width = typeof resolved === 'string' ? undefined : resolved.width;
+const height = typeof resolved === 'string' ? undefined : resolved.height;
+---
+
+<img
+  src={url}
+  alt={alt}
+  title={title}
+  width={width}
+  height={height}
+  loading="lazy"
+  decoding="async"
+  class="rounded-box"
+/>
