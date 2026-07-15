@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
-import { getDB, markConfirmed } from '../../lib/d1';
-import { verifyToken, issueToken } from '../../lib/tokens';
+import { cleanupExpiredPendingIntents, confirmSubscriberAndEnableAll, getDB } from '../../lib/d1';
+import { hashConfirmationToken, issueToken, verifyToken } from '../../lib/tokens';
 import { sendWelcome } from '../../lib/email';
-import { notify, escapeHtml } from '../../lib/telegram';
+import { notify } from '../../lib/telegram';
 import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 import { ui } from '../../i18n/ui';
@@ -16,7 +16,15 @@ function homeHrefFor(locale: Locale): string {
 	return `${base}/${locale}/`;
 }
 
-function htmlPage(title: string, body: string, locale: Locale): Response {
+function tokenHeaders(): Record<string, string> {
+	return {
+		'cache-control': 'no-store',
+		'referrer-policy': 'no-referrer',
+		'x-robots-tag': 'noindex, nofollow, noarchive',
+	};
+}
+
+function htmlPage(title: string, body: string, locale: Locale, status = 200): Response {
 	const siteName = ui[locale]['site.name'];
 	const homeHref = homeHrefFor(locale);
 	const html = `<!doctype html>
@@ -24,6 +32,7 @@ function htmlPage(title: string, body: string, locale: Locale): Response {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="noindex,nofollow,noarchive" />
   <title>${title} — ${siteName}</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #f6f6f6; margin: 0; padding: 24px; color: #111; }
@@ -42,9 +51,15 @@ function htmlPage(title: string, body: string, locale: Locale): Response {
 </body>
 </html>`;
 	return new Response(html, {
-		status: 200,
-		headers: { 'content-type': 'text/html; charset=utf-8' },
+		status,
+		headers: { 'content-type': 'text/html; charset=utf-8', ...tokenHeaders() },
 	});
+}
+
+function tokenRedirect(context: Parameters<APIRoute>[0], location: string): Response {
+	const response = context.redirect(location, 303);
+	for (const [key, value] of Object.entries(tokenHeaders())) response.headers.set(key, value);
+	return response;
 }
 
 export const GET: APIRoute = async (context) => {
@@ -56,48 +71,101 @@ export const GET: APIRoute = async (context) => {
 	// Defense-in-depth: astro:env validates undefined but not empty string.
 	if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
 		return htmlPage(
-			ui[locale]['subscribe.confirm.invalid'],
-			ui[locale]['subscribe.confirm.invalid'],
+			ui[locale]['subscribe.confirm.error'],
+			ui[locale]['subscribe.confirm.error'],
 			locale,
+			503,
 		);
 	}
 
-	const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, 'confirm');
+	const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, { purpose: 'confirm' });
 
 	if (!result) {
 		return htmlPage(
 			ui[locale]['subscribe.confirm.invalid'],
 			ui[locale]['subscribe.confirm.invalid'],
 			locale,
+			400,
 		);
 	}
 
 	const { email } = result;
-
+	const confirmationTokenHash = await hashConfirmationToken(SUBSCRIBE_RATE_LIMIT_SECRET, token);
+	let db: D1Database;
 	try {
-		const db = getDB();
-		await markConfirmed(db, email);
-	} catch (err) {
-		console.error('Failed to mark confirmed:', err);
+		db = getDB();
+		await cleanupExpiredPendingIntents(db);
+	} catch {
+		console.error(JSON.stringify({ message: 'Failed to clean expired confirmation intent' }));
+		return htmlPage(
+			ui[locale]['subscribe.confirm.error'],
+			ui[locale]['subscribe.confirm.error'],
+			locale,
+			503,
+		);
 	}
 
+	let confirmation: Awaited<ReturnType<typeof confirmSubscriberAndEnableAll>>;
 	try {
-		const unsubscribeToken = await issueToken(SUBSCRIBE_RATE_LIMIT_SECRET, email, 'unsubscribe');
-		const origin = new URL(context.request.url).origin;
-		const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-		const unsubscribeUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&locale=${locale}`;
-		const privacySlug = await resolvePageSlug('privacy', locale, 'privacy');
-		const privacyUrl = `${origin}${homeHrefFor(locale)}${privacySlug}/`;
-		await sendWelcome({ to: email, locale, unsubscribeUrl, privacyUrl });
-	} catch (err) {
-		console.error('Failed to send welcome email:', err);
+		confirmation = await confirmSubscriberAndEnableAll(db, email, confirmationTokenHash);
+	} catch {
+		console.error(JSON.stringify({ message: 'Failed to confirm subscriber' }));
+		return htmlPage(
+			ui[locale]['subscribe.confirm.error'],
+			ui[locale]['subscribe.confirm.error'],
+			locale,
+			503,
+		);
 	}
 
-	await notify(`✅ Subscriber confirmed: ${escapeHtml(email)} (${locale})`);
+	if (!confirmation) {
+		return htmlPage(
+			ui[locale]['subscribe.confirm.invalid'],
+			ui[locale]['subscribe.confirm.invalid'],
+			locale,
+			400,
+		);
+	}
 
-	// Analytics Engine event (fire-and-forget, never throws, no PII)
-	trackEvent('subscribe_confirmed', { locale, status: 'confirmed' });
+	// The database value is authoritative. The unsigned locale query is only a
+	// fallback for invalid/error pages where there is no subscriber to consult.
+	const communicationLocale = confirmation.preferences.subscriber.communication_locale;
+
+	if (confirmation.changed) {
+		try {
+			const [manageToken, globalOneClickToken] = await Promise.all([
+				issueToken(SUBSCRIBE_RATE_LIMIT_SECRET, email, { purpose: 'manage' }),
+				issueToken(SUBSCRIBE_RATE_LIMIT_SECRET, email, {
+					purpose: 'oneclick',
+					action: 'all',
+				}),
+			]);
+			const origin = new URL(context.request.url).origin;
+			const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+			const manageUrl = `${origin}${base}/${communicationLocale}/unsubscribe?token=${encodeURIComponent(manageToken)}`;
+			const globalOneClickUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(globalOneClickToken)}&action=all&oneclick=1`;
+			const privacySlug = await resolvePageSlug('privacy', communicationLocale, 'privacy');
+			const privacyUrl = `${origin}${homeHrefFor(communicationLocale)}${privacySlug}/`;
+			await sendWelcome({
+				to: email,
+				locale: communicationLocale,
+				manageUrl,
+				globalOneClickUrl,
+				privacyUrl,
+			});
+		} catch {
+			console.error(JSON.stringify({ message: 'Failed to send welcome email' }));
+		}
+
+		await notify(`✅ Subscription confirmed (${communicationLocale})`);
+
+		// Analytics Engine event (synchronous non-throwing binding call; no PII)
+		trackEvent('subscribe_confirmed', {
+			locale: communicationLocale,
+			status: 'confirmed_all_languages',
+		});
+	}
 
 	// Redirect to subscribe page with confirmed flag
-	return context.redirect(`${homeHrefFor(locale)}subscribe?confirmed=1`, 302);
+	return tokenRedirect(context, `${homeHrefFor(communicationLocale)}subscribe?confirmed=1`);
 };

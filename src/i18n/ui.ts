@@ -42,21 +42,48 @@ export const ui = {
 		'post.empty': 'No posts yet. Check back soon.',
 		'post.readMore': 'Read post',
 		'subscribe.title': 'Subscribe',
-		'subscribe.description': 'Get new posts in your inbox. No spam, unsubscribe anytime.',
+		'subscribe.description':
+			'One subscription includes every independently authored English and Ukrainian post — not just translations. Change either language anytime.',
 		'subscribe.email': 'Email address',
-		'subscribe.submit': 'Subscribe',
-		'subscribe.submitting': 'Subscribing…',
+		'subscribe.submit': 'Subscribe to all posts',
+		'subscribe.submitting': 'Subscribing to all posts…',
 		'subscribe.success': 'Check your inbox — we sent you a confirmation link.',
 		'subscribe.invalid': 'Please enter a valid email address.',
 		'subscribe.rateLimited': 'Too many attempts. Try again in a few minutes.',
 		'subscribe.error': 'Something went wrong. Please try again.',
 		'subscribe.confirm.title': 'You’re in.',
-		'subscribe.confirm.body': 'Your subscription is confirmed. Welcome — first post coming soon.',
+		'subscribe.confirm.body':
+			'You’re subscribed to independently authored English and Ukrainian posts. You can change either language anytime.',
 		'subscribe.confirm.invalid': 'This confirmation link is invalid or has expired.',
-		'subscribe.unsubscribe.title': 'You’re unsubscribed.',
-		'subscribe.unsubscribe.body':
-			'You won’t receive any more emails from this blog. You can re-subscribe anytime.',
+		'subscribe.confirm.error':
+			'We could not confirm your subscription right now. Nothing was changed; please try again.',
+		'subscribe.unsubscribe.title': 'Language preferences',
+		'subscribe.unsubscribe.description':
+			'Choose which independently authored posts arrive in your inbox.',
+		'subscribe.unsubscribe.intro':
+			'English and Ukrainian posts are separate streams and may cover completely different subjects. Turning one off does not affect the other.',
+		'subscribe.unsubscribe.current': 'Currently receiving',
+		'subscribe.unsubscribe.language.en': 'English posts',
+		'subscribe.unsubscribe.language.uk': 'Ukrainian posts',
+		'subscribe.unsubscribe.enabled': 'Subscribed',
+		'subscribe.unsubscribe.disabled': 'Off',
+		'subscribe.unsubscribe.legend': 'Change your subscription',
+		'subscribe.unsubscribe.action.en': 'Unsubscribe from English posts',
+		'subscribe.unsubscribe.action.uk': 'Unsubscribe from Ukrainian posts',
+		'subscribe.unsubscribe.action.all': 'Unsubscribe from all posts',
+		'subscribe.unsubscribe.action.subscribeAll': 'Subscribe to all posts again',
+		'subscribe.unsubscribe.result.en':
+			'English posts are now off. Your Ukrainian-post preference did not change.',
+		'subscribe.unsubscribe.result.uk':
+			'Ukrainian posts are now off. Your English-post preference did not change.',
+		'subscribe.unsubscribe.result.all': 'You are unsubscribed from all posts.',
+		'subscribe.unsubscribe.result.subscribeAll':
+			'You are subscribed to English and Ukrainian posts again.',
+		'subscribe.unsubscribe.invalid.title': 'This link cannot be used',
 		'subscribe.unsubscribe.invalid': 'This unsubscribe link is invalid or has expired.',
+		'subscribe.unsubscribe.error.title': 'Preferences unavailable',
+		'subscribe.unsubscribe.error.body':
+			'We could not update your preferences. Nothing was changed; please try again.',
 		'search.title': 'Search',
 		'search.placeholder': 'Search posts…',
 		'search.shortcut': 'Press / to search',
@@ -122,21 +149,47 @@ export const ui = {
 		'post.readMore': 'Читати допис',
 		'subscribe.title': 'Підписка',
 		'subscribe.description':
-			'Отримуйте нові дописи на свою пошту. Без спаму, відписатися можна будь-коли.',
+			'Одна підписка охоплює всі незалежно створені англомовні й україномовні дописи, а не лише переклади. Налаштування мов можна змінити будь-коли.',
 		'subscribe.email': 'Електронна пошта',
-		'subscribe.submit': 'Підписатися',
-		'subscribe.submitting': 'Підписуємо…',
+		'subscribe.submit': 'Підписатися на всі дописи',
+		'subscribe.submitting': 'Підписуємо на всі дописи…',
 		'subscribe.success': 'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
 		'subscribe.invalid': 'Введіть коректну адресу електронної пошти.',
 		'subscribe.rateLimited': 'Забагато спроб. Спробуйте за кілька хвилин.',
 		'subscribe.error': 'Щось пішло не так. Спробуйте ще раз.',
 		'subscribe.confirm.title': 'Готово.',
-		'subscribe.confirm.body': 'Вашу підписку підтверджено. Вітаю — перший допис незабаром.',
+		'subscribe.confirm.body':
+			'Ви підписані на незалежно створені англомовні й україномовні дописи. Налаштування кожної мови можна змінити будь-коли.',
 		'subscribe.confirm.invalid': 'Це посилання для підтвердження недійсне або застаріло.',
-		'subscribe.unsubscribe.title': 'Ви відписані.',
-		'subscribe.unsubscribe.body':
-			'Більше не отримуватимете листів. Можна підписатися знову будь-коли.',
+		'subscribe.confirm.error':
+			'Не вдалося підтвердити підписку. Нічого не змінилося; спробуйте ще раз.',
+		'subscribe.unsubscribe.title': 'Налаштування мов',
+		'subscribe.unsubscribe.description':
+			'Виберіть, які незалежно створені дописи надходитимуть на вашу пошту.',
+		'subscribe.unsubscribe.intro':
+			'Англомовні й україномовні дописи — це окремі потоки, які можуть бути на зовсім різні теми. Вимкнення однієї мови не впливає на іншу.',
+		'subscribe.unsubscribe.current': 'Зараз отримуєте',
+		'subscribe.unsubscribe.language.en': 'Англомовні дописи',
+		'subscribe.unsubscribe.language.uk': 'Україномовні дописи',
+		'subscribe.unsubscribe.enabled': 'Підписані',
+		'subscribe.unsubscribe.disabled': 'Вимкнено',
+		'subscribe.unsubscribe.legend': 'Змінити підписку',
+		'subscribe.unsubscribe.action.en': 'Відписатися від англомовних дописів',
+		'subscribe.unsubscribe.action.uk': 'Відписатися від україномовних дописів',
+		'subscribe.unsubscribe.action.all': 'Відписатися від усіх дописів',
+		'subscribe.unsubscribe.action.subscribeAll': 'Знову підписатися на всі дописи',
+		'subscribe.unsubscribe.result.en':
+			'Англомовні дописи вимкнено. Налаштування україномовних дописів не змінилося.',
+		'subscribe.unsubscribe.result.uk':
+			'Україномовні дописи вимкнено. Налаштування англомовних дописів не змінилося.',
+		'subscribe.unsubscribe.result.all': 'Ви відписані від усіх дописів.',
+		'subscribe.unsubscribe.result.subscribeAll':
+			'Ви знову підписані на англомовні й україномовні дописи.',
+		'subscribe.unsubscribe.invalid.title': 'Цим посиланням не можна скористатися',
 		'subscribe.unsubscribe.invalid': 'Це посилання для відписки недійсне або застаріло.',
+		'subscribe.unsubscribe.error.title': 'Налаштування недоступні',
+		'subscribe.unsubscribe.error.body':
+			'Не вдалося оновити налаштування. Нічого не змінилося; спробуйте ще раз.',
 		'search.title': 'Пошук',
 		'search.placeholder': 'Шукати в дописах…',
 		'search.shortcut': 'Натисніть / для пошуку',

@@ -1,35 +1,34 @@
 {
 	"name": "Welcome (EN)",
-	"subject": "You're subscribed",
+	"subject": "You're subscribed to all posts",
 	"locale": "en",
-	"updatedAt": "2026-05-20T00:00:00.000Z",
+	"updatedAt": "2026-07-15T00:00:00.000Z",
 	"json": {
 		"type": "doc",
 		"content": [
 			{
 				"type": "heading",
 				"attrs": { "level": 1 },
-				"content": [{ "type": "text", "text": "You're subscribed" }]
+				"content": [{ "type": "text", "text": "You're subscribed to all posts" }]
 			},
 			{
 				"type": "paragraph",
 				"content": [
 					{
 						"type": "text",
-						"text": "You're in! Expect occasional posts on engineering, photography, and craft. Reply to this email anytime — I read everything."
+						"text": "You'll receive independently authored English and Ukrainian posts. They may cover different subjects and are not necessarily translations. Reply anytime — I read everything."
 					}
 				]
 			},
 			{
 				"type": "paragraph",
 				"content": [
-					{ "type": "text", "text": "Not interested anymore? " },
 					{
 						"type": "text",
-						"marks": [{ "type": "link", "attrs": { "href": "{{unsubscribeUrl}}" } }],
-						"text": "Unsubscribe"
+						"marks": [{ "type": "link", "attrs": { "href": "{{manageUrl}}" } }],
+						"text": "Manage language preferences or unsubscribe"
 					},
-					{ "type": "text", "text": " in one click." }
+					{ "type": "text", "text": "." }
 				]
 			},
 			{
@@ -46,5 +45,6 @@
 			}
 		]
 	},
-	"html": "<!doctype html><html lang=\"en\"><body style=\"font-family:system-ui,-apple-system,sans-serif;background:#f6f6f6;margin:0;padding:24px;color:#111\"><div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #eee\"><h1 style=\"font-size:22px;margin:0 0 16px\">You're subscribed</h1><p style=\"font-size:16px;line-height:1.6;margin:0\">You're in! Expect occasional posts on engineering, photography, and craft. Reply to this email anytime — I read everything.</p><p style=\"color:#888;font-size:13px;margin-top:24px;margin-bottom:0\">Not interested anymore? <a href=\"{{unsubscribeUrl}}\" style=\"color:#888\">Unsubscribe</a> in one click. Read our <a href=\"{{privacyUrl}}\" style=\"color:#888\">Privacy Policy</a>.</p></div></body></html>"
+	"html": "<!doctype html><html lang=\"en\"><body style=\"font-family:system-ui,-apple-system,sans-serif;background:#f6f6f6;margin:0;padding:24px;color:#111\"><div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #eee\"><h1 style=\"font-size:22px;margin:0 0 16px\">You're subscribed to all posts</h1><p style=\"font-size:16px;line-height:1.6;margin:0\">You'll receive independently authored English and Ukrainian posts. They may cover different subjects and are not necessarily translations. Reply anytime — I read everything.</p><p style=\"color:#888;font-size:13px;margin-top:24px;margin-bottom:0\"><a href=\"{{manageUrl}}\" style=\"color:#888\">Manage language preferences or unsubscribe</a>. Read our <a href=\"{{privacyUrl}}\" style=\"color:#888\">Privacy Policy</a>.</p></div></body></html>",
+	"text": "You're subscribed to all posts\n\nYou'll receive independently authored English and Ukrainian posts. They may cover different subjects and are not necessarily translations. Reply anytime — I read everything.\n\nManage language preferences or unsubscribe: {{manageUrl}}\n\nPrivacy Policy: {{privacyUrl}}"
 }

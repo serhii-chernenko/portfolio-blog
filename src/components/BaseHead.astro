@@ -22,6 +22,7 @@ export interface Props {
 	tags?: string[];
 	alternates?: Partial<Record<Locale, string | null>>;
 	authorUrl?: string;
+	noIndex?: boolean;
 }
 
 const {
@@ -35,6 +36,7 @@ const {
 	tags,
 	alternates,
 	authorUrl,
+	noIndex = false,
 } = Astro.props;
 
 const t = useTranslations(locale);
@@ -77,6 +79,7 @@ const jsonLd =
 <!-- Primary meta -->
 <title>{title}</title>
 <meta name="description" content={description} />
+{noIndex && <meta name="robots" content="noindex,nofollow,noarchive" />}
 {tags && tags.length > 0 && <meta name="keywords" content={tags.join(', ')} />}
 
 <!-- Canonical -->

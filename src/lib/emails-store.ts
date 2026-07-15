@@ -11,6 +11,7 @@ export interface EmailTemplate {
 	updatedAt: string;
 	json: unknown;
 	html: string;
+	text: string;
 }
 
 export interface EmailTemplateSummary {

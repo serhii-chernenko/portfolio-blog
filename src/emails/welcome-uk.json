@@ -1,35 +1,34 @@
 {
 	"name": "Вітання (UK)",
-	"subject": "Підписку підтверджено",
+	"subject": "Ви підписані на всі дописи",
 	"locale": "uk",
-	"updatedAt": "2026-05-20T00:00:00.000Z",
+	"updatedAt": "2026-07-15T00:00:00.000Z",
 	"json": {
 		"type": "doc",
 		"content": [
 			{
 				"type": "heading",
 				"attrs": { "level": 1 },
-				"content": [{ "type": "text", "text": "Підписку підтверджено" }]
+				"content": [{ "type": "text", "text": "Ви підписані на всі дописи" }]
 			},
 			{
 				"type": "paragraph",
 				"content": [
 					{
 						"type": "text",
-						"text": "Готово! Іноді надсилатиму нові дописи про розробку, фотографію та ремесло. Можете відповісти на цей лист — я читаю усі."
+						"text": "Отримуватимете англомовні й україномовні дописи, створені незалежно один від одного. Вони можуть бути на різні теми й не обов’язково є перекладами. Можете відповісти на цей лист — я читаю все."
 					}
 				]
 			},
 			{
 				"type": "paragraph",
 				"content": [
-					{ "type": "text", "text": "Не цікаво? " },
 					{
 						"type": "text",
-						"marks": [{ "type": "link", "attrs": { "href": "{{unsubscribeUrl}}" } }],
-						"text": "Відписатися"
+						"marks": [{ "type": "link", "attrs": { "href": "{{manageUrl}}" } }],
+						"text": "Керувати мовними налаштуваннями або відписатися"
 					},
-					{ "type": "text", "text": " в один клік." }
+					{ "type": "text", "text": "." }
 				]
 			},
 			{
@@ -46,5 +45,6 @@
 			}
 		]
 	},
-	"html": "<!doctype html><html lang=\"uk\"><body style=\"font-family:system-ui,-apple-system,sans-serif;background:#f6f6f6;margin:0;padding:24px;color:#111\"><div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #eee\"><h1 style=\"font-size:22px;margin:0 0 16px\">Підписку підтверджено</h1><p style=\"font-size:16px;line-height:1.6;margin:0\">Готово! Іноді надсилатиму нові дописи про розробку, фотографію та ремесло. Можете відповісти на цей лист — я читаю усі.</p><p style=\"color:#888;font-size:13px;margin-top:24px;margin-bottom:0\">Не цікаво? <a href=\"{{unsubscribeUrl}}\" style=\"color:#888\">Відписатися</a> в один клік. Ознайомтеся з нашою <a href=\"{{privacyUrl}}\" style=\"color:#888\">Політикою конфіденційності</a>.</p></div></body></html>"
+	"html": "<!doctype html><html lang=\"uk\"><body style=\"font-family:system-ui,-apple-system,sans-serif;background:#f6f6f6;margin:0;padding:24px;color:#111\"><div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #eee\"><h1 style=\"font-size:22px;margin:0 0 16px\">Ви підписані на всі дописи</h1><p style=\"font-size:16px;line-height:1.6;margin:0\">Отримуватимете англомовні й україномовні дописи, створені незалежно один від одного. Вони можуть бути на різні теми й не обов’язково є перекладами. Можете відповісти на цей лист — я читаю все.</p><p style=\"color:#888;font-size:13px;margin-top:24px;margin-bottom:0\"><a href=\"{{manageUrl}}\" style=\"color:#888\">Керувати мовними налаштуваннями або відписатися</a>. Ознайомтеся з нашою <a href=\"{{privacyUrl}}\" style=\"color:#888\">Політикою конфіденційності</a>.</p></div></body></html>",
+	"text": "Ви підписані на всі дописи\n\nОтримуватимете англомовні й україномовні дописи, створені незалежно один від одного. Вони можуть бути на різні теми й не обов’язково є перекладами. Можете відповісти на цей лист — я читаю все.\n\nКерувати мовними налаштуваннями або відписатися: {{manageUrl}}\n\nПолітика конфіденційності: {{privacyUrl}}"
 }

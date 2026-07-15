@@ -4,6 +4,12 @@ import '@react-email/editor/themes/default.css';
 import '@react-email/editor/styles/bubble-menu.css';
 import '@react-email/editor/styles/slash-command.css';
 import '@react-email/editor/styles/inspector.css';
+import {
+	extractEmailTemplateVariables,
+	getEmailTemplateVariableSpec,
+	validateEmailTemplateVariables,
+} from '../lib/email-template-variables';
+
 interface EmailTemplate {
 	slug: string;
 	name: string;
@@ -12,19 +18,11 @@ interface EmailTemplate {
 	updatedAt: string;
 	json: Record<string, unknown>;
 	html: string;
+	text: string;
 }
 
 interface Props {
 	slug: string;
-}
-
-function extractVariables(html: string): string[] {
-	const matches = html.matchAll(/\{\{([^}]+)\}\}/g);
-	const vars = new Set<string>();
-	for (const m of matches) {
-		vars.add(m[1].trim());
-	}
-	return [...vars];
 }
 
 function validateEmailUrl(value: string): string | null {
@@ -55,6 +53,7 @@ export default function EmailEditorIsland({ slug }: Props) {
 	const [subject, setSubject] = useState('');
 	const [locale, setLocale] = useState<'en' | 'uk'>('en');
 	const [currentHtml, setCurrentHtml] = useState('');
+	const [plainText, setPlainText] = useState('');
 
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
@@ -79,6 +78,7 @@ export default function EmailEditorIsland({ slug }: Props) {
 				setSubject(data.subject);
 				setLocale(data.locale);
 				setCurrentHtml(data.html);
+				setPlainText(data.text ?? '');
 			} catch (err) {
 				setFetchError(err instanceof Error ? err.message : 'Failed to load template');
 			} finally {
@@ -111,11 +111,13 @@ export default function EmailEditorIsland({ slug }: Props) {
 				editorRef.current.getEmail(),
 				Promise.resolve(editorRef.current.getJSON()),
 			]);
+			const variableErrors = validateEmailTemplateVariables(slug, { html, text: plainText });
+			if (variableErrors.length > 0) throw new Error(variableErrors.join('; '));
 
 			const res = await fetch(`/api/emails/templates/${slug}`, {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name, subject, locale, json, html }),
+				body: JSON.stringify({ name, subject, locale, json, html, text: plainText }),
 			});
 
 			if (!res.ok) {
@@ -151,7 +153,13 @@ export default function EmailEditorIsland({ slug }: Props) {
 		}
 	}
 
-	const variables = extractVariables(currentHtml);
+	const variableSpec = getEmailTemplateVariableSpec(slug);
+	const variables = [
+		...new Set([
+			...extractEmailTemplateVariables(currentHtml),
+			...extractEmailTemplateVariables(plainText),
+		]),
+	];
 
 	if (loading) {
 		return (
@@ -249,17 +257,22 @@ export default function EmailEditorIsland({ slug }: Props) {
 					</div>
 				</div>
 
-				{/* Variables hint */}
-				{variables.length > 0 && (
+				{/* Variables contract */}
+				{variableSpec && (
 					<div className="mb-4 flex flex-wrap items-center gap-2">
 						<span className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
-							Variables:
+							Required in HTML and text:
 						</span>
-						{variables.map((v) => (
+						{variableSpec.required.map((v) => (
 							<span key={v} className="badge badge-outline badge-sm font-mono">
 								{`{{${v}}}`}
 							</span>
 						))}
+					</div>
+				)}
+				{!variableSpec && variables.length > 0 && (
+					<div className="alert alert-warning mb-4 text-sm">
+						Custom templates do not support variables until a runtime contract is registered.
 					</div>
 				)}
 
@@ -275,6 +288,22 @@ export default function EmailEditorIsland({ slug }: Props) {
 							validateUrl={validateEmailUrl}
 						/>
 					</div>
+				</div>
+
+				<div className="form-control mb-6">
+					<label className="label" htmlFor="tpl-text">
+						<span className="label-text font-medium">Plain-text version</span>
+					</label>
+					<textarea
+						id="tpl-text"
+						className="textarea textarea-bordered min-h-48 w-full font-mono text-sm"
+						value={plainText}
+						onChange={(event) => setPlainText(event.currentTarget.value)}
+						required
+					/>
+					<p className="label">
+						Keep this equivalent to the HTML message for accessibility and deliverability.
+					</p>
 				</div>
 
 				{/* HTML preview */}

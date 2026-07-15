@@ -63,6 +63,11 @@ export default defineConfig({
 	site: SITE,
 	base: BASE_PATH,
 	output: 'server',
+	// Reproduced in src/middleware.ts so RFC 8058 one-click unsubscribe POSTs
+	// can receive a narrowly scoped exception without weakening other forms.
+	security: {
+		checkOrigin: false,
+	},
 	// Adapter is mode-dependent. `pnpm dev` (PUBLIC_KEYSTATIC_MODE=local) needs the
 	// Node runtime: Keystatic local storage reads/writes src/content via `fs`, which
 	// the Cloudflare adapter's `astro dev` can't provide since v13 (it runs on the
@@ -95,10 +100,9 @@ export default defineConfig({
 			SUBSCRIBE_RATE_LIMIT_SECRET: envField.string({
 				context: 'server',
 				access: 'secret',
-				// min:1 makes astro:env reject an empty string at validation — an empty
-				// HMAC key would otherwise silently produce forgeable tokens. The API
-				// routes also guard defensively, but this closes it at the schema.
-				min: 1,
+				// Tokens and keyed abuse hashes derive from this root secret. Enforce
+				// the documented minimum rather than accepting a merely non-empty key.
+				min: 32,
 			}),
 			TELEGRAM_BOT_TOKEN: envField.string({
 				context: 'server',

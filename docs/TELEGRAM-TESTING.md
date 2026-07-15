@@ -25,17 +25,18 @@ Two sources fire notifications: the **Worker** (runtime API routes) and **GitHub
 Actions** (CI). They read from _separate_ credential stores (Worker secrets vs.
 repo Actions secrets) — both must be configured.
 
-| #   | Message (prefix)                  | When                                                | Fired by       | Source                             |
-| --- | --------------------------------- | --------------------------------------------------- | -------------- | ---------------------------------- |
-| 1   | `📬 New pending subscriber`       | Subscribe form submitted, row inserted as `pending` | Worker         | `src/pages/api/subscribe.ts:110`   |
-| 2   | `✅ Subscriber confirmed`         | Confirmation link clicked, row flips to `confirmed` | Worker         | `src/pages/api/confirm.ts:93`      |
-| 3   | `👋 Unsubscribed`                 | Unsubscribe link clicked                            | Worker         | `src/pages/api/unsubscribe.ts:82`  |
-| 4   | `📝 Preview deployed for PR #<n>` | PR opened/synchronized, preview Worker deployed     | GitHub Actions | `.github/workflows/preview.yml`    |
-| 5   | `📝 New article PR opened`        | PR gets the `new article` label                     | GitHub Actions | `.github/workflows/auto-label.yml` |
-| 6   | `✅ Production deployed`          | Push to `main` deploy succeeds                      | GitHub Actions | `.github/workflows/deploy.yml`     |
-| 7   | `❌ Production deploy failed`     | Push to `main` deploy fails                         | GitHub Actions | `.github/workflows/deploy.yml`     |
+| #   | Message (prefix)                      | When                                                 | Fired by       | Source                             |
+| --- | ------------------------------------- | ---------------------------------------------------- | -------------- | ---------------------------------- |
+| 1   | `📬 New pending subscriber`           | Pending row is stored and confirmation email is sent | Worker         | `src/pages/api/subscribe.ts`       |
+| 2   | `✅ Subscriber confirmed`             | Confirmation enables both content languages          | Worker         | `src/pages/api/confirm.ts`         |
+| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | Worker         | `src/pages/api/unsubscribe.ts`     |
+| 4   | `📝 Preview deployed for PR #<n>`     | PR opened/synchronized, preview Worker deployed      | GitHub Actions | `.github/workflows/preview.yml`    |
+| 5   | `📝 New article PR opened`            | PR gets the `new article` label                      | GitHub Actions | `.github/workflows/auto-label.yml` |
+| 6   | `✅ Production deployed`              | Push to `main` deploy succeeds                       | GitHub Actions | `.github/workflows/deploy.yml`     |
+| 7   | `❌ Production deploy failed`         | Push to `main` deploy fails                          | GitHub Actions | `.github/workflows/deploy.yml`     |
 
-Events 1–3 carry the email (HTML-escaped via `escapeHtml`) and locale.
+Events 1–3 deliberately omit the subscriber address. They carry only event type, locale, and for a
+preference change the allowlisted action.
 
 ---
 
@@ -61,7 +62,7 @@ or you never messaged the bot first).
 These only fire in a **Cloudflare runtime** (workerd), never under plain `pnpm dev`.
 
 `pnpm dev` runs on the Node adapter with no CF bindings. More precisely: the
-subscribe/confirm/unsubscribe routes need the DB and RATE_LIMIT bindings (from
+subscribe/confirm/unsubscribe routes need the D1 DB binding (from
 `cloudflare:workers`) to proceed past validation, so `notify()` is never reached
 there. This is expected behaviour — use `wrangler:dev` for Worker event testing.
 
@@ -84,28 +85,33 @@ curl -i -X POST http://127.0.0.1:4321/blog/api/subscribe \
   -d '{"email":"you+test@example.com","locale":"en"}'
 ```
 
-Expect HTTP 200 **and** a `📬 New pending subscriber: you+test@example.com (en)`
-message. (Note: in local dev the email send may fail unless Email Routing is
-reachable — the Telegram notify still fires because it runs after the insert and
-is independent of the email step for event 1.)
+Expect HTTP 200 **and** a `📬 New pending subscription (en)`
+message. The notification fires only after the confirmation email is accepted for
+sending; an email failure returns an error and does not report subscribe success.
 
 **Event 2 — confirmed:** grab the confirm token. Easiest is the confirmation
 email; or mint one in a `wrangler:dev` session. Then:
 
 ```bash
-curl -i "http://127.0.0.1:4321/blog/api/confirm?token=<TOKEN>&locale=en"
+curl -i "http://127.0.0.1:4321/blog/api/confirm?token=<TOKEN>"
 ```
 
-Expect a 302 redirect to `…/subscribe?confirmed=1` **and** `✅ Subscriber
-confirmed: …`.
+Expect a 303 redirect to `…/subscribe?confirmed=1` **and** `✅ Subscription
+confirmed (en)` (or `uk`).
 
-**Event 3 — unsubscribe:**
+**Event 3 — change preferences:**
 
 ```bash
-curl -i "http://127.0.0.1:4321/blog/api/unsubscribe?token=<UNSUB_TOKEN>&locale=en"
+curl -i -X POST \
+  "http://127.0.0.1:4321/blog/api/unsubscribe?token=<UNSUB_TOKEN>&action=all&oneclick=1" \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  --data 'List-Unsubscribe=One-Click'
 ```
 
-Expect an HTML page **and** `👋 Unsubscribed: …`.
+Expect HTTP 200 with an empty body **and** `🔔 Subscription preferences changed (en, all)`.
+Repeating the same POST remains successful but sends no duplicate notification.
+A GET to the same endpoint only redirects to the preference center and never
+changes state or sends a notification.
 
 ### If a Worker event doesn't arrive
 
@@ -113,7 +119,7 @@ Expect an HTML page **and** `👋 Unsubscribed: …`.
 wrangler tail            # live-stream Worker logs
 ```
 
-A failed call logs `Telegram notify failed: <status>`. No log line at all means
+A failed call emits a structured warning with no notification text or PII. No log line at all means
 the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 400 validation error short-circuits before the notify call).
 

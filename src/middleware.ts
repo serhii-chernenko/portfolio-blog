@@ -1,5 +1,46 @@
 import { defineMiddleware } from 'astro:middleware';
 
+const FORM_CONTENT_TYPES = [
+	'application/x-www-form-urlencoded',
+	'multipart/form-data',
+	'text/plain',
+];
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const ONE_CLICK_CONTENT_TYPE = 'application/x-www-form-urlencoded';
+const ONE_CLICK_ACTIONS = ['en', 'uk', 'all'];
+const RUNTIME_BASE = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+const ONE_CLICK_UNSUBSCRIBE_PATH = `${RUNTIME_BASE}/api/unsubscribe`;
+
+function hasFormLikeHeader(contentType: string | null): boolean {
+	if (contentType) {
+		for (const formContentType of FORM_CONTENT_TYPES) {
+			if (contentType.toLowerCase().includes(formContentType)) return true;
+		}
+	}
+	return false;
+}
+
+function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
+	if (
+		request.method !== 'POST' ||
+		url.pathname !== ONE_CLICK_UNSUBSCRIBE_PATH ||
+		request.headers.get('content-type')?.toLowerCase() !== ONE_CLICK_CONTENT_TYPE
+	) {
+		return false;
+	}
+
+	const entries = [...url.searchParams];
+	return (
+		entries.length === 3 &&
+		url.searchParams.getAll('token').length === 1 &&
+		(url.searchParams.get('token')?.length ?? 0) > 0 &&
+		url.searchParams.getAll('action').length === 1 &&
+		ONE_CLICK_ACTIONS.includes(url.searchParams.get('action') ?? '') &&
+		url.searchParams.getAll('oneclick').length === 1 &&
+		url.searchParams.get('oneclick') === '1'
+	);
+}
+
 // Keystatic's React Admin UI ships with hardcoded fetch URLs to `/api/keystatic/*`
 // (root-relative, no base path). With Astro `base: '/blog'`, the Keystatic API
 // routes live at `/blog/api/keystatic/*`, so the UI's fetches would 404.
@@ -23,6 +64,25 @@ const BASE = '/blog';
 const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 
 export const onRequest = defineMiddleware((context, next) => {
+	const { request, url, isPrerendered } = context;
+	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
+		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
+		const isSameOrigin = request.headers.get('origin') === url.origin;
+		const hasContentType = request.headers.has('content-type');
+		if (hasContentType) {
+			const formLikeHeader = hasFormLikeHeader(request.headers.get('content-type'));
+			if (formLikeHeader && !isSameOrigin && !isOneClickUnsubscribe) {
+				return new Response(`Cross-site ${request.method} form submissions are forbidden`, {
+					status: 403,
+				});
+			}
+		} else if (!isSameOrigin) {
+			return new Response(`Cross-site ${request.method} form submissions are forbidden`, {
+				status: 403,
+			});
+		}
+	}
+
 	if (import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local') {
 		return next();
 	}

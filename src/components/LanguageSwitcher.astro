@@ -1,6 +1,6 @@
 ---
 import type { Locale } from '../i18n/config';
-import { locales, localeLabels, localeFlags, htmlLangAttribute } from '../i18n/config';
+import { locales, localeLabels, htmlLangAttribute } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
 
 export interface Props {
@@ -47,8 +47,7 @@ function hrefFor(target: Locale): string {
 		aria-label={t('lang.switch')}
 		aria-haspopup="true"
 	>
-		<span aria-hidden="true">{localeFlags[locale]}</span>
-		<span class="hidden sm:inline">{localeLabels[locale]}</span>
+		<span>{localeLabels[locale]}</span>
 		<!-- Chevron -->
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
@@ -79,7 +78,6 @@ function hrefFor(target: Locale): string {
 						aria-current={loc === locale ? 'true' : undefined}
 						class={loc === locale ? 'active' : ''}
 					>
-						<span aria-hidden="true">{localeFlags[loc]}</span>
 						{localeLabels[loc]}
 					</a>
 				</li>

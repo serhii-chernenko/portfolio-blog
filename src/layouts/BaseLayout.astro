@@ -22,6 +22,8 @@ export interface Props {
 	translatedUrls?: Partial<Record<Locale, string | null>>;
 	/** Pre-resolved author page URL for JSON-LD on article pages */
 	authorUrl?: string;
+	/** Prevent sensitive or utility pages from appearing in search results. */
+	noIndex?: boolean;
 }
 
 const {
@@ -36,6 +38,7 @@ const {
 	alternates,
 	translatedUrls,
 	authorUrl,
+	noIndex = false,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -55,6 +58,7 @@ const lang = htmlLangAttribute[locale];
 			tags={tags}
 			alternates={alternates}
 			authorUrl={authorUrl}
+			noIndex={noIndex}
 		/>
 	</head>
 	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">

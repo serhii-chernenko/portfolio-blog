@@ -83,6 +83,7 @@ export const POST: APIRoute = async ({ request }) => {
 		locale,
 		json: { type: 'doc', content: [] },
 		html: '',
+		text: '',
 	});
 
 	return new Response(JSON.stringify({ slug }), {

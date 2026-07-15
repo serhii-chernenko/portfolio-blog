@@ -18,11 +18,6 @@ export const localeLabels: Record<Locale, string> = {
 	uk: 'Українська',
 };
 
-export const localeFlags: Record<Locale, string> = {
-	en: '🇬🇧',
-	uk: '🇺🇦',
-};
-
 export function isLocale(value: string): value is Locale {
 	return (locales as readonly string[]).includes(value);
 }

@@ -45,7 +45,11 @@ export async function getTranslatedPostUrls(
 ): Promise<Record<Locale, string | null>> {
 	const { getCollection } = await import('astro:content');
 	const all = [...(await getCollection('postsEn')), ...(await getCollection('postsUk'))];
-	const matches = all.filter((p) => p.data.translationKey === translationKey);
+	const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
+	const now = new Date();
+	const matches = all
+		.filter((p) => showDrafts || (!p.data.draft && p.data.publishedAt <= now))
+		.filter((p) => p.data.translationKey === translationKey);
 	const result: Record<Locale, string | null> = { en: null, uk: null };
 	for (const m of matches) {
 		const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';

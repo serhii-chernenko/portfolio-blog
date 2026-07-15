@@ -53,19 +53,19 @@ Both are independent collections. They share the same schema. They're linked by 
 
 Click the collection, then **+ Add Post**. You'll see a form with:
 
-| Field                   | What it does                                                                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Title**               | The post title. Used in the URL slug, `<h1>`, `<title>`, OG tags.                                                                                                                                                        |
-| **Slug**                | Auto-generated from the title. You can override. Becomes the URL: `/blog/{locale}/posts/{slug}`.                                                                                                                         |
-| **Translation Key**     | A short identifier that ties EN and UK versions of the same article together. **Use the same string in both languages.** Lowercase, kebab-case, e.g. `astro-on-cloudflare`. Used for hreflang and the language switcher. |
-| **Description**         | 50–200 chars. Shows in post listings, RSS, OG, and meta description.                                                                                                                                                     |
-| **Published at**        | ISO datetime. Posts dated in the future are hidden until that time passes (production only).                                                                                                                             |
-| **Updated at**          | Optional. Set when you make a meaningful edit. Shows as "Updated …" on the post page.                                                                                                                                    |
-| **Tags**                | One tag per row. Tags become DaisyUI chips, and each gets its own page at `/blog/{locale}/tags/{slug}`.                                                                                                                  |
-| **Hero image**          | Optional. Drag-drop or paste an image. Keystatic writes it to `src/assets/posts/`.                                                                                                                                       |
-| **Hero image alt text** | Required for accessibility when a hero image is set.                                                                                                                                                                     |
-| **Draft**               | Checkbox. While checked, the post is invisible in production but visible in local dev and on PR preview URLs.                                                                                                            |
-| **Content**             | The article body — see "Writing the body" below.                                                                                                                                                                         |
+| Field                   | What it does                                                                                                                                                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title**               | The post title. Used in the URL slug, `<h1>`, `<title>`, OG tags.                                                                                                                                                                                           |
+| **Slug**                | Auto-generated from the title. You can override. Becomes the URL: `/blog/{locale}/posts/{slug}`.                                                                                                                                                            |
+| **Translation Key**     | A short identifier used for cross-language pairing. Use the **same** key only for true translations. For an unpaired post, use a locale-prefixed unique key such as `en-osprey-cameras` or `uk-miski-notatky`. Used for hreflang and the language switcher. |
+| **Description**         | 50–200 chars. Shows in post listings, RSS, OG, and meta description.                                                                                                                                                                                        |
+| **Published at**        | ISO datetime. Posts dated in the future are hidden until that time passes (production only).                                                                                                                                                                |
+| **Updated at**          | Optional. Set when you make a meaningful edit. Shows as "Updated …" on the post page.                                                                                                                                                                       |
+| **Tags**                | One tag per row. Tags become DaisyUI chips, and each gets its own page at `/blog/{locale}/tags/{slug}`.                                                                                                                                                     |
+| **Hero image**          | Optional. Drag-drop or paste an image. Keystatic writes it to `src/assets/posts/`.                                                                                                                                                                          |
+| **Hero image alt text** | Required for accessibility when a hero image is set.                                                                                                                                                                                                        |
+| **Draft**               | Checkbox. While checked, the post is invisible in production but visible in local dev and on PR preview URLs.                                                                                                                                               |
+| **Content**             | The article body — see "Writing the body" below.                                                                                                                                                                                                            |
 
 Click **Save**. Locally, this writes a `.mdoc` file in `src/content/posts/{locale}/`. The dev server hot-reloads. Open the post URL to verify it looks right.
 
@@ -220,17 +220,22 @@ translationKey: astro-on-cloudflare # SAME as the EN version
 
 Note the slugs differ (`astro-on-cloudflare` vs `astro-na-cloudflare`) — that's fine and expected. The `translationKey` is what links them.
 
-The convention I'd suggest: **use the English slug as the translationKey, always**. So if the EN slug is `astro-on-cloudflare`, set `translationKey: astro-on-cloudflare` on both versions. Easy to remember, consistent, deterministic.
+Recommended convention:
+
+- For true translations, use one shared semantic key, often the English slug: `astro-on-cloudflare` in both files.
+- For a post that is not paired, prefix a unique key with its locale: `en-notes-on-osprey-cameras` or `uk-zustrich-z-leshchenkom`.
+
+The prefix matters because slugs are only unique _within_ a locale directory. An unrelated EN and UK post can legitimately share a slug; a bare slug reused as `translationKey` would falsely pair them in the language switcher and hreflang metadata.
 
 ### What the `translationKey` actually does
 
-| Feature                                                          | Behavior                                                                                                                    |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Language switcher (header dropdown) on an EN post                | If a UK post with the same `translationKey` exists, clicking 🇺🇦 navigates to that exact post. If not, falls back to `/uk/`. |
-| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when a UK translation exists, so SEO doesn't claim a translation that isn't there.                             |
-| Sitemap                                                          | Groups EN and UK URLs as alternates of the same logical article.                                                            |
+| Feature                                                          | Behavior                                                                                                                              |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Language switcher (header dropdown) on an EN post                | If a UK post with the same `translationKey` exists, choosing Ukrainian navigates to that exact post. If not, it falls back to `/uk/`. |
+| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when a UK translation exists, so SEO doesn't claim a translation that isn't there.                                       |
+| Sitemap                                                          | Groups EN and UK URLs as alternates of the same logical article.                                                                      |
 
-If `translationKey` is missing or unique, the language switcher just goes to the locale's home page. Nothing breaks; you just don't get the cross-linking magic.
+The field is required by the content schema. When its value is unique, the language switcher goes to the other locale's home page and no cross-language alternate is emitted.
 
 ---
 
@@ -243,13 +248,13 @@ Completely fine. The system is designed to handle it.
 ```yaml
 # en/notes-on-osprey-cameras.mdoc
 title: Notes on Osprey cameras
-translationKey: notes-on-osprey-cameras # unique — no other post uses this
+translationKey: en-notes-on-osprey-cameras # locale-prefixed — no UK counterpart
 ```
 
 Behavior:
 
 - URL: `/blog/en/posts/notes-on-osprey-cameras/`
-- Language switcher on this page: 🇺🇦 link goes to `/blog/uk/` (the UK home), since no UK translation exists.
+- Language switcher on this page: the Ukrainian option goes to `/blog/uk/` (the UK home), since no UK translation exists.
 - Hreflang: only `en` and `x-default` emitted. No `uk-UA` alternate.
 - Sitemap: just the EN entry.
 
@@ -258,26 +263,26 @@ Behavior:
 ```yaml
 # uk/zustrich-z-leshchenkom.mdoc
 title: Зустріч із Лещенком
-translationKey: zustrich-z-leshchenkom # unique — no EN counterpart
+translationKey: uk-zustrich-z-leshchenkom # locale-prefixed — no EN counterpart
 ```
 
-Same as Case 1, mirrored. The 🇬🇧 link from this post goes to `/blog/en/`.
+Same as Case 1, mirrored. The English option from this post goes to `/blog/en/`.
 
 **What to put in `translationKey` when the post is single-language:**
 
-Pick a unique value that won't accidentally collide with any future post. The simplest rule: **use the same string as the slug**. Since slugs are unique within a locale and there's no parallel post in the other locale, collisions are impossible.
+Pick a unique value that cannot collide with an unrelated post in the other locale. Use `<locale>-<slug>` for every unpaired post.
 
 ```yaml
-# uk-only post — translationKey === slug
+# uk-only post — locale-prefixed unique key
 title: Зустріч із Лещенком # the "name" of the slug field
-translationKey: zustrich-z-leshchenkom # same as filename
+translationKey: uk-zustrich-z-leshchenkom
 ```
 
-Filename: `zustrich-z-leshchenkom.mdoc`. Slug: `zustrich-z-leshchenkom`. translationKey: `zustrich-z-leshchenkom`. All three line up. Clean.
+Filename and slug remain `zustrich-z-leshchenkom`; only the internal pairing key gets the `uk-` prefix.
 
 ### Case 3 — you publish EN first, write UK later
 
-Day 1, EN only:
+Day 1, EN first, with a UK translation already planned:
 
 ```yaml
 # en/astro-on-cloudflare.mdoc
@@ -293,19 +298,21 @@ translationKey: astro-on-cloudflare # same as the EN file
 
 Next build, the language switcher on both posts now cross-links to the other. Hreflang gets emitted on both. No retroactive changes needed on the EN file.
 
+If the original post used an unpaired key such as `en-astro-on-cloudflare`, change both files to one shared key when you intentionally create the translation. Never give unrelated posts a shared key merely because their slugs match.
+
 ### Case 4 — different topics in each language
 
-Totally fine. Your blog is bilingual, not parallel. Most posts may be EN-only, some UK-only, some both. Just use a unique `translationKey` per post (same as the slug works) and the system handles all three cases.
+Totally fine. Your blog is bilingual, not parallel. Most posts may be EN-only, some UK-only, and some true translations. Use locale-prefixed keys for the independent posts and shared keys only for the true translations.
 
 ---
 
 ## Quick reference table
 
-| Field                  | Where it lives                          | What it controls            | Example for EN post | Example for UK translation of that post | Example for UK-only post          |
-| ---------------------- | --------------------------------------- | --------------------------- | ------------------- | --------------------------------------- | --------------------------------- |
-| Filename               | `src/content/posts/{en,uk}/<slug>.mdoc` | The URL slug                | `hello-world.mdoc`  | `pryvit-svit.mdoc`                      | `zustrich-z-leshchenkom.mdoc`     |
-| `title:` (frontmatter) | Inside the `.mdoc` file                 | Display title (h1, OG, RSS) | `Hello, world`      | `Привіт, світ`                          | `Зустріч із Лещенком`             |
-| `translationKey:`      | Inside the `.mdoc` file                 | Cross-language pairing      | `hello-world`       | `hello-world` ← SAME                    | `zustrich-z-leshchenkom` ← unique |
+| Field                  | Where it lives                          | What it controls            | Example for EN post | Example for UK translation of that post | Example for UK-only post             |
+| ---------------------- | --------------------------------------- | --------------------------- | ------------------- | --------------------------------------- | ------------------------------------ |
+| Filename               | `src/content/posts/{en,uk}/<slug>.mdoc` | The URL slug                | `hello-world.mdoc`  | `pryvit-svit.mdoc`                      | `zustrich-z-leshchenkom.mdoc`        |
+| `title:` (frontmatter) | Inside the `.mdoc` file                 | Display title (h1, OG, RSS) | `Hello, world`      | `Привіт, світ`                          | `Зустріч із Лещенком`                |
+| `translationKey:`      | Inside the `.mdoc` file                 | Cross-language pairing      | `hello-world`       | `hello-world` ← SAME                    | `uk-zustrich-z-leshchenkom` ← unique |
 
 ---
 

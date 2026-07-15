@@ -19,7 +19,8 @@
 		"typecheck": "PUBLIC_KEYSTATIC_MODE=local astro check",
 		"lint": "eslint .",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.9",

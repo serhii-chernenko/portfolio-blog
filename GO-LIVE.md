@@ -38,17 +38,11 @@ wrangler d1 create portfolio-blog
 
 ---
 
-## 2. 🔴 KV namespace (rate limiting)
+## 2. 🔴 Subscription abuse limits
 
-`wrangler.jsonc` has `kv_namespaces[0].id = "REPLACE_WITH_REAL_ID"`.
-
-```bash
-wrangler kv namespace create RATE_LIMIT
-# (older wrangler: wrangler kv:namespace create RATE_LIMIT)
-```
-
-- [x] Copy the printed `id` into `wrangler.jsonc` → `kv_namespaces[0].id`.
-- **Verify:** `wrangler kv namespace list` shows `RATE_LIMIT`.
+Migration `0002` creates the atomic, expiring D1 counters used for IP and address
+cooldowns. No KV namespace is required. After applying migrations, verify
+`subscription_rate_limits` exists and contains no expired rows before launch.
 
 ---
 
@@ -66,7 +60,7 @@ validation happens at runtime when the Worker receives its first request.
   ```bash
   openssl rand -base64 32 | wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
   ```
-  HMAC key for confirm/unsubscribe tokens **and** IP hashing. If this changes
+  Root key for encrypted subscription capabilities and keyed abuse hashes. If this changes
   later, all outstanding confirm links break. Declared as `required` in the
   `astro:env` schema (min length: 1).
 - [x] `KEYSTATIC_SECRET` — `openssl rand -base64 32 | wrangler secret put KEYSTATIC_SECRET` (signs the Keystatic admin auth cookie).

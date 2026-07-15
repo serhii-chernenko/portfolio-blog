@@ -9,7 +9,7 @@ This document covers the server-side Analytics Engine integration, which runs al
 | Layer       | System                                               | What it measures                                               |
 | ----------- | ---------------------------------------------------- | -------------------------------------------------------------- |
 | Client-side | Cloudflare Web Analytics (auto-injected at the edge) | Pageviews, referrers, country, device/browser, Core Web Vitals |
-| Server-side | Cloudflare Analytics Engine                          | Newsletter funnel events (subscribe / confirm / unsubscribe)   |
+| Server-side | Cloudflare Analytics Engine                          | Subscription lifecycle and language-preference events          |
 
 These two systems are complementary, not substitutes. Web Analytics (auto-injected by Cloudflare's edge — no app code or token) captures visitor RUM from the browser; Analytics Engine records lifecycle events that happen in API routes where no client JS runs (e.g. a user clicking the confirmation link in their email app).
 
@@ -35,11 +35,14 @@ pnpm exec wrangler types
 
 ## Events tracked
 
-| Event name (blob1)    | Trigger                                                      | Dimensions                       |
-| --------------------- | ------------------------------------------------------------ | -------------------------------- |
-| `subscribe_pending`   | `upsertPendingSubscriber` succeeds + confirmation email sent | locale, source, status='pending' |
-| `subscribe_confirmed` | `markConfirmed` succeeds                                     | locale, status='confirmed'       |
-| `unsubscribed`        | `markUnsubscribed` succeeds                                  | locale, status='unsubscribed'    |
+| Event name (blob1)                 | Trigger                                                                  | Example status                |
+| ---------------------------------- | ------------------------------------------------------------------------ | ----------------------------- |
+| `subscribe_pending`                | Pending row is stored and the confirmation email is accepted for sending | `pending`                     |
+| `subscribe_confirmed`              | Confirmation atomically enables both content languages                   | `confirmed_all_languages`     |
+| `subscription_preferences_changed` | A signed POST changes one language or restores both                      | `en_disabled` / `all_enabled` |
+| `unsubscribed`                     | A real transition leaves zero content languages enabled                  | `all_languages_disabled`      |
+
+Replayed idempotent requests do not emit another event. Disabling the last enabled language is recorded as `unsubscribed`, even when the submitted action named one language.
 
 ### Data point shape
 
@@ -57,7 +60,7 @@ The `trackEvent()` helper in `src/lib/analytics.ts` accepts only `AnalyticsField
 
 - `locale` — `'en'` or `'uk'`
 - `source` — a referral label, normalized against an allowlist (`home`, `subscribe-page`, `inline`); anything unrecognized (including tampered request bodies) collapses to `other`, so `blob3` stays a small fixed set
-- `status` — a fixed status string (`'pending'`, `'confirmed'`, `'unsubscribed'`)
+- `status` — a fixed lifecycle/action result from the API (never free-form input)
 - `count` — a numeric override (defaults to 1)
 
 The following are **never** written to Analytics Engine:
@@ -74,7 +77,7 @@ The `indexes` field is the sampling key. It **must** remain low-cardinality and 
 
 ## Local development caveat
 
-`writeDataPoint()` is **not emulated** in plain `wrangler dev` (Cloudflare issue #4258). When the `ANALYTICS` binding is absent, `trackEvent()` is a silent no-op — requests are never blocked or slowed. A `console.warn()` is emitted once per request to indicate metrics are not being recorded.
+`writeDataPoint()` is **not emulated** in plain `wrangler dev` (Cloudflare issue #4258). When the `ANALYTICS` binding is absent, `trackEvent()` is a silent no-op — requests are never blocked or slowed. A `console.warn()` is emitted at most once per Worker isolate to indicate metrics are not being recorded.
 
 To test Analytics Engine locally, use remote mode:
 
@@ -138,16 +141,16 @@ Analytics Engine uses adaptive sampling keyed on `indexes[0]` (the event name). 
 
 ## Reliability characteristics
 
-- **Non-blocking**: `writeDataPoint()` returns immediately; the runtime flushes in the background. It is intentionally not awaited.
+- **Non-blocking**: `writeDataPoint()` is a synchronous binding call; the runtime flushes in the background.
 - **Never throws**: `trackEvent()` wraps all calls in try/catch. A metrics failure cannot affect the subscribe/confirm/unsubscribe request path.
 - **Best-effort**: Events are not durable. If the worker terminates before flush (rare), some events may not be recorded. This is acceptable for aggregate analytics. For durable event ledgers, add a D1 INSERT alongside `trackEvent()`.
-- **No feature flag**: To disable analytics, remove the `trackEvent()` calls from the three API routes. The binding can remain in `wrangler.jsonc` without effect.
+- **No feature flag**: To disable analytics, remove the `trackEvent()` calls from the subscription API routes. The binding can remain in `wrangler.jsonc` without effect.
 
 ---
 
 ## Privacy statement
 
-`src/pages/[...locale]/privacy.astro` discloses this system in the Analytics section (both EN and UK locales). The disclosure explicitly states:
+The EN and UK privacy content pages disclose this system in their Analytics sections. The disclosure explicitly states:
 
 - What dimensions are recorded (event type, language, referral source)
 - What is never recorded (email, IP, tokens, browser info)

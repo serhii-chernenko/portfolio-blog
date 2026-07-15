@@ -12,26 +12,34 @@ This policy explains what data this site collects, why, and how it is handled. I
 When you subscribe to the newsletter, the following data is stored:
 
 - **Email address** — used to send you new posts and a one-time confirmation link.
-- **Locale preference** (`en` or `uk`) — used to send emails in the correct language.
-- **IP address hash** — your IP is passed through a one-way hash (SHA-256) before being stored. The original IP is never saved and cannot be recovered from the hash. The hash is retained solely to detect and limit abuse (e.g. mass sign-ups from a single source).
-- **User-agent string** — the browser or client identifier sent automatically by your browser. Stored for the same abuse-detection purpose.
-- **Subscription status and timestamps** — whether your subscription is pending, confirmed, or cancelled, and when those events occurred.
+- **Communication language** (`en` or `uk`) — the language used for confirmation, welcome, and preference-management messages. It comes from the site version where you entered your address and is separate from the languages of posts you receive.
+- **Post-language preferences** — separate enabled/disabled settings for independently authored English and Ukrainian posts. A newly confirmed subscription enables both languages.
+- **Short-lived abuse counters** — separate keyed, non-reversible hashes of your IP address and email address are used to limit repeated signups. The original IP and browser User-Agent are not stored in the subscriber record. Counter rows expire after ten minutes.
+- **Subscription and consent record** — whether your subscription is pending, confirmed, or fully unsubscribed; when those events occurred; and the consent version and timestamp. A partial language opt-out remains confirmed for the language that is still enabled.
+
+An unconfirmed request retains only the email address, requested communication language, and a
+non-reversible confirmation-link fingerprint for up to 48 hours. Expired pending rows and intent
+are removed opportunistically and by operational cleanup.
 
 No newsletter data is sold or shared with third parties. Email is sent through a transactional mail provider; that provider receives your email address in order to deliver messages.
+Operational Telegram notifications contain only an aggregate event type, language, and preference
+action; subscriber addresses and links are not sent to Telegram.
 
 ## Unsubscribing
 
-Every newsletter email contains an unsubscribe link. Clicking it immediately marks your subscription as cancelled and stops all future emails. You can also send a deletion request to [hello@serhiichernenko.com](mailto:hello@serhiichernenko.com) and your record will be removed from the database.
+Every recurring email contains a link to a language-preference page. Opening the link does not change anything. On that page, you can immediately stop English posts, stop Ukrainian posts, or stop all posts. You can also use the same signed page to subscribe to both languages again. Submitting the public subscription form again still requires email confirmation and enables both languages only after confirmation.
+
+When all post languages are disabled, a minimal suppression record is retained so the address is not accidentally mailed again. Abuse-detection metadata is removed. You can also send a deletion request to [hello@serhiichernenko.com](mailto:hello@serhiichernenko.com).
 
 ## Data deletion requests
 
-To request deletion of any data associated with your email address, contact [hello@serhiichernenko.com](mailto:hello@serhiichernenko.com). Requests are handled manually and fulfilled within a reasonable time.
+To request deletion of data associated with your email address, contact [hello@serhiichernenko.com](mailto:hello@serhiichernenko.com). Requests are handled manually within a reasonable time. Optional metadata will be removed; a minimal suppression and consent record may be retained when necessary to honor your opt-out and document compliance.
 
 ## Analytics
 
 This site uses [Cloudflare Web Analytics](https://www.cloudflare.com/web-analytics/). It is cookieless and does not track individuals across sites or sessions. No personal data is collected or stored by the analytics system. Cloudflare receives aggregated, anonymous page-view metrics only.
 
-In addition, aggregate server-side product metrics are recorded for newsletter events (subscription pending, confirmed, and unsubscribe) using Cloudflare Analytics Engine. Only the following non-identifying dimensions are recorded: event type, user language (`en` or `uk`), and referral source label. Email addresses, IP addresses, tokens, browser information, and any other personal data are **never** recorded in these metrics. Data is retained for approximately 3 months.
+In addition, aggregate server-side product metrics are recorded for newsletter events (subscription pending, confirmed, language-preference changes, and full unsubscribe) using Cloudflare Analytics Engine. Only the following non-identifying dimensions are recorded: event type, communication language (`en` or `uk`), normalized event status, and referral source label. Email addresses, IP addresses, tokens, browser information, and any other personal data are **never** recorded in these metrics. Data is retained for approximately 3 months.
 
 ## Comments (Giscus / GitHub)
 

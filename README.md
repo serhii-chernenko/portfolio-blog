@@ -150,10 +150,9 @@ Migrations live in `schema/`.
 
 These are intentionally left as placeholders — none of them have safe defaults.
 
-1. **`wrangler.jsonc`** — replace `REPLACE_WITH_REAL_ID` for both `d1_databases[0].database_id` and `kv_namespaces[0].id` after running:
+1. **`wrangler.jsonc`** — set `d1_databases[0].database_id` after running:
    ```bash
    pnpm wrangler d1 create portfolio-blog
-   pnpm wrangler kv:namespace create RATE_LIMIT
    ```
 2. **`keystatic.config.ts`** — `storage.repo` is set to `serhii-chernenko/portfolio-blog`. Change if the repo lives elsewhere.
 3. **`astro.config.mts`** — canonical `SITE` constant (used for sitemap/RSS absolute links) is hardcoded. Edit the file to change it. Runtime URLs (e.g. subscribe confirm links) are derived from the incoming request, so previews and `wrangler dev` self-reference automatically.
@@ -166,7 +165,7 @@ These are intentionally left as placeholders — none of them have safe defaults
    - Secrets: `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
    - Vars: `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, `PUBLIC_GISCUS_*`
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
-   - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used for HMAC tokens and IP hashing. Accessed via `astro:env/server` (required, validated at runtime).
+   - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used to derive opaque tokens and keyed abuse hashes. Accessed via `astro:env/server` (required, validated at runtime).
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
    - `KEYSTATIC_SECRET`, `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` — Keystatic runs in GitHub mode in the deployed Worker (and in `wrangler:dev`). See `docs/KEYSTATIC.md` for the GitHub App setup that produces these values.
 7. **`.github/labels.yml`** — apply once: either create the 4 labels manually in repo settings, or wire `crazy-max/ghaction-github-labeler` to do it.
@@ -183,7 +182,7 @@ There are three distinct sources for runtime values — use the right one for ea
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `astro:env/server`                | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'`                                                                  |
 | `astro:env/client`                | Public build-time vars: `PUBLIC_GISCUS_*`                                                                     | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`                                                                           |
-| `cloudflare:workers` env          | Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                           | `import { env } from 'cloudflare:workers'`                                                                                        |
+| `cloudflare:workers` env          | Bindings (DB, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                                       | `import { env } from 'cloudflare:workers'`                                                                                        |
 | `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts`         | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
 
 > **Removed in v13:** `Astro.locals.runtime.env` no longer exists. Do not use it. All binding access goes through `cloudflare:workers`.
@@ -200,7 +199,7 @@ Summary of what changed and why, for future reference:
 
 - **Node adapter for local dev.** `@astrojs/cloudflare` v13 runs `astro dev` on the workerd runtime (no Node `fs`). Because Keystatic local mode needs `fs`, `astro.config.mts` now selects `@astrojs/node` when `PUBLIC_KEYSTATIC_MODE=local` (`pnpm dev`) and `@astrojs/cloudflare` otherwise.
 - **`astro:env` typed imports.** Secrets and public vars are now declared in the `astro:env` schema in `astro.config.mts` and imported from `astro:env/server` or `astro:env/client`. `validateSecrets` defaults to false (build succeeds without secrets; validation happens at runtime).
-- **`cloudflare:workers` for bindings.** Bindings (DB, RATE_LIMIT, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) are accessed via `import { env } from 'cloudflare:workers'`. `Astro.locals.runtime.env` was removed in v13.
+- **`cloudflare:workers` for bindings.** Bindings (DB, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM) are accessed via `import { env } from 'cloudflare:workers'`. Atomic subscription limits live in D1; no KV binding is required. `Astro.locals.runtime.env` was removed in v13.
 - **`wrangler:dev` is now `build + astro preview`.** The `pnpm wrangler:dev` script runs `pnpm build && astro preview` (via `@cloudflare/vite-plugin`) instead of `wrangler dev`. It serves at `http://127.0.0.1:4321/blog` (not `:8787`).
 - **React 19 (resolves the `@react-email/render` workerd issue).** `@react-email/render`'s `workerd` export imports `react-dom/server.edge`, a React 19 API. The project was upgraded React 18 → 19 (`react`/`react-dom`/`@types/react*` to 19.x), so that export resolves natively under the Cloudflare adapter — no Vite externalization workaround is needed. Keystatic (`@keystatic/core`/`@keystatic/astro`) and `@astrojs/react@4.4.2` already declare React 19 peer support, so no further bumps were required. The admin email editor remains a `client:only="react"` island.
 - **Build output layout.** v13 outputs `dist/client/` (static assets) + `dist/server/` (Worker script). `wrangler.jsonc` `assets.directory` points to `./dist/client`; `main` points to `@astrojs/cloudflare/entrypoints/server`.

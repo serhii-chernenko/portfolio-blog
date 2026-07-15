@@ -6,6 +6,7 @@ import {
 	assertSlug,
 } from '../../../../lib/emails-store';
 import type { Locale } from '../../../../lib/emails-store';
+import { validateEmailTemplateVariables } from '../../../../lib/email-template-variables';
 
 export const prerender = false;
 
@@ -74,7 +75,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
 		return jsonError('Invalid request body', 400);
 	}
 
-	const { name, subject, locale, json, html } = body as Record<string, unknown>;
+	const { name, subject, locale, json, html, text } = body as Record<string, unknown>;
 
 	if (typeof name !== 'string' || !name.trim()) {
 		return jsonError('Invalid or missing name', 400);
@@ -88,8 +89,16 @@ export const PUT: APIRoute = async ({ params, request }) => {
 	if (typeof html !== 'string') {
 		return jsonError('html must be a string', 400);
 	}
+	if (typeof text !== 'string' || !text.trim()) {
+		return jsonError('text must be a non-empty string', 400);
+	}
 	if (json === undefined || json === null) {
 		return jsonError('json is required', 400);
+	}
+
+	const variableErrors = validateEmailTemplateVariables(slug, { html, text });
+	if (variableErrors.length > 0) {
+		return jsonError(variableErrors.join('; '), 400);
 	}
 
 	const saved = await writeTemplate(slug, {
@@ -98,6 +107,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
 		locale: locale as Locale,
 		json,
 		html,
+		text,
 	});
 
 	return new Response(JSON.stringify(saved), {

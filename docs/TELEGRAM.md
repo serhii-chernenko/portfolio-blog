@@ -8,17 +8,21 @@ There is no public bot for visitors. This is a one-bot-one-user setup: the bot s
 
 ## Events you get notified about
 
-| Event                       | Trigger                                | Source                             |
-| --------------------------- | -------------------------------------- | ---------------------------------- |
-| 📬 New pending subscriber   | Someone submitted the subscribe form   | `src/pages/api/subscribe.ts`       |
-| ✅ Subscriber confirmed     | Someone clicked the confirmation link  | `src/pages/api/confirm.ts`         |
-| 👋 Unsubscribe              | Someone clicked the unsubscribe link   | `src/pages/api/unsubscribe.ts`     |
-| 📝 Preview deployed         | PR opened or pushed to                 | `.github/workflows/preview.yml`    |
-| 📝 New article PR opened    | PR labeled `new article` by auto-label | `.github/workflows/auto-label.yml` |
-| ✅ Production deployed      | Push to `main` succeeded               | `.github/workflows/deploy.yml`     |
-| ❌ Production deploy failed | Push to `main` failed                  | `.github/workflows/deploy.yml`     |
+| Event                       | Trigger                                  | Source                             |
+| --------------------------- | ---------------------------------------- | ---------------------------------- |
+| 📬 New pending subscriber   | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`       |
+| ✅ Subscriber confirmed     | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`         |
+| 🔔 Preferences changed      | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`     |
+| 📝 Preview deployed         | PR opened or pushed to                   | `.github/workflows/preview.yml`    |
+| 📝 New article PR opened    | PR labeled `new article` by auto-label   | `.github/workflows/auto-label.yml` |
+| ✅ Production deployed      | Push to `main` succeeded                 | `.github/workflows/deploy.yml`     |
+| ❌ Production deploy failed | Push to `main` failed                    | `.github/workflows/deploy.yml`     |
 
-Per the plan, Telegram is best-effort: if the API call fails, the request still succeeds. You'll never get a 500 because Telegram is down. Failures are logged via `console.warn` only.
+Telegram is best-effort: HTTP failures and fetch/network exceptions are swallowed, so committed
+subscription state is never reported as a 500 because Telegram is down. Warnings are structured
+and contain only a failure class/status—never notification text, addresses, URLs, or credentials.
+Worker subscription notifications contain only event type, locale, and an allowlisted action; no
+subscriber address or bearer is sent to Telegram.
 
 ---
 
@@ -116,7 +120,8 @@ To set them:
 
 ### Change message formatting
 
-Edit `src/lib/telegram.ts`. The `notify(env, text, parseMode)` helper accepts `'HTML'` or `'Markdown'`. Currently every callsite uses HTML.
+Edit `src/lib/telegram.ts`. The `notify(text, parseMode)` helper accepts `'HTML'` or `'Markdown'`.
+Keep runtime subscription messages aggregate and PII-free.
 
 To inline a link: `<a href="https://...">label</a>`. To bold: `<b>...</b>`. To monospace: `<code>...</code>`. Full reference: <https://core.telegram.org/bots/api#html-style>.
 
@@ -125,10 +130,10 @@ To inline a link: `<a href="https://...">label</a>`. To bold: `<b>...</b>`. To m
 ```ts
 import { notify } from '@/lib/telegram';
 
-await notify(env, `📊 Something happened: <a href="${url}">view</a>`);
+await notify('📊 Aggregate maintenance event completed');
 ```
 
-`env` is the Cloudflare runtime env (get it via `getEnv(context)` in API routes). For GitHub Actions, hit the API directly with `curl` — see the existing workflow examples.
+For GitHub Actions, hit the API directly with `curl` — see the existing workflow examples.
 
 ### Silence notifications temporarily
 
@@ -151,7 +156,9 @@ The site keeps working. Notifications are off.
 ## Troubleshooting
 
 **No messages arriving in Telegram, no error in logs.**
-The notify helper is silent on failure (best-effort). Check the Worker logs (`pnpm wrangler tail`) — you'll see `Telegram notify failed: <status>` if the API rejected the request. Common causes:
+Check the Worker custom logs (`pnpm wrangler tail`) for a structured `Telegram notification failed`
+warning with `http_status` or `network_error`. Automatic invocation logs are disabled to protect
+query bearer tokens. Common causes:
 
 - Chat ID is wrong (check sign — personal chats are positive, groups/channels negative)
 - Bot was kicked from the group

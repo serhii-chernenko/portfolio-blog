@@ -1,0 +1,211 @@
+---
+export const prerender = false;
+
+import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { defaultLocale, isLocale, locales, type Locale } from '../../i18n/config';
+import { useTranslations, withBase } from '../../i18n/utils';
+import { getDB, getSubscriberPreferences, type SubscriberPreferences } from '../../lib/d1';
+import { verifyManageToken } from '../../lib/tokens';
+import type { UIKey } from '../../i18n/ui';
+
+type PageState = 'ready' | 'invalid' | 'error';
+
+const rawLocale = Astro.params.locale ?? '';
+const locale: Locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
+const t = useTranslations(locale);
+const token = Astro.url.searchParams.get('token') ?? '';
+let state: PageState = 'ready';
+let preferences: SubscriberPreferences | null = null;
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.headers.set('referrer-policy', 'no-referrer');
+Astro.response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
+
+if (!isLocale(rawLocale) || !SUBSCRIBE_RATE_LIMIT_SECRET || !token) {
+	state = !SUBSCRIBE_RATE_LIMIT_SECRET ? 'error' : 'invalid';
+} else {
+	const verified = await verifyManageToken(SUBSCRIBE_RATE_LIMIT_SECRET, token);
+	if (!verified) {
+		state = 'invalid';
+	} else {
+		try {
+			preferences = await getSubscriberPreferences(getDB(), verified.email);
+			if (!preferences) state = 'invalid';
+		} catch {
+			console.error(
+				JSON.stringify({
+					message: 'Failed to load subscriber preference center',
+				}),
+			);
+			state = 'error';
+		}
+	}
+}
+
+const resultKeys: Record<string, UIKey> = {
+	en_disabled: 'subscribe.unsubscribe.result.en',
+	uk_disabled: 'subscribe.unsubscribe.result.uk',
+	all_disabled: 'subscribe.unsubscribe.result.all',
+	all_enabled: 'subscribe.unsubscribe.result.subscribeAll',
+	error: 'subscribe.unsubscribe.error.body',
+};
+const result = Astro.url.searchParams.get('result') ?? '';
+const resultKey = resultKeys[result];
+const postAction = withBase('api/unsubscribe');
+const translatedUrls = Object.fromEntries(
+	locales.map((targetLocale) => [
+		targetLocale,
+		`${withBase(`${targetLocale}/unsubscribe`)}?token=${encodeURIComponent(token)}`,
+	]),
+) as Record<Locale, string>;
+const anyEnabled = preferences?.languages.en || preferences?.languages.uk;
+const allEnabled = preferences?.languages.en && preferences?.languages.uk;
+---
+
+<BaseLayout
+	title={t('subscribe.unsubscribe.title')}
+	description={t('subscribe.unsubscribe.description')}
+	locale={locale}
+	translatedUrls={translatedUrls}
+	noIndex
+>
+	<section class="bg-base-200">
+		<div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14">
+			<div class="max-w-2xl space-y-4">
+				<h1 class="text-balance text-4xl font-black tracking-tight sm:text-5xl">
+					{t('subscribe.unsubscribe.title')}
+				</h1>
+				<p class="text-base-content/70 text-lg leading-8">
+					{t('subscribe.unsubscribe.description')}
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<div class="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+		<div class="max-w-2xl space-y-8">
+			{
+				state === 'invalid' && (
+					<div class="alert alert-error" role="alert">
+						<div>
+							<h2 class="font-bold">{t('subscribe.unsubscribe.invalid.title')}</h2>
+							<p>{t('subscribe.unsubscribe.invalid')}</p>
+						</div>
+					</div>
+				)
+			}
+
+			{
+				state === 'error' && (
+					<div class="alert alert-error" role="alert">
+						<div>
+							<h2 class="font-bold">{t('subscribe.unsubscribe.error.title')}</h2>
+							<p>{t('subscribe.unsubscribe.error.body')}</p>
+						</div>
+					</div>
+				)
+			}
+
+			{
+				state === 'ready' && preferences && (
+					<>
+						{resultKey && (
+							<div
+								class={result === 'error' ? 'alert alert-error' : 'alert alert-success'}
+								role="status"
+							>
+								<span>{t(resultKey)}</span>
+							</div>
+						)}
+
+						<p class="text-base-content/70 leading-7">{t('subscribe.unsubscribe.intro')}</p>
+
+						<div class="card border-base-300 border bg-base-100">
+							<div class="card-body gap-4">
+								<h2 class="card-title text-xl">{t('subscribe.unsubscribe.current')}</h2>
+								<ul class="divide-base-300 divide-y" role="list">
+									<li class="flex items-center justify-between gap-4 py-3">
+										<span>{t('subscribe.unsubscribe.language.en')}</span>
+										<span
+											class={preferences.languages.en ? 'badge badge-success' : 'badge badge-ghost'}
+										>
+											{preferences.languages.en
+												? t('subscribe.unsubscribe.enabled')
+												: t('subscribe.unsubscribe.disabled')}
+										</span>
+									</li>
+									<li class="flex items-center justify-between gap-4 py-3">
+										<span>{t('subscribe.unsubscribe.language.uk')}</span>
+										<span
+											class={preferences.languages.uk ? 'badge badge-success' : 'badge badge-ghost'}
+										>
+											{preferences.languages.uk
+												? t('subscribe.unsubscribe.enabled')
+												: t('subscribe.unsubscribe.disabled')}
+										</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<fieldset class="fieldset border-base-300 rounded-box border p-6">
+							<legend class="fieldset-legend text-lg font-semibold">
+								{t('subscribe.unsubscribe.legend')}
+							</legend>
+							<div class="flex flex-col gap-3">
+								{preferences.languages.en && (
+									<form method="post" action={postAction}>
+										<input type="hidden" name="token" value={token} />
+										<input type="hidden" name="action" value="en" />
+										<input type="hidden" name="locale" value={locale} />
+										<input type="hidden" name="ui" value="1" />
+										<button type="submit" class="btn btn-outline w-full justify-start sm:w-auto">
+											{t('subscribe.unsubscribe.action.en')}
+										</button>
+									</form>
+								)}
+								{preferences.languages.uk && (
+									<form method="post" action={postAction}>
+										<input type="hidden" name="token" value={token} />
+										<input type="hidden" name="action" value="uk" />
+										<input type="hidden" name="locale" value={locale} />
+										<input type="hidden" name="ui" value="1" />
+										<button type="submit" class="btn btn-outline w-full justify-start sm:w-auto">
+											{t('subscribe.unsubscribe.action.uk')}
+										</button>
+									</form>
+								)}
+								{anyEnabled && (
+									<form method="post" action={postAction}>
+										<input type="hidden" name="token" value={token} />
+										<input type="hidden" name="action" value="all" />
+										<input type="hidden" name="locale" value={locale} />
+										<input type="hidden" name="ui" value="1" />
+										<button
+											type="submit"
+											class="btn btn-error btn-outline w-full justify-start sm:w-auto"
+										>
+											{t('subscribe.unsubscribe.action.all')}
+										</button>
+									</form>
+								)}
+								{!allEnabled && (
+									<form method="post" action={postAction}>
+										<input type="hidden" name="token" value={token} />
+										<input type="hidden" name="action" value="subscribe_all" />
+										<input type="hidden" name="locale" value={locale} />
+										<input type="hidden" name="ui" value="1" />
+										<button type="submit" class="btn btn-primary w-full justify-start sm:w-auto">
+											{t('subscribe.unsubscribe.action.subscribeAll')}
+										</button>
+									</form>
+								)}
+							</div>
+						</fieldset>
+					</>
+				)
+			}
+		</div>
+	</div>
+</BaseLayout>

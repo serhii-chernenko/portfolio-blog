@@ -10,8 +10,8 @@
 //                                          https://github.com/apps/<slug>.
 //
 //  ── Required secrets (set via `wrangler secret put`) ──
-//    SUBSCRIBE_RATE_LIMIT_SECRET           32-byte random — HMAC key for subscribe
-//                                          tokens & IP hashing.
+//    SUBSCRIBE_RATE_LIMIT_SECRET           32-byte random — derives opaque
+//                                          subscription tokens and abuse hashes.
 //    TELEGRAM_BOT_TOKEN                    Optional in dev. Required in prod for
 //                                          notifications.
 //    TELEGRAM_CHAT_ID                      Optional in dev. Required in prod.
@@ -32,8 +32,6 @@
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from
 //                 `wrangler d1 create portfolio-blog`.
-//    RATE_LIMIT   KV namespace. Replace id with the value from
-//                 `wrangler kv:namespace create RATE_LIMIT`.
 //    ASSETS       Static assets bound from ./dist (set automatically).
 //    SEND_EMAIL   Cloudflare Email Service binding. Requires Email Routing to
 //                 be enabled on the sender domain.
@@ -72,12 +70,6 @@
 			"migrations_dir": "./schema",
 		},
 	],
-	"kv_namespaces": [
-		{
-			"binding": "RATE_LIMIT",
-			"id": "a560b7fe8deb44489bc9d276b19c8b2c",
-		},
-	],
 	"send_email": [
 		{
 			"name": "SEND_EMAIL",
@@ -96,6 +88,12 @@
 	],
 	"observability": {
 		"enabled": true,
+		// Bearer capabilities are carried in query strings for email-client
+		// compatibility. Keep custom structured logs but suppress automatic
+		// per-request invocation logs so those URLs are not retained there.
+		"logs": {
+			"invocation_logs": false,
+		},
 	},
 	// `wrangler dev` defaults its simulated host to the first entry in `routes`
 	// (production), which makes `request.url` resolve to www.serhiichernenko.com

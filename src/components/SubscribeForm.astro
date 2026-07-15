@@ -18,6 +18,12 @@ const t = useTranslations(locale);
 		novalidate
 		data-locale={locale}
 		data-source={source}
+		data-message-submitting={t('subscribe.submitting')}
+		data-message-submit={t('subscribe.submit')}
+		data-message-success={t('subscribe.success')}
+		data-message-invalid={t('subscribe.invalid')}
+		data-message-rate-limited={t('subscribe.rateLimited')}
+		data-message-error={t('subscribe.error')}
 		aria-label={t('subscribe.title')}
 	>
 		<label for="subscribe-email" class="sr-only">{t('subscribe.email')}</label>
@@ -51,27 +57,14 @@ const t = useTranslations(locale);
 
 		const locale = form.dataset.locale ?? 'en';
 		const source = form.dataset.source ?? 'inline';
-
-		const messages: Record<string, Record<string, string>> = {
-			en: {
-				submitting: 'Subscribing…',
-				submit: 'Subscribe',
-				success: 'Check your inbox — we sent you a confirmation link.',
-				invalid: 'Please enter a valid email address.',
-				rateLimited: 'Too many attempts. Try again in a few minutes.',
-				error: 'Something went wrong. Please try again.',
-			},
-			uk: {
-				submitting: 'Підписуємо…',
-				submit: 'Підписатися',
-				success: 'Перевірте свою скриньку — ми надіслали посилання для підтвердження.',
-				invalid: 'Введіть коректну адресу електронної пошти.',
-				rateLimited: 'Забагато спроб. Спробуйте за кілька хвилин.',
-				error: 'Щось пішло не так. Спробуйте ще раз.',
-			},
+		const msg = {
+			submitting: form.dataset.messageSubmitting ?? '',
+			submit: form.dataset.messageSubmit ?? '',
+			success: form.dataset.messageSuccess ?? '',
+			invalid: form.dataset.messageInvalid ?? '',
+			rateLimited: form.dataset.messageRateLimited ?? '',
+			error: form.dataset.messageError ?? '',
 		};
-
-		const msg = messages[locale] ?? messages['en'];
 
 		function showStatus(type: 'success' | 'error' | 'warning', text: string) {
 			statusEl!.className = `alert alert-${type} mt-3`;
