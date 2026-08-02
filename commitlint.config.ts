@@ -24,7 +24,7 @@ const Configuration: UserConfig = {
 				'legal',
 				'kludge',
 				'ai',
-				'content',
+				'post',
 			],
 		],
 		'subject-case': [RuleConfigSeverity.Error, 'never', ['upper-case']],
