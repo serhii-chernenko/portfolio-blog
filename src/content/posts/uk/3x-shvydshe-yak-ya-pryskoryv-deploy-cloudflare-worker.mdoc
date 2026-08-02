@@ -1,0 +1,51 @@
+---
+title: "3x швидше: як я оптимізував деплой Cloudflare Worker за допомогою кастомного воркфлоу GitHub Actions"
+translationKey: cloudflare-worker-deploy-3x-faster
+description: Як я створив кастомний воркфлоу GitHub Actions, що скоротив час деплою Cloudflare Worker з 8 до 2.5 хвилин.
+publishedAt: 2025-07-28T08:43:12.000Z
+tags:
+  - cloudflare
+  - workers
+  - github-actions
+  - ci-cd
+  - автоматизація
+heroImage: /src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/hero.jpg
+heroImageAlt: Воркфлоу GitHub Actions для деплою в Cloudflare Workers
+draft: false
+---
+Я створив власну інтеграцію GitHub Actions для деплою в Cloudflare Workers. Вона пропонує більше можливостей, більшу зручність і більше кроків збірки, включно із запуском лінтерів і тестів. Я скоротив час збірки з 8 хвилин до 2.5 — це у 3 рази швидше.
+
+Один pull request включав 55 спроб створити кастомний воркфлоу GitHub Actions, 26 з яких провалилися. Але я таки довів справу до кінця.
+
+![Скріншот кастомного воркфлоу GitHub Actions з коментарем бота](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-1.png)
+
+Завдання: побудувати воркфлоу для продакшн- і превью-збірок у Cloudflare Workers. Продакшн-збірка запускається лише пушем або мерджем pull request у захищену гілку main. У Cloudflare є готова інтеграція з GitHub.
+
+Але вона обмежена лише парою команд: build і deploy. І навіть попри це, збірка займає 6-8 хвилин, залежно від фреймворку. Вона також не дає зручного способу запускати лінтери й тести.
+
+![Стандартна інтеграція Cloudflare з GitHub під час збірки](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-2.png)
+
+Одна класна річ у їхній інтеграції — дружні повідомлення, які вона публікує в pull requests для превью-деплоїв.
+
+![Коментар бота Cloudflare в pull request про превью-деплой](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-3.png)
+
+Якщо чогось не вистачає — зроби це сам. Що я, безсумнівно, і зробив. Тепер у мене є свій бот, який показує всю потрібну інформацію, причому в набагато охайнішому форматі, ніж бот від Cloudflare.
+
+![Коментар кастомного бота в pull request з деталями збірки](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-4.png)
+
+Я також налаштував так, щоб превью-збірка запускалася для кожного коміту в pull request. Бот публікує окремий коментар для кожної збірки, тож можна переглядати окремі збірки для конкретних виправлень в межах одного PR.
+
+Так можна порівнювати конкретні зміни в pull request, включно з розміром бандла — що особливо корисно для задач з оптимізації. Або просто побачити, наскільки більшим стає бандл після додавання нового NPM-пакета.
+
+І поки бот Cloudflare просто оновлює свій попередній коментар, мій публікує новий щоразу. Завдяки цьому, коли я підписаний на pull request, я отримую охайні, структуровані email-сповіщення для кожної збірки.
+
+![Структуроване email-сповіщення про збірку](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-5.png)
+
+А найкраще? Весь цей воркфлоу — запуск лінтерів, тестів, генерація різних файлів wrangler.json, збірка застосунку і деплой у Workers — займає лише 2.5 хвилини, порівняно з 6-8 хвилинами у Cloudflare. Це прискорення у 3 рази.
+
+Besidka — це продукт, над яким я зараз працюю. Опенсорсний AI Chat, де можна використовувати власні API-ключі й платити тільки за те, що використовуєш. Я все ще на етапі MVP, але вже багато зроблено.
+
+- URL продакшену: https://t.co/sTTbP8oke5
+- Репозиторій: https://t.co/TeHUHakQbO
+
+![Підсумковий результат кастомного воркфлоу](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-6.png)
