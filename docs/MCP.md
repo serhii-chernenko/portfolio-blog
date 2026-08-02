@@ -1,0 +1,42 @@
+# MCP server
+
+This blog exposes a read-only [Model Context Protocol](https://modelcontextprotocol.io)
+server so AI assistants can query post content directly instead of scraping HTML.
+
+- **Endpoint:** `https://www.serhiichernenko.com/blog/api/mcp` (production) /
+  `http://localhost:4321/api/mcp` (`pnpm dev`)
+- **Transport:** MCP Streamable HTTP (JSON-RPC 2.0 over a single POST endpoint)
+- **Auth:** none — same trust level as the public RSS feed. Read-only, no
+  mutation tools.
+
+## Tools
+
+| Tool                  | Purpose                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `list_posts`          | List published posts, newest first. Optional `locale`, `tag`, `limit`, `offset`. |
+| `get_post`            | Full content (including raw body) of one post by `locale` + `slug`.              |
+| `search_posts_by_tag` | Posts matching a tag, optionally scoped to a `locale`.                           |
+| `list_tags`           | All tags with post counts, optionally scoped to a `locale`.                      |
+
+All four source from the same `getPublishedPosts()` / `getTagsForLocale()`
+helpers (`src/lib/posts.ts`) the HTML pages use, so draft posts and
+future-dated `publishedAt` posts are excluded identically everywhere.
+
+## Implementation
+
+`src/lib/mcp.ts` builds a fresh `McpServer` (`@modelcontextprotocol/server`)
+per request; `src/pages/api/mcp.ts` wires it up via `createMcpHandler`, which
+handles the Streamable HTTP transport, stateless serving, and per-request
+instance construction internally. A `content-length` check rejects request
+bodies over 64 KB before the SDK parses them.
+
+## Trying it locally
+
+```bash
+pnpm dev
+npx @modelcontextprotocol/inspector http://localhost:4321/api/mcp
+```
+
+Re-test under `pnpm wrangler:dev` (`http://localhost:8787/blog/api/mcp`) before
+shipping any change here — that's the workerd runtime, not the Node adapter
+`pnpm dev` uses, and the two can resolve dependencies differently.

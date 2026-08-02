@@ -39,6 +39,9 @@ importers:
       '@keystatic/core':
         specifier: ^0.5.0
         version: 0.5.50(@react-spectrum/provider@3.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@modelcontextprotocol/server':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@react-email/editor':
         specifier: 1.4.1
         version: 1.4.1(patch_hash=f59291ff962f4ba3216f104bb30a2c9221fccb6893cf8d50c6ab8626b3e65ed2)(@floating-ui/dom@1.7.6)(@tiptap/extension-list@3.23.5(@tiptap/core@3.23.5(@tiptap/pm@3.23.5))(@tiptap/pm@3.23.5))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(happy-dom@20.9.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -57,6 +60,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260519.1
@@ -1307,6 +1313,14 @@ packages:
         optional: true
       react:
         optional: true
+
+  '@modelcontextprotocol/core@2.0.0':
+    resolution: {integrity: sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA==}
+    engines: {node: '>=20'}
+
+  '@modelcontextprotocol/server@2.0.0':
+    resolution: {integrity: sha512-YhHWdHfpFMQfd0prsEnxKeS3Qz3ytIGmsS0sth4KDjnacIT7hxk6hXHkJ9KysxlkvTM+WZAtQbbcUhdoP4Hvtw==}
+    engines: {node: '>=20'}
 
   '@napi-rs/wasm-runtime@1.2.2':
     resolution: {integrity: sha512-JfB4kuJQjaoHuCTseIINHtHWeJnvgEcxjwA5t/Y00ZgaOO1Crz3fjT/p8kT28zA/Caz7oiUMn3d6H2yOVCVwuw==}
@@ -6729,6 +6743,15 @@ snapshots:
       '@types/markdown-it': 12.2.3
       '@types/react': 19.2.14
       react: 19.2.6
+
+  '@modelcontextprotocol/core@2.0.0':
+    dependencies:
+      zod: 4.4.3
+
+  '@modelcontextprotocol/server@2.0.0':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0
+      zod: 4.4.3
 
   '@napi-rs/wasm-runtime@1.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
