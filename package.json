@@ -27,7 +27,6 @@
 		"@astrojs/check": "^0.9.9",
 		"@astrojs/cloudflare": "^13.6.0",
 		"@astrojs/markdoc": "^1.0.5",
-		"@astrojs/mdx": "^5.0.6",
 		"@astrojs/node": "^10.1.2",
 		"@astrojs/react": "^4.4.2",
 		"@astrojs/rss": "^4.0.18",
