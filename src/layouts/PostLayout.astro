@@ -17,7 +17,7 @@ export interface Props {
 	readingTime?: number;
 }
 
-const { post, locale, headings, translationKey, alternates } = Astro.props;
+const { post, locale, headings, translationKey, alternates, readingTime } = Astro.props;
 const t = useTranslations(locale);
 
 // Resolve translated URLs for language switcher
@@ -113,6 +113,13 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 							})
 						}
 					</time>
+					{
+						readingTime != null && (
+							<span class="badge badge-primary badge-outline badge-sm rounded-full">
+								{t('post.readingTime', { minutes: readingTime })}
+							</span>
+						)
+					}
 					{
 						tags.map((tag) => (
 							<a
