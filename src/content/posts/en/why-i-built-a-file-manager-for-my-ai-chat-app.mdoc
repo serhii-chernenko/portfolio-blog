@@ -1,0 +1,50 @@
+---
+title: Why I Built a Dedicated File Manager for My AI Chat App
+translationKey: ai-chat-file-manager
+description: How I built file attachments for my open-source AI chat app, from R2 storage architecture to quotas and image transform limits.
+publishedAt: 2026-02-19T18:40:15.000Z
+tags:
+  - ai
+  - cloudflare
+  - r2
+  - workers
+  - oss
+  - file-management
+heroImage: /src/assets/posts/why-i-built-a-file-manager-for-my-ai-chat-app/hero.png
+heroImageAlt: File attachment and file manager UI in an AI chat application
+draft: false
+---
+I've finally shipped file attachments for my open-source AI chat, Besidka.
+
+The UX feels really smooth: you can paste from the clipboard or drag & drop directly into the chat (or the modal). I also built a full file manager with grid/list views, search, and lazy loading.
+
+Here's a breakdown of the architecture.
+
+Since the app runs on Cloudflare Workers, I don't have a persistent server disk. To solve this, I'm using an R2 bucket.
+
+Uploads go to R2 and get recorded in the DB. The file is converted for AI via the Vercel AI SDK only when needed. Crucially, files are converted for AI only when needed, and I cache conversion results to keep things snappy and avoid redundant processing.
+
+I insisted on building a proper file manager because it's super handy to reuse attachments in new chats (or across different devices) without re-uploading everything.
+
+## Handling Storage & Limits (The Tricky Part)
+
+Since Besidka is OSS but also runs in my hosted production, I had to be careful with storage abuse.
+
+- Retention: I set up a Wrangler cron job that runs daily to clean up files with an `expireAt` value (defaults to 30 days). This is configurable via ENV and disabled by default for self-hosters.
+- Quotas: default free policy is 20 MB storage, with per-message file count/size limits.
+- Overrides: I store limits in the DB, which allows me to manually grant unlimited usage to my wife and friends (priorities 😄).
+
+I also implemented Cloudflare's image transformations to save space on large files. However, since the CF free tier for transformations is tight, free users can default to 0 lifetime transforms, VIP users can get a DB-managed transform budget, and I also keep a global monthly guard to protect account-wide quota.
+
+I'm really happy with how this turned out, but I'm always open to criticism. Let me know what you think of this approach! 👇
+
+## Demo of the file attachment feature
+
+![Preview frame of the file attachment demo — see the LinkedIn post below for the full clip](/src/assets/posts/why-i-built-a-file-manager-for-my-ai-chat-app/inline-1.jpg)
+
+For the full video demo, see the original LinkedIn post: https://www.linkedin.com/pulse/why-i-built-dedicated-file-manager-my-ai-chat-app-serhii-chernenko-lpulf
+
+My AI chat is still in active development, but I would really appreciate it if you could take a look at the file attachment.
+
+- GitHub: https://github.com/besidka/besidka
+- Production: https://www.besidka.com/
