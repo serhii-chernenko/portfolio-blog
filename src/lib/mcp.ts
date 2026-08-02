@@ -1,11 +1,19 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/server';
-import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl, type AnyPost } from './posts';
+import {
+	getPublishedPosts,
+	getTagsForLocale,
+	tagSlug,
+	postUrl,
+	localeOf,
+	type AnyPost,
+} from './posts';
 import { getPostSlug } from './post-slug';
 import { locales, type Locale } from '../i18n/config';
 import { withBase } from '../i18n/utils';
 
 const localeSchema = z.enum(locales);
+const TAG_DESCRIPTION = "Tag label or slug (as returned by list_tags' `tag`/`slug` fields)";
 
 const postSummarySchema = z.object({
 	locale: localeSchema,
@@ -18,13 +26,9 @@ const postSummarySchema = z.object({
 	tags: z.array(z.string()),
 });
 
-function localeOfPost(post: AnyPost): Locale {
-	return post.collection === 'postsEn' ? 'en' : 'uk';
-}
-
 function toSummary(post: AnyPost) {
 	return {
-		locale: localeOfPost(post),
+		locale: localeOf(post),
 		slug: getPostSlug(post),
 		title: post.data.title,
 		description: post.data.description,
@@ -33,6 +37,10 @@ function toSummary(post: AnyPost) {
 		updatedAt: post.data.updatedAt?.toISOString(),
 		tags: post.data.tags ?? [],
 	};
+}
+
+function matchesTag(postTags: string[], query: string): boolean {
+	return postTags.some((t) => t === query || tagSlug(t) === tagSlug(query));
 }
 
 async function getPostsForLocales(locale: Locale | undefined): Promise<AnyPost[]> {
@@ -58,7 +66,7 @@ export function buildMcpServer(): McpServer {
 			description: 'List published blog posts, newest first, optionally filtered by tag.',
 			inputSchema: z.object({
 				locale: localeSchema.optional().describe('Omit to list posts from both locales'),
-				tag: z.string().min(1).max(64).optional().describe('Tag label to filter by'),
+				tag: z.string().min(1).max(64).optional().describe(TAG_DESCRIPTION),
 				limit: z.number().int().min(1).max(50).default(20),
 				offset: z.number().int().min(0).default(0),
 			}),
@@ -67,7 +75,7 @@ export function buildMcpServer(): McpServer {
 		},
 		async ({ locale, tag, limit, offset }) => {
 			let posts = await getPostsForLocales(locale);
-			if (tag) posts = posts.filter((p) => (p.data.tags ?? []).includes(tag));
+			if (tag) posts = posts.filter((p) => matchesTag(p.data.tags ?? [], tag));
 			const page = posts.slice(offset, offset + limit).map(toSummary);
 			const output = { total: posts.length, posts: page };
 			return textResult(output, output);
@@ -125,18 +133,22 @@ export function buildMcpServer(): McpServer {
 			title: 'Search posts by tag',
 			description: 'List published posts that have a given tag, newest first.',
 			inputSchema: z.object({
-				tag: z.string().min(1).max(64),
+				tag: z.string().min(1).max(64).describe(TAG_DESCRIPTION),
 				locale: localeSchema.optional(),
 				limit: z.number().int().min(1).max(50).default(20),
+				offset: z.number().int().min(0).default(0),
 			}),
 			outputSchema: z.object({ total: z.number().int(), posts: z.array(postSummarySchema) }),
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
-		async ({ tag, locale, limit }) => {
+		async ({ tag, locale, limit, offset }) => {
 			const posts = (await getPostsForLocales(locale)).filter((p) =>
-				(p.data.tags ?? []).includes(tag),
+				matchesTag(p.data.tags ?? [], tag),
 			);
-			const output = { total: posts.length, posts: posts.slice(0, limit).map(toSummary) };
+			const output = {
+				total: posts.length,
+				posts: posts.slice(offset, offset + limit).map(toSummary),
+			};
 			return textResult(output, output);
 		},
 	);
