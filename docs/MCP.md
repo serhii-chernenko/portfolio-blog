@@ -27,8 +27,9 @@ future-dated `publishedAt` posts are excluded identically everywhere.
 `src/lib/mcp.ts` builds a fresh `McpServer` (`@modelcontextprotocol/server`)
 per request; `src/pages/api/mcp.ts` wires it up via `createMcpHandler`, which
 handles the Streamable HTTP transport, stateless serving, and per-request
-instance construction internally. A `content-length` check rejects request
-bodies over 64 KB before the SDK parses them.
+instance construction internally. A byte-counted read (not a bare
+`content-length` header check — headers can be missing or wrong) rejects
+request bodies over 64 KB before the SDK parses them.
 
 ## Trying it locally
 
@@ -37,6 +38,10 @@ pnpm dev
 npx @modelcontextprotocol/inspector http://localhost:4321/api/mcp
 ```
 
-Re-test under `pnpm wrangler:dev` (`http://localhost:8787/blog/api/mcp`) before
-shipping any change here — that's the workerd runtime, not the Node adapter
-`pnpm dev` uses, and the two can resolve dependencies differently.
+Re-test with `pnpm build && npx wrangler dev` (`http://localhost:8787/blog/api/mcp`,
+or send a request with `Host: www.serhiichernenko.com` to check the production
+route) before shipping any change here — that's the workerd runtime, not the
+Node adapter `pnpm dev` uses, and the two can resolve dependencies differently.
+Don't use `pnpm wrangler:dev` for this — it runs `astro preview`, which gives
+false 404s on injected/dynamic routes; `wrangler dev` against the real build
+is the reliable check.
