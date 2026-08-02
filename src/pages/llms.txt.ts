@@ -10,7 +10,12 @@ function escapeLinkText(text: string): string {
 }
 
 function absoluteUrl(site: URL | undefined, path: string): string {
-	return new URL(path, site).toString();
+	// `new URL()` doesn't percent-encode `(`/`)` in the pathname, but every
+	// caller here embeds the result as markdown `(url)` link syntax — an
+	// unescaped `)` (e.g. from a free-form CMS `slug` override, which unlike
+	// `translationKey` has no character-class restriction in content.config.ts)
+	// would prematurely close the link and truncate the rendered line.
+	return new URL(path, site).toString().replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 export async function GET(context: APIContext) {
