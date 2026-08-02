@@ -1,0 +1,26 @@
+---
+title: Окремий шелл для команд агента в GitHub Copilot
+translationKey: separate-shell-for-agent-commands
+description: Простий фікс у settings.json, який змушує агентів GitHub Copilot запускати команди в bash замість повільного zsh.
+publishedAt: 2026-03-27T13:11:53.000Z
+tags:
+  - github
+  - copilot
+  - vscode
+  - zsh
+  - bash
+  - продуктивність
+draft: false
+---
+У мене були проблеми, коли VS Code кілька разів зависав, бо агенти намагалися виконати прості команди в терміналі, і мій CPU летів у космос. Звісно, перезавантаження допомагало. Але я також підозрював свою конфігурацію `/bin/zsh` — Oh My Zsh плюс тема Powerlevel10k — бо вона вантажиться майже секунду. З `/bin/bash` проблем не було. Тож я вирішив перевірити, чи можна залишити zsh для себе, а агентам сказати використовувати bash.
+
+Ось рішення для `settings.json`:
+
+```json
+"chat.tools.terminal.terminalProfile.osx": {
+    "label": "bash",
+    "path": "/bin/bash"
+}
+```
+
+Можливо, стане в пригоді і вам.
