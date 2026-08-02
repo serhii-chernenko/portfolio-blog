@@ -130,7 +130,20 @@ crawler ever sees it (`Sitemap:`, `Disallow:`, and `Content-Signal:` lines all
 go unread). It's bound at the exact path only — not a `/*` catch-all — so it
 doesn't compete with the portfolio Worker's future routes for anything else.
 When that Worker ships, move `/robots.txt` ownership to it and delete this
-route + the matching rewrite in `src/middleware.ts`.
+route + the build step in `scripts/post-build.mjs` described below.
+
+**How it's actually served**: NOT by an Astro route or a middleware rewrite.
+`context.rewrite()` (used for the Keystatic apex paths above) only resolves to
+real Astro routes — `public/robots.txt` is a static file with no route-manifest
+entry, and rewriting to it throws at request time ("Unexpectedly unable to find
+a component instance"). Instead, `scripts/post-build.mjs` copies the already-
+built `dist/client/blog/robots.txt` to `dist/client/robots.txt` (the assets
+root) after `astro build` runs. Cloudflare's static-asset serving picks up a
+matching file directly, ahead of any Worker code — the same mechanism the apex
+`index.html` redirect earlier in that script already relies on. Verify after a
+build with `curl -H "Host: www.serhiichernenko.com" http://localhost:PORT/robots.txt`
+against `wrangler dev` (using the actual configured port) — a middleware-based
+approach here will silently 500, not fail loudly at build time.
 
 ---
 

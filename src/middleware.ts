@@ -63,13 +63,14 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 const BASE = '/blog';
 const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 
-// `/robots.txt` (wrangler.jsonc routes) is bound at the exact host-root path
-// only — Astro emits `public/robots.txt` under the `/blog` base, so without
-// this rewrite the apex file 522s (see docs/DNS-ROUTING.md). Exact-match, not
-// a prefix: unlike the Keystatic paths above, robots.txt has no nested routes
-// under it, and a prefix match would also (harmlessly, but needlessly) catch
-// stray paths like `/robots.txtfoo`.
-const APEX_EXACT_PATHS = ['/robots.txt'];
+// NOTE: `/robots.txt` (host-root) is bound to this Worker in wrangler.jsonc,
+// but is NOT rewritten here like the Keystatic paths above — `context.rewrite()`
+// only resolves to real Astro routes, and `public/robots.txt` is a static file
+// with no route-manifest entry (rewriting to it throws "Unexpectedly unable to
+// find a component instance"). scripts/post-build.mjs instead copies the built
+// file to the assets root (`dist/client/robots.txt`), where Cloudflare's static
+// assets serve it directly ahead of any Worker code — see that script and
+// docs/DNS-ROUTING.md.
 
 export const onRequest = defineMiddleware((context, next) => {
 	const { request, url, isPrerendered } = context;
@@ -101,10 +102,6 @@ export const onRequest = defineMiddleware((context, next) => {
 		if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
 			return context.rewrite(`${BASE}${pathname}${search}`);
 		}
-	}
-
-	if (APEX_EXACT_PATHS.includes(pathname)) {
-		return context.rewrite(`${BASE}${pathname}${search}`);
 	}
 
 	return next();
