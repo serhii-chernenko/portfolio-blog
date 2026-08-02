@@ -39,6 +39,10 @@ const SITE = 'https://www.serhiichernenko.com';
  *        in addition to /blog/*, so the UI's apex fetches reach this Worker.
  *     2. src/middleware.ts rewrites those apex requests to /blog/api/keystatic/*
  *        so Astro's router (which lives under base: '/blog') can serve them.
+ *   This /blog handling is actually split across two places: the middleware
+ *   rewrite above adds the /blog prefix so Astro's router matches, then
+ *   patches/@keystatic__astro@5.2.0.patch strips it back off inside
+ *   Keystatic's API route handler before its generic handler parses params.
  */
 // astro.config.mts runs in Node before Vite kicks in, so it reads from
 // `process.env`. The same flag is read by keystatic.config.ts via
@@ -63,6 +67,8 @@ export default defineConfig({
 	site: SITE,
 	base: BASE_PATH,
 	output: 'server',
+	// Astro v7 defaults to 'jsx' whitespace collapsing between inline elements — pin true to keep v6 rendering behavior.
+	compressHTML: true,
 	// Reproduced in src/middleware.ts so RFC 8058 one-click unsubscribe POSTs
 	// can receive a narrowly scoped exception without weakening other forms.
 	security: {
@@ -88,7 +94,13 @@ export default defineConfig({
 		defaultLocale: 'en',
 		routing: {
 			prefixDefaultLocale: true,
-			redirectToDefaultLocale: true,
+			// src/pages/index.astro already implements this redirect as a prerendered
+			// static page. redirectToDefaultLocale: true makes Astro generate its own
+			// competing redirect at the same route — since Astro 7 changed route-priority
+			// resolution, that generated route now wins over the custom page instead of
+			// losing to it as it did on Astro 6, serving a slower SSR redirect with an
+			// added noindex tag instead of the custom page's instant one.
+			redirectToDefaultLocale: false,
 		},
 	},
 	integrations,

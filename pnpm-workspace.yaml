@@ -7,5 +7,5 @@ onlyBuiltDependencies:
   - sharp
   - workerd
 patchedDependencies:
-  '@keystatic/astro@5.0.6': patches/@keystatic__astro@5.0.6.patch
+  '@keystatic/astro@5.2.0': patches/@keystatic__astro@5.2.0.patch
   '@react-email/editor@1.4.1': patches/@react-email__editor@1.4.1.patch
