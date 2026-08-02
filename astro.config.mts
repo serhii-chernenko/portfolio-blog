@@ -58,6 +58,10 @@ const integrations = [
 			defaultLocale: 'en',
 			locales: { en: 'en-US', uk: 'uk-UA' },
 		},
+		// /blog/admin is Disallow'd in public/robots.txt — submitting it in the
+		// sitemap too gets flagged by Search Console ("submitted URL blocked by
+		// robots.txt"), and the route itself 404s outside local/preview mode.
+		filter: (page) => !page.includes('/blog/admin'),
 	}),
 	keystatic(), // always loaded — dev uses base `/`, prod uses `/blog/`
 ];

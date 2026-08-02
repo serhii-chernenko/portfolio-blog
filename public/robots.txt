@@ -20,8 +20,9 @@ Disallow: /keystatic/
 Disallow: /api/keystatic
 Disallow: /api/keystatic/
 
-# Admin email-template UI — not gated by auth at the route level; keep it out
-# of search results the same way Keystatic is above.
+# Admin email-template UI — hard 404s outside local/preview mode (see
+# src/pages/admin/emails/index.astro), so this Disallow protects nothing;
+# it's defence-in-depth to keep it out of search results in the meantime.
 Disallow: /blog/admin
 Disallow: /blog/admin/
 
