@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"packageManager": "pnpm@11.5.0",
 	"engines": {
-		"node": ">=24"
+		"node": ">=24.16.0"
 	},
 	"scripts": {
 		"dev": "PUBLIC_KEYSTATIC_MODE=local dotenv -e .dev.vars -- astro dev",
