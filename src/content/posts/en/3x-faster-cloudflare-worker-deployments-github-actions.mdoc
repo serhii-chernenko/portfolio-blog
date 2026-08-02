@@ -1,0 +1,51 @@
+---
+title: "3x Faster: How I Optimized Cloudflare Worker Deployments with a Custom GitHub Actions Workflow"
+translationKey: cloudflare-worker-deploy-3x-faster
+description: How I built a custom GitHub Actions workflow that cuts Cloudflare Worker deployment time from 8 minutes to 2.5 minutes.
+publishedAt: 2025-07-28T08:43:12.000Z
+tags:
+  - cloudflare
+  - workers
+  - github-actions
+  - ci-cd
+  - devops
+heroImage: /src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/hero.jpg
+heroImageAlt: GitHub Actions workflow deploying to Cloudflare Workers
+draft: false
+---
+I've built my own GitHub Actions integration for deploying to Cloudflare Workers. It offers more features, greater convenience, and more build steps, including running linters and tests. I've slashed the build time from 8 minutes down to just 2.5 — that's 3 times faster.
+
+One pull request involved 55 attempts at creating a custom GitHub Actions workflow, 26 of which failed. But I finally nailed it.
+
+![Custom GitHub Actions workflow posting a bot comment with build results](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-1.png)
+
+The task: build a workflow for both production and preview builds on Cloudflare Workers. The production build is triggered only by a push or a pull request merge into the protected main branch. Cloudflare does have an out-of-the-box integration with GitHub.
+
+But it's limited to just a couple of commands: build and deploy. And even so, a build takes 6-8 minutes, depending on the framework. It also doesn't provide a clean way to run linters and tests.
+
+![Cloudflare's default GitHub integration running a build](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-2.png)
+
+One cool thing about their integration is the friendly messages it posts in pull requests for preview deployments.
+
+![Cloudflare's bot comment on a pull request for a preview deployment](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-3.png)
+
+If something's missing, build it yourself. Which is undoubtedly what I did. Now I have my bot that displays all the information I need, and in a much cleaner format than the bot from Cloudflare.
+
+![Custom bot's pull request comment with cleaner build details](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-4.png)
+
+I also configured it to trigger a preview build for every commit in a pull request. The bot posts a separate comment for each build, so you can review individual builds for specific fixes within the same PR.
+
+This way, you can compare specific changes within a pull request, including the bundle size — which is especially useful for optimization tasks. Or simply detect how much larger the bundle gets after adding a new NPM package.
+
+And while the Cloudflare bot just updates its previous comment, mine posts a new one each time. As a result, when I'm subscribed to a pull request, I get clean, structured email notifications for each build.
+
+![Clean, structured email notification generated for each build](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-5.png)
+
+And the best part? This entire workflow — running linters, tests, generating different wrangler.json files, building the application, and deploying to Workers — takes just 2.5 minutes, compared to Cloudflare's 6-8 minutes. That's a 3x speed-up.
+
+Besidka is the product I'm currently working on. The open-source AI Chat, where you can bring your own API keys and only pay for what you use. I'm still in the MVP stage, but much has been accomplished.
+
+- Production URL: https://t.co/sTTbP8oke5
+- Repository: https://t.co/TeHUHakQbO
+
+![Final summary from the custom GitHub Actions workflow](/src/assets/posts/3x-faster-cloudflare-worker-deployments-github-actions/inline-6.png)
