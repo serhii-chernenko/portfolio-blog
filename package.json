@@ -20,7 +20,8 @@
 		"lint": "eslint .",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs"
+		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs",
+		"prepare": "husky"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.9",
@@ -42,6 +43,10 @@
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20260519.1",
+		"@commitlint/cli": "^21.2.1",
+		"@commitlint/config-conventional": "^21.2.0",
+		"@commitlint/format": "^21.2.0",
+		"@commitlint/types": "^21.2.0",
 		"@tailwindcss/typography": "^0.5.16",
 		"@tailwindcss/vite": "^4.0.0",
 		"@types/react": "^19.2.14",
@@ -52,11 +57,22 @@
 		"eslint": "^10.4.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-astro": "^1.7.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.3.0",
 		"pagefind": "^1.2.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-astro": "^0.14.1",
 		"tailwindcss": "^4.0.0",
 		"typescript-eslint": "^8.60.0",
 		"wrangler": "^4.95.0"
+	},
+	"lint-staged": {
+		"*.{js,cjs,mjs,ts,tsx,mts,astro}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{json,jsonc,yml,yaml,css,md}": [
+			"prettier --write"
+		]
 	}
 }
