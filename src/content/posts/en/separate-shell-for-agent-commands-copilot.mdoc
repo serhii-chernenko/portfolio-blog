@@ -1,0 +1,26 @@
+---
+title: Separate Shell for Running Agent Commands with GitHub Copilot
+translationKey: separate-shell-for-agent-commands
+description: A quick settings.json fix to make GitHub Copilot agents run terminal commands in bash instead of a slow, hanging zsh shell.
+publishedAt: 2026-03-27T13:11:53.000Z
+tags:
+  - github
+  - copilot
+  - vscode
+  - zsh
+  - bash
+  - productivity
+draft: false
+---
+I had some problems when my VS Code got stuck multiple times because agents were trying to run simple terminal commands, and my CPU flew to the moon. A reboot helped, of course. But I also suspected my `/bin/zsh` config — Oh My Zsh plus the Powerlevel10k theme — since it takes up to a second to load. I had no issues with `/bin/bash`. So I decided to check if I could keep my zsh shell for myself while telling agents to use bash instead.
+
+Here's the fix for `settings.json`:
+
+```json
+"chat.tools.terminal.terminalProfile.osx": {
+    "label": "bash",
+    "path": "/bin/bash"
+}
+```
+
+Might be useful for you too.
