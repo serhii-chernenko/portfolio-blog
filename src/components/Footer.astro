@@ -15,6 +15,7 @@ const t = useTranslations(locale);
 const year = new Date().getFullYear();
 const rssHref = new URL(withBase(`${locale}/rss.xml`), Astro.site).toString();
 const privacyHref = await getPagePath('privacy', locale);
+const supportHref = await getPagePath('support', locale);
 ---
 
 <footer
@@ -72,6 +73,25 @@ const privacyHref = await getPagePath('privacy', locale);
 					></path>
 				</svg>
 				{t('footer.source')}
+			</a>
+
+			<a
+				href={supportHref}
+				class="link link-hover flex items-center gap-1 light:opacity-80 light:hover:opacity-100"
+			>
+				<!-- Ko-fi icon -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					class="size-4"
+					aria-hidden="true"
+				>
+					<path
+						d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.022 11.822c.164 2.424 2.586 2.672 2.586 2.672s8.267-.023 11.966-.049c2.438-.426 2.683-2.566 2.658-3.734 4.352.24 7.422-2.831 6.649-6.916zm-11.062 3.511c-1.246 1.453-4.011 3.976-4.011 3.976s-.121.119-.31.023c-.076-.057-.108-.09-.108-.09-.443-.441-3.368-3.049-4.034-3.673-.709-.665-1.475-1.856-.98-3.171.494-1.316 1.774-1.638 2.87-1.315.795.236 1.234.842 1.536 1.435.334-.596.744-1.114 1.44-1.377 1.096-.323 2.376-.001 2.869 1.315.494 1.315-.271 2.506-.98 3.17zm4.983-5.42h-1.05v3.15h1.05a1.575 1.575 0 1 0 0-3.15z"
+					></path>
+				</svg>
+				{t('footer.support')}
 			</a>
 
 			<LanguageSwitcher locale={locale} currentPath={currentPath} translatedUrls={translatedUrls} />

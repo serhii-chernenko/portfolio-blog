@@ -100,6 +100,7 @@ export const ui = {
 		'footer.rss': 'RSS',
 		'footer.source': 'Source',
 		'footer.privacy': 'Privacy',
+		'footer.support': 'Support',
 		'privacy.title': 'Privacy Policy',
 		'privacy.description':
 			'How this site handles your data: newsletter subscriptions, analytics, and comments.',
@@ -206,6 +207,7 @@ export const ui = {
 		'footer.rss': 'RSS',
 		'footer.source': 'Код',
 		'footer.privacy': 'Конфіденційність',
+		'footer.support': 'Підтримати',
 		'privacy.title': 'Політика конфіденційності',
 		'privacy.description':
 			'Як цей сайт обробляє ваші дані: підписка на розсилку, аналітика та коментарі.',
