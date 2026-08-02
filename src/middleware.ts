@@ -63,6 +63,14 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 const BASE = '/blog';
 const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 
+// `/robots.txt` (wrangler.jsonc routes) is bound at the exact host-root path
+// only — Astro emits `public/robots.txt` under the `/blog` base, so without
+// this rewrite the apex file 522s (see docs/DNS-ROUTING.md). Exact-match, not
+// a prefix: unlike the Keystatic paths above, robots.txt has no nested routes
+// under it, and a prefix match would also (harmlessly, but needlessly) catch
+// stray paths like `/robots.txtfoo`.
+const APEX_EXACT_PATHS = ['/robots.txt'];
+
 export const onRequest = defineMiddleware((context, next) => {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
@@ -93,6 +101,10 @@ export const onRequest = defineMiddleware((context, next) => {
 		if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
 			return context.rewrite(`${BASE}${pathname}${search}`);
 		}
+	}
+
+	if (APEX_EXACT_PATHS.includes(pathname)) {
+		return context.rewrite(`${BASE}${pathname}${search}`);
 	}
 
 	return next();
