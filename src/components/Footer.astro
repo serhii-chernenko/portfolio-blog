@@ -15,6 +15,7 @@ const t = useTranslations(locale);
 const year = new Date().getFullYear();
 const rssHref = new URL(withBase(`${locale}/rss.xml`), Astro.site).toString();
 const privacyHref = await getPagePath('privacy', locale);
+const supportHref = await getPagePath('support', locale);
 ---
 
 <footer
@@ -72,6 +73,30 @@ const privacyHref = await getPagePath('privacy', locale);
 					></path>
 				</svg>
 				{t('footer.source')}
+			</a>
+
+			<a
+				href={supportHref}
+				class="link link-hover flex items-center gap-1 light:opacity-80 light:hover:opacity-100"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					class="size-4"
+					aria-hidden="true"
+				>
+					<path
+						d="M4 8a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1h.5a3.5 3.5 0 1 1 0 7H17a6 6 0 0 1-6 5h-2a6 6 0 0 1-6-6V8Zm13 3v3h.5a1.5 1.5 0 0 0 0-3H17Z"
+					></path>
+					<path
+						d="M8.75 2.5c.69.98.69 1.52 0 2.5-.5.71-.5 1.29 0 2h1.5c-.69-.98-.69-1.52 0-2.5.5-.71.5-1.29 0-2h-1.5Z"
+					></path>
+					<path
+						d="M12.75 2.5c.69.98.69 1.52 0 2.5-.5.71-.5 1.29 0 2h1.5c-.69-.98-.69-1.52 0-2.5.5-.71.5-1.29 0-2h-1.5Z"
+					></path>
+				</svg>
+				{t('footer.support')}
 			</a>
 
 			<LanguageSwitcher locale={locale} currentPath={currentPath} translatedUrls={translatedUrls} />
