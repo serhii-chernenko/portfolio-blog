@@ -27,3 +27,7 @@ Disallow: /blog/admin
 Disallow: /blog/admin/
 
 Sitemap: https://www.serhiichernenko.com/blog/sitemap-index.xml
+
+# llms.txt (https://llmstxt.org) — no standardised robots.txt directive exists
+# for it (unlike Sitemap: above); this is an informational pointer only.
+# llms.txt: https://www.serhiichernenko.com/blog/llms.txt
