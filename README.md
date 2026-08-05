@@ -17,7 +17,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 **Connect:** [YouTube](https://youtube.com/@serhii.chernenko) · [LinkedIn](https://www.linkedin.com/in/serhiichernenko/) · [Instagram](https://www.instagram.com/serhiichernenko.ua) · [TikTok](https://www.tiktok.com/@serhiichernenko.ua) · [Threads](https://www.threads.net/@serhiichernenko.ua) · [Telegram](https://t.me/serhii_chernenko) · [X/Twitter](https://x.com/serhiichernenko)
 
-**Support:** [Ko-fi](https://ko-fi.com/serhiichernenko)
+**Support:** [Buy Me a Coffee](https://www.buymeacoffee.com/serhii.chernenko)
 
 ---
 
