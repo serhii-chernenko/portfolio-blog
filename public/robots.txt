@@ -1,6 +1,13 @@
 User-agent: *
 Allow: /
 
+# Content Signals (https://contentsignals.org) — usage preference, not access
+# control; unknown to crawlers that don't support it and safely ignored (RFC 9309).
+#   search   = building a search index and linking results to this site
+#   ai-input = using content as real-time input to an AI answer (RAG / citation)
+#   ai-train = using content to train or fine-tune a generative model
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+
 # Keystatic CMS — hide from indexing in every form the URL might take.
 # The Admin UI is gated by GitHub OAuth in production, but we still don't want
 # it surfaced in search results.
@@ -12,5 +19,11 @@ Disallow: /keystatic
 Disallow: /keystatic/
 Disallow: /api/keystatic
 Disallow: /api/keystatic/
+
+# Admin email-template UI — hard 404s outside local/preview mode (see
+# src/pages/admin/emails/index.astro), so this Disallow protects nothing;
+# it's defence-in-depth to keep it out of search results in the meantime.
+Disallow: /blog/admin
+Disallow: /blog/admin/
 
 Sitemap: https://www.serhiichernenko.com/blog/sitemap-index.xml

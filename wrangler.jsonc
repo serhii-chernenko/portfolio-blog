@@ -128,6 +128,15 @@
 	// `www.serhiichernenko.com/*`; these `/blog*` + `/api/keystatic*` routes are
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
+	//
+	// `/robots.txt` is the one narrow exception: Astro only emits `public/` under
+	// the `/blog` base, so without this route the host-root file 522s (nothing is
+	// bound there) and crawlers never see it. Bound at an exact path — NOT a `/*`
+	// catch-all — so it stays out of the future portfolio Worker's way; ownership
+	// moves to that Worker (and this route is deleted) once it exists. Once bound,
+	// the file is served by Cloudflare's static assets directly — NOT by an Astro
+	// route or middleware rewrite (`context.rewrite()` can't target a static file;
+	// see src/middleware.ts and scripts/post-build.mjs). See docs/DNS-ROUTING.md.
 	"routes": [
 		{
 			"pattern": "www.serhiichernenko.com/blog",
@@ -151,6 +160,10 @@
 		},
 		{
 			"pattern": "www.serhiichernenko.com/keystatic/*",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "www.serhiichernenko.com/robots.txt",
 			"zone_name": "serhiichernenko.com",
 		},
 	],

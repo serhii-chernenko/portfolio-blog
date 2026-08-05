@@ -10,13 +10,13 @@
 
 ## The moving parts (and who owns each)
 
-| Piece                                                                               | Where                                                           | Purpose                                                                                                                                   |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **Worker routes** → `www.serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` stays the apex `serhiichernenko.com` (the zone) — the _pattern_ is what targets `www`. |
-| **`www` DNS record**                                                                | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the Worker routes fire.                                                                       |
-| **apex DNS record**                                                                 | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the redirect rule can run. `100::` is the reserved discard address for an originless host.     |
-| **apex → www redirect**                                                             | Cloudflare → **Rules → Redirect Rules**                         | 301s `serhiichernenko.com/*` → `www.serhiichernenko.com/*` so visitors who type the bare domain land on the canonical host.               |
-| **Canonical URL**                                                                   | `astro.config.mts` → `site: 'https://www.serhiichernenko.com'`  | Build-time absolute links (sitemap, RSS) use `www`. Runtime links derive from the request host.                                           |
+| Piece                                                                                              | Where                                                           | Purpose                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Worker routes** → `www.serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]`, `/robots.txt` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` stays the apex `serhiichernenko.com` (the zone) — the _pattern_ is what targets `www`. |
+| **`www` DNS record**                                                                               | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the Worker routes fire.                                                                       |
+| **apex DNS record**                                                                                | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the redirect rule can run. `100::` is the reserved discard address for an originless host.     |
+| **apex → www redirect**                                                                            | Cloudflare → **Rules → Redirect Rules**                         | 301s `serhiichernenko.com/*` → `www.serhiichernenko.com/*` so visitors who type the bare domain land on the canonical host.               |
+| **Canonical URL**                                                                                  | `astro.config.mts` → `site: 'https://www.serhiichernenko.com'`  | Build-time absolute links (sitemap, RSS) use `www`. Runtime links derive from the request host.                                           |
 
 **Routes are not DNS.** `wrangler deploy` only binds the Worker to a route
 pattern — it never creates a DNS record. If the matched hostname has no proxied
@@ -115,12 +115,35 @@ built routes.
 
 ## What happens to `/` (host root)
 
-Only `/blog*` and `/api/keystatic*` are bound to the Worker. The **host root `/`**
-(on either `www` or the apex) is unbound — it falls through to the `100::` black
-hole and returns a Cloudflare edge error (`522`/`523`/`1016`) until a separate
-landing ships (open decision #8 in `blog-build-plan.md`). The apex `/` first
-301s to `www/`, which then errors — expected for now. Point uptime monitors at
+Only `/blog*`, `/api/keystatic*`, and the single exact path `/robots.txt` are
+bound to the Worker. The **host root `/`** itself (on either `www` or the apex)
+is unbound — it falls through to the `100::` black hole and returns a
+Cloudflare edge error (`522`/`523`/`1016`) until a separate landing ships (open
+decision #8 in `blog-build-plan.md`). The apex `/` first 301s to `www/`, which
+then errors — expected for now. Point uptime monitors at
 `https://www.serhiichernenko.com/blog/en/` (a real `200`), not `/`.
+
+`/robots.txt` is a narrow, deliberate exception to "the root belongs to the
+future portfolio Worker": Astro only emits `public/robots.txt` under the
+`/blog` base, so without this route the file 522s at the host root and no
+crawler ever sees it (`Sitemap:`, `Disallow:`, and `Content-Signal:` lines all
+go unread). It's bound at the exact path only — not a `/*` catch-all — so it
+doesn't compete with the portfolio Worker's future routes for anything else.
+When that Worker ships, move `/robots.txt` ownership to it and delete this
+route + the build step in `scripts/post-build.mjs` described below.
+
+**How it's actually served**: NOT by an Astro route or a middleware rewrite.
+`context.rewrite()` (used for the Keystatic apex paths above) only resolves to
+real Astro routes — `public/robots.txt` is a static file with no route-manifest
+entry, and rewriting to it throws at request time ("Unexpectedly unable to find
+a component instance"). Instead, `scripts/post-build.mjs` copies the already-
+built `dist/client/blog/robots.txt` to `dist/client/robots.txt` (the assets
+root) after `astro build` runs. Cloudflare's static-asset serving picks up a
+matching file directly, ahead of any Worker code — the same mechanism the apex
+`index.html` redirect earlier in that script already relies on. Verify after a
+build with `curl -H "Host: www.serhiichernenko.com" http://localhost:PORT/robots.txt`
+against `wrangler dev` (using the actual configured port) — a middleware-based
+approach here will silently 500, not fail loudly at build time.
 
 ---
 

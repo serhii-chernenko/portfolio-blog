@@ -63,6 +63,15 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 const BASE = '/blog';
 const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 
+// NOTE: `/robots.txt` (host-root) is bound to this Worker in wrangler.jsonc,
+// but is NOT rewritten here like the Keystatic paths above — `context.rewrite()`
+// only resolves to real Astro routes, and `public/robots.txt` is a static file
+// with no route-manifest entry (rewriting to it throws "Unexpectedly unable to
+// find a component instance"). scripts/post-build.mjs instead copies the built
+// file to the assets root (`dist/client/robots.txt`), where Cloudflare's static
+// assets serve it directly ahead of any Worker code — see that script and
+// docs/DNS-ROUTING.md.
+
 export const onRequest = defineMiddleware((context, next) => {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
