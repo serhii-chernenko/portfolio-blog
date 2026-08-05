@@ -31,6 +31,33 @@ instance construction internally. A byte-counted read (not a bare
 `content-length` header check — headers can be missing or wrong) rejects
 request bodies over 64 KB before the SDK parses them.
 
+## Using it from this repo
+
+The repo ships a project-scoped `.mcp.json` registering this server under the
+name `portfolio-blog`, pointed at the production URL. Any MCP-aware client
+that reads the standard `.mcp.json` project config picks it up automatically:
+
+- **Claude Code** — detects `.mcp.json` on startup and prompts once to approve
+  the project-scoped server before it's usable (a security gate for any MCP
+  server declared in a repo you didn't author yourself). Approve it, then ask
+  things like "what posts are tagged astro on this blog?" — it resolves via
+  `list_posts`/`search_posts_by_tag` instead of guessing from training data.
+- **[pi](https://github.com/badlogic/pi-mono)** (via
+  [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter)) — reads the
+  same `.mcp.json` directly, no separate `.pi/mcp.json` override needed; the
+  adapter's schema is a superset of the standard `mcpServers` shape (extra
+  fields like `lifecycle` are optional additions, not requirements), so one
+  file serves both. Confirm via `/mcp` inside pi that `portfolio-blog` shows
+  up as detected.
+- **Other MCP-aware tools** (Cursor, VS Code Copilot Chat, etc.) generally
+  read this same file or a host-specific equivalent — check that tool's own
+  docs if it doesn't pick `.mcp.json` up automatically.
+
+No changes needed if you're working against a different branch/deploy — the
+URL is fixed to production since the server is read-only and stateless; there
+is no reason to point it at a local dev instance unless you're actively
+developing the MCP tools themselves (see below).
+
 ## Trying it locally
 
 ```bash
