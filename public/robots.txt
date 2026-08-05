@@ -26,6 +26,9 @@ Disallow: /api/keystatic/
 Disallow: /blog/admin
 Disallow: /blog/admin/
 
+# JSON-RPC API surface (including the MCP endpoint) — nothing here to index.
+Disallow: /blog/api/
+
 Sitemap: https://www.serhiichernenko.com/blog/sitemap-index.xml
 
 # llms.txt (https://llmstxt.org) — no standardised robots.txt directive exists

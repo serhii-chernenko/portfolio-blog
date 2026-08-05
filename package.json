@@ -33,12 +33,14 @@
 		"@astrojs/sitemap": "^3.7.3",
 		"@keystatic/astro": "^5.2.0",
 		"@keystatic/core": "^0.5.0",
+		"@modelcontextprotocol/server": "^2.0.0",
 		"@react-email/editor": "1.4.1",
 		"astro": "^7.1.6",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.6",
 		"sharp": "^0.34.3",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20260519.1",
