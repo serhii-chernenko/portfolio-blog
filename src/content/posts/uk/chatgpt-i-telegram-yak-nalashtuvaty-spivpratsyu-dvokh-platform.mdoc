@@ -1,0 +1,542 @@
+---
+title: ChatGPT і Telegram — як налаштувати співпрацю двох платформ
+translationKey: chatgpt-telegram-bot-integration
+description: Розповідаю, як я створив Telegram-бота на Node.js, який спілкується через ChatGPT API від Open AI.
+publishedAt: 2023-03-17T17:00:03.000Z
+tags:
+  - chatgpt
+  - telegram
+  - openai
+  - nodejs
+  - боти
+  - штучний-інтелект
+heroImage: /src/assets/posts/chatgpt-i-telegram-yak-nalashtuvaty-spivpratsyu-dvokh-platform/hero.png
+heroImageAlt: Мем "привіт з нульових" — скріншот старого інтерфейсу чату
+draft: false
+---
+Ця стаття починалась як допис на [DOU](https://dou.ua/forums/topic/42590/). Переношу її сюди без змін по суті.
+
+ChatGPT вже у Telegram? Спойлер — звісно ні та навряд буде, як то кажуть, «з коробки». Хоча, що нам заважає його туди запхати самим? А нічого! Цим і займемося...
+
+Усім привіт, я Сергій Черненко, Magento Front-End Lead розробник. Я особисто проводжу в Телеграмі значно більше часу, ніж сам того хотів би. Його перевага для мене в тому, що там всі друзі, важливі діалоги, застосунок кросплатформний і він працює навіть при дуже повільному інтернеті, а в потягах, горах (саме час подорожувати, еге ж?) та при недавніх регулярних відключеннях світла це було йой, як відчутно.
+
+Відколи зʼявився ​​[ChatGPT](https://chat.openai.com/), всі про нього тільки і кажуть. В Україні довгий час він не був доступним, але все одно, знаходили шляхи, як там зареєструватися та використовувати цю новинку. Попит був, тому треба було й собі зацінити, що то за звір такий.
+
+Надмірний хайп завищив очікування від нього, і це зрозуміло. Але ж хіба це відібʼє бажання ним користуватися? Звісно ні, особливо, якщо визначитися, з якою метою хочеш його використовувати. І це — просунутий пошук, особисто для мене. Більше не очікую, більше не потрібно.
+
+Але якби пошук обмежувався тільки роботою та StackOverflow, тікети закривати було б куди простіше. Ми шукаємо інформацію кожного дня і куди частіше, ніж нам здається: гуглимо, запитуємо рідних, друзів, знайомих, колег; гортаємо треди, закладки браузера, результати пошуку в Slack; використовуємо Google та DuckDuckGo; читаємо Telegram-канали, Twitter-треди та дивимося сторізи в Instagram.
+
+ChatGPT від [Open AI](https://openai.com/) і повинен допомогти трохи оптимізувати цей процес регулярного пошуку. Але його основний недолік — він має виключно вебінтерфейс. Повертаючись до того, що велику частину свого життя я проводжу в Телеграмі, то я хотів би мати умовного пошукового помічника у цьому застосунку.
+
+Щось згадав за цього товариша. Привіт з нульових 😀
+
+Єдиний спосіб щось автоматизувати у Телеграмі — зробити бота. Швидше зробити його на тих інструментах, які тобі вже знайомі, але, на жаль, на [жиквері](https://jquery.com/) бота не напишеш (хто досі працює з Magento 2, той зрозуміє). А ось на [ноді](https://nodejs.org/) можна.
+
+Далі я буду розписувати технічну частину, як створити цього самого бота з API від Open AI. Якщо сам процес створення тобі не дуже цікавий і хочеш швидесенько розгорнути бота в себе, відкривай [репу на GitHub](https://github.com/Inevix/chatgpt-telegram-bot) та розважайся:
+
+Інструкція, до речі, написана одночасно англійською та українською.
+
+## Нудна технічна частина
+
+### Підготовка
+
+Ось коротенький перелік того, що тобі потрібно мати перед тим, як рухатися далі:
+
+1. Бажання, ахаха.
+2. Акаунт в Telegram.
+3. Акаунт в [Open AI](https://platform.openai.com/account/).
+4. Встановлений Node.js.
+5. Будь-який вбудований термінал в ОС для виконання команд.
+6. Обрати, де створити директорію під цей проєкт.
+
+### Ініціалізація
+
+Йдемо до директорії, де будемо творити магію та запускаємо команду:
+
+```
+npm init
+```
+
+На всі питання тицькаємо Enter. Хто ж їх читає, дійсно?
+
+### Встановлення NPM-пакетів
+
+Ми встановимо наступні NPM-пакети:
+
+```
+npm install openai telegraf @puregram/session dotenv
+npm install --save-dev nodemon
+```
+
+Якщо стисло:
+
+1. [**openai**](https://www.npmjs.com/package/openai) — не я придумав, то дока Open AI каже.
+2. [**telegraf**](https://www.npmjs.com/package/telegraf) — фреймворк [Telegraf](https://github.com/telegraf/telegraf) ([дока](https://telegraf.js.org/index.html), [приклади ботів](https://github.com/feathers-studio/telegraf-docs/tree/master/examples)), з яким цікавіше працювати з [Telegram API](https://core.telegram.org/bots/samples) на ноді. Більше абстракцій богу абстракцій.
+3. [**@puregram/session**](https://www.npmjs.com/package/@puregram/session) — щоб не ускладнювати бота усілякими базами даних та не записувати інформацію в умовні *.json файли, ми можемо зберігати діалоги в контексті боту. Але з останніх версій Telegraf'у, вбудована можливість працювати з сесіями відпала, то можемо скористатися цим пакетом для розв'язання цієї проблеми.
+4. [**dotenv**](https://www.npmjs.com/package/dotenv) — будемо сюди писати ENV змінні, щоб зробити вигляд, що ми розуміємося в архітектурі (ні).
+5. [**nodemon**](https://www.npmjs.com/package/nodemon) — дозволяє запустити сервер для розробки та перезапускати його кожного разу, коли ми будемо робити якісь зміни у файлах. А прапорець —save-dev каже про те, що у production моді цей пакет не буде встановлюватися, бо він потрібен виключно для розробки.
+
+### Перші файли
+
+Створи (наказово-абʼюзивна форма, ага) 2 файли:
+
+```
+touch index.js .env
+```
+
+### ENV — змінні оточення
+
+В .env файлі створимо декілька змінних:
+
+```
+OPENAI_API_KEY=""
+TELEGRAM_BOT_TOKEN=""
+```
+
+Одразу їх заповнимо.
+
+#### Open AI API ключ
+
+Переходимо до кабінету Open AI та відкриваємо сторінку [API keys](https://platform.openai.com/account/api-keys). Тицькаємо на кнопку «Create new secret key». Отримаємо рядок на кшталт «sk-xxxxx...» та копіюємо його в наш .env-файл, як значення змінної OPENAI_API_KEY.
+
+#### Telegram Bot API ключ
+
+Переходимо до [Батька](https://t.me/BotFather) всіх Телеграм-ботів. Тицькаємо команду для створення нового боту:
+
+```
+/newbot
+```
+
+Вводимо назву боту та його юзернейм. В результаті ми повинні отримати ключ на кшталт «012345678:XXXxxXX_...». Копіюємо його і також додаємо до нашого .env-файлу, вже як значення змінної TELEGRAM_BOT_TOKEN.
+
+### Пишемо бота
+
+Нарешті можна і код трохи пописати. Переходимо до нашого index.js файлу. Витягаємо хелпери з пакетів, які нам потрібні для роботи та одразу підключимо наш .env файл:
+
+```javascript
+const { join } = require('path');
+const { Telegraf } = require('telegraf');
+const { Configuration, OpenAIApi } = require('openai');
+require('dotenv').config({
+    path: join(__dirname, '.env')
+});
+const { OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, NODE_ENV } = process.env;
+const configuration = new Configuration({
+    apiKey: OPENAI_API_KEY
+});
+const openai = new OpenAIApi(configuration);
+const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// будемо писати код тут (початок)
+
+// будемо писати код тут (кінець)
+
+bot.catch(error => console.error(error));
+bot.launch();
+```
+
+Як мало потрібно для щастя та для того, щоб запустити бота. Щоб переконатися, що ця звірюга дійсно жива, хай якийсь голос подасть. Наступні шматки коду пиши між коментарями, які я залишив.
+
+Вставляємо функцію, яка буде спрацьовувати, коли вперше починається діалог з ботом або за допомогою інлайн команди /start:
+
+```javascript
+bot.start(async ctx => await ctx.sendMessage('Hello there!'));
+```
+
+Далі в терміналі запускаємо команду:
+
+```
+nodemon index.js
+```
+
+Йдемо до чату з ботом в Телеграмі та тицькаємо /start. Після цього ми повинні отримати «Hello there!» у відповідь.
+
+![Скріншот діалогу з Telegram-ботом, який відповідає "Hello there!"](/src/assets/posts/chatgpt-i-telegram-yak-nalashtuvaty-spivpratsyu-dvokh-platform/inline-1.png)
+
+Далі на будь-які зміни в index.js файлі nodemon повинен сам перезапускати сервер, тож за термінал поки забуваємо.
+
+### Обираємо модель спілкування з Open AI API
+
+Першу версію боту я релізив, коли була доступна модель text-davinci-003. Davinci — в цілому, найдорожча модель, вартість якої складає $0,02 за 1 000 символів. Перелік моделей [знаходиться тут](https://platform.openai.com/docs/models/overview).
+
+Коли ти визначишся з API та з моделлю, важливо буде порівняти [ціни](https://openai.com/pricing).
+
+Спочатку насправді я не був задоволений швидкістю та ціною. Коли реєструєшся в Open AI, дають для безкоштовного користування $18 на декілька місяців. З Davinci в мене ці $18 закінчилися за 5 днів, бо в день виходило від $1 до $5. Коли це умовні долари, то ок, але платити свої якось багацько було. Там ще, звісно, були дешевші моделі: ada, curie та babbage, але це знущання — вони жахливо працювали.
+
+Все змінилося, коли за місяць вийшла нова модель — gpt-3.5-turbo. Удесятеро дешевше ($0,002 за 1 000 символів) та відчутно швидша. В тому, наскільки якісні відповіді, різниці взагалі не помітив, у порівнянні з davinci. Тепер на день у мене виходить від $0,05 до $0,3 — це значно приємніше. За 2 тижні я витратив лише 6 «безкоштовних» доларів з 18 на новому акаунті.
+
+Також оновлений API почав повертати зрозумілішу відповідь, краще відформатовану, у вигляді масиву, де видно, хто відправляв текст: користувач чи ШІ. Також зʼявилися потрійні лапки, що дозволяє вирізняти шматки коду у відповіді та підсвітити, якщо є можливість форматувати текст, а в Телеграмі вона присутня.
+
+Зрозуміло, що нові моделі будуть виходити, але під час написання цієї статті обрати gpt-3.5-turbo буде найкращим рішенням, тому з цією моделлю і будемо рухатися далі.
+
+Єдине, що нам залишилось стосовно API — знайти приклад використання, наприклад, [тут](https://platform.openai.com/docs/api-reference/chat/create).
+
+Приклади, звісно, також будуть оновлюватися в документації, тож необхідно це врахувати. Наразі маємо таке:
+
+```javascript
+const completion = await openai.createChatCompletion({
+  model: "gpt-3.5-turbo",
+  messages: [{role: "user", content: "Hello world"}],
+});
+console.log(completion.data.choices[0].message);
+```
+
+### Ліпимо до купи
+
+Щоб бот реагував на повідомлення, потрібно імпортувати зверху ще один хелпер:
+
+```javascript
+const { message } = require('telegraf/filters');
+```
+
+І після start створимо ще одну функцію:
+
+```javascript
+bot.on(message('text'), async ctx => {});
+```
+
+#### Логування
+
+Щоб легше було розуміти, що нам приходить в контексті на кожне оновлення, пропоную підключити логування.
+
+Зупиняємо процес nodemon в терміналі. Далі після рядка, де ми створювали новий інстанс боту:
+
+```javascript
+const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+```
+
+Додаємо такий код:
+
+```javascript
+if (NODE_ENV === 'dev') {
+    bot.use(Telegraf.log());
+}
+```
+
+А змінна NODE_ENV в нас вже була імпортована за допомогою деструктуризації вище у рядку:
+
+```javascript
+const { OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, NODE_ENV } = process.env;
+```
+
+Тепер перезапускаємо наш процес nodemon, але ще передамо нашу змінну:
+
+```
+NODE_ENV=dev nodemon index.js
+```
+
+Для зручності можна цю команду додати до файлу package.json в обʼєкт scripts. Там вже є один скрипт test, можемо замінити його на dev, а як значення використаємо команду вище. Повинні отримати таке:
+
+```json
+"scripts": {
+  "dev": "NODE_ENV=dev nodemon index.js"
+}
+```
+
+Тепер цей скрипт можна запустити командою:
+
+```
+npm run dev
+```
+
+#### Формат питання-відповідь
+
+Почнемо з простого, будемо відправляти до Open AI API той текст, який напишемо Телеграм-боту.
+
+Повертаємося до нашої функції, де ми слухаємо повідомлення. Зараз будемо відправляти запит до API та повертати відповідь у наш чат в Телеграмі:
+
+```javascript
+bot.on(message('text'), async ctx => {
+    try {
+        const response = await openai.createChatCompletion({
+            model: 'gpt-3.5-turbo',
+            messages: {
+                role: 'user',
+                content: ctx.message.text
+            }
+        });
+
+        await ctx.sendMessage(response.data.choices[0].content)
+    }
+});
+```
+
+Як мені здається, тут немає, що пояснювати. Єдине що вважаю важливим додати, що окрім ключів model та messages, в документації є додаткові налаштування, тож, як то кажуть, feel free to [побавитися з ними](https://platform.openai.com/docs/api-reference/completions/create).
+
+Окрему увагу треба приділити опції max_tokens. Модель 3,5 має таке саме обмеження, як і максимальний ввод у Телеграмі без медіаресурсів — 4096 символів. Хоча за замовчуванням виставлено всього 16. Можна збільшити, наприклад, до 500-1000 символів. Це зробить комфортну для тебе довжину відповіді.
+
+Але враховуй те, що якщо захочеш виставити максимальну довжину у 4096 токенів, треба відмінусувати довжину твого запиту, бо кількість токенів розрахована на весь контекст, тобто і питання, і відповідь:
+
+```javascript
+max_tokens: 4096 - ctx.message.text.length
+```
+
+Але, як ви могли помітити, ми використали блок try без catch, необхідно це виправити. Будемо відловлювати помилки і надсилати їх знову до Телеграма, щоб не було такого, що бот впав, коли писав з телефону, а подивитись на логи немає можливості. Але оскільки помилки можуть прийти, як і від Open AI API, так і від Telegram Bot API (який також повертає 2 формати помилок), треба їх відокремити. Я не придумав нічого краще, ніж зробити наступним чином:
+
+```javascript
+try {
+    // ...
+} catch (error) {
+    const openAIError = error.response?.data?.error?.message;
+
+    if (openAIError) {
+        return await ctx.sendMessage(openAIError);
+    }
+
+    await ctx.sendMessage(error?.response?.statusText ?? error.response.description);
+}
+```
+
+#### Формат діалогу
+
+Питання-відповідь — це, звісно, добре, але вебінтерфейс від Open AI пропонує нам вести діалог з ШІ. Ми маємо можливість вказувати щось на основі попередніх відповідей, наприклад: запросити переклад, змінити відповідь на основі додаткових даних тощо. Тож саме це і хочеться відтворити в Телеграм-боті.
+
+Після того, як ми додали логування у dev-режимі:
+
+```javascript
+if (NODE_ENV === 'dev') {
+    bot.use(Telegraf.log());
+}
+```
+
+Створимо нову функцію createDialogs:
+
+```javascript
+const createDialogs = (ctx, next) => {
+    if (!ctx.session?.dialogs) {
+        ctx.session.dialogs = new Map();
+    }
+
+    return next();
+};
+```
+
+Де ми перевіримо, чи є в поточній сесії будь-які записи. Якщо ні — створимо новий обʼєкт, в якому будемо зберігати діалоги. Але ця функція буде middleware, тобто проміжною. І щоб вона запрацювала, додамо за нею наступний рядок:
+
+```javascript
+bot.use(createDialogs);
+```
+
+І на останок, щоб сесія запрацювала, потрібно імпортувати наступну залежність десь зверху:
+
+```javascript
+const { SessionManager } = require('@puregram/session');
+```
+
+А перед попереднім рядком з createDialogs, використаємо ще один middleware:
+
+```javascript
+bot.use(new SessionManager().middleware);
+```
+
+Тепер йдемо до нашої функції, яка слухає вхідні повідомлення і тут будемо працювати зі збереженням діалогу. При відправленні тексту в телеграмі, зберігаємо їх:
+
+```javascript
+const chatId = ctx.chat.id;
+
+if (!ctx.session.dialogs.has(chatId)) {
+    ctx.session.dialogs.set(chatId, []);
+}
+
+let dialog = ctx.session.dialogs.get(chatId);
+
+dialog.push({
+    role: 'user',
+    content: ctx.message.text
+});
+```
+
+Тепер у запиті до API в messages ми просто підставляємо значення dialog:
+
+```javascript
+const response = await openai.createChatCompletion({
+    model: 'gpt-3.5-turbo',
+    messages: dialog
+});
+```
+
+Та при отриманні відповіді від API, зберігаємо її також:
+
+```javascript
+const { message } = response.data.choices[0];
+const { content } = message;
+
+dialog.push(message);
+
+await ctx.replyWithMarkdown(content);
+
+ctx.session.dialogs.delete(chatId);
+ctx.session.dialogs.set(chatId, dialog);
+```
+
+Власне, нічого складного, ганяємо JSON-подібний формат туди-сюди. Оце ми програмісти, хєхє.
+
+#### Обмеження контексту
+
+Нагадаю, що поточна модель 3,5 має обмеження контексту у 4096 символів. Тому у форматі діалогу цей ліміт буде перевищений дуже швидко і API почне лаятися помилками.
+
+Можна піти легким шляхом і руцями видаляти поточний діалог на команду /reset:
+
+```javascript
+bot.command('reset', async ctx => {
+    ctx.session.dialogs.set(ctx.chat.id, []);
+
+    await ctx.sendMessage('Chat has been reset!');
+});
+```
+
+Але ж хто обирає ті легкі шляхи?! Пропоную зробити нескінченний діалог, який буде самовидаляти найдавніші повідомлення.
+
+Перед самим блоком try/catch, додамо ще один рядок:
+
+```javascript
+dialog = slicedContext(dialog);
+```
+
+І тепер залишилось створити десь цю функцію slicedContext вище:
+
+```javascript
+const slicedContext = dialog => {
+    const contextLength = dialog.reduce(
+        (acc, { content }) => acc + content.length,
+        0
+    );
+
+    if (contextLength <= 4096 - 1000) {
+        return dialog;
+    }
+
+    dialog.shift();
+
+    return slicedContext(dialog);
+};
+```
+
+В якій, за допомогою рекурсії, будемо проганяти наш масив з діалогом стільки разів, скільки буде потрібно, поки загальна кількість токенів не буде меншою або дорівнювати максимально доступній довжині контексту у 4096 токенів. Та не забуваємо відняти максимальну кількість токенів, яка очікується у відповіді API. Нагадую, що це можна регулювати за допомогою опції max_tokens.
+
+#### Результат
+
+У статті не хотілося кожного разу дублювати весь код заради декількох рядків, але розумію, що десь можна було б і загубитися, що та куди писати. Тому вирішив сюди додати весь код, який ми повинні були отримати в результаті:
+
+```javascript
+const { join } = require('path');
+const { Telegraf } = require('telegraf');
+const { Configuration, OpenAIApi } = require('openai');
+const { SessionManager } = require('@puregram/session');
+require('dotenv').config({
+    path: join(__dirname, '.env')
+});
+const { OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, NODE_ENV } = process.env;
+const configuration = new Configuration({
+    apiKey: OPENAI_API_KEY
+});
+const openai = new OpenAIApi(configuration);
+const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// будемо писати код тут (початок)
+if (NODE_ENV === 'dev') {
+    bot.use(Telegraf.log());
+}
+
+const createDialogs = (ctx, next) => {
+    if (!ctx.session?.dialogs) {
+        ctx.session.dialogs = new Map();
+    }
+
+    return next();
+};
+
+const slicedContext = dialog => {
+    const contextLength = dialog.reduce(
+        (acc, { content }) => acc + content.length,
+        0
+    );
+
+    if (contextLength <= 4096 - 1000) {
+        return dialog;
+    }
+
+    dialog.shift();
+
+    return slicedContext(dialog);
+};
+
+bot.use(new SessionManager().middleware);
+bot.use(createDialogs);
+
+bot.start(async ctx => await ctx.sendMessage('Hello there!'));
+
+bot.command('reset', async ctx => {
+    ctx.session.dialogs.set(ctx.chat.id, []);
+
+    await ctx.sendMessage('Chat has been reset!');
+});
+
+bot.on(message('text'), async ctx => {
+    const chatId = ctx.chat.id;
+
+    if (!ctx.session.dialogs.has(chatId)) {
+        ctx.session.dialogs.set(chatId, []);
+    }
+
+    let dialog = ctx.session.dialogs.get(chatId);
+
+    dialog.push({
+        role: 'user',
+        content: ctx.message.text
+    });
+
+    dialog = slicedContext(dialog);
+
+    try {
+        const response = await openai.createChatCompletion({
+            model: 'gpt-3.5-turbo',
+            messages: dialog,
+            max_tokens: 1000
+        });
+        const { message } = response.data.choices[0];
+        const { content } = message;
+
+        dialog.push(message);
+
+        await ctx.replyWithMarkdown(content);
+
+        ctx.session.dialogs.delete(chatId);
+        ctx.session.dialogs.set(chatId, dialog);
+    } catch (error) {
+        const openAIError = error.response?.data?.error?.message;
+
+        if (openAIError) {
+            return await ctx.sendMessage(openAIError);
+        }
+
+        await ctx.sendMessage(
+            error?.response?.statusText ?? error.response.description
+        );
+    }
+});
+// будемо писати код тут (кінець)
+
+bot.catch(error => console.error(error));
+bot.launch();
+```
+
+### CI/CD
+
+Якщо запустити цього бота локально, то звісно він буде працювати, поки не вимкнути чи не закрити пристрій. Але на коротенького бота вийшла зовсім некоротенька стаття, хоча я й сподівався.
+
+Тому розписувати тут увесь процес розгортання бота на сервері з використанням Docker, Ansible Playbook та GitHub Actions було б занадто. Можливо, це стане темою окремої статті, без привʼязки до конкретного проєкту. Але якщо ви, все ж таки, зацікавлені, в моєму [репозиторії](https://github.com/Inevix/chatgpt-telegram-bot) є файли, які відносяться до CI/CD.
+
+## GPT-4
+
+Людина-дедлайн — це про мене. Пишу цю статтю під час того, як на [YouTube-каналі Open AI](https://www.youtube.com/@OpenAI) триває лайвстрим про реліз версії GPT-4 та її можливостей. Доступу до API 4-ї версії ще немає, але можна [подати заявку](https://openai.com/waitlist/gpt-4-api), щоб потрапити до білого списку.
+
+Вочевидь 4 версія буде прогресивнішою, але водночас й дорожчою. Все буде залежати від твоїх задач. Приклад з цієї статті вирішив мою проблему, але можливо допоможе вирішити і твою, щасти!
+
+## Висновки
+
+Живемо в цікаві, але темні часи. З урахуванням війни, кризи, безробіття, скорочень, коли здається, що майбутнього у людства не буде, десь все ще працюють люди, розробляють прикольні штуки, життя не зупинилося.
+
+Подібні оновлення та розробка інструментів, про які говорить весь світ, можуть нагадати нам, що життя триває, що прогрес нікуди не подінеться, що ми можемо бути частиною цього та використовувати ці новинки заради полегшення та оптимізації наших буденних задач.
+
+Якщо ви дочитали до кінця, запрошую підписуватись на мій [YouTube-канал](https://youtube.com/@serhii.chernenko) — там я записую безкоштовний курс по фронтенду Magento 2.
