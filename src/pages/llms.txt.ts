@@ -1,4 +1,13 @@
-export const prerender = true;
+// NOT prerendered: a prerendered endpoint is written to a static file and
+// served by Cloudflare's static-asset layer, which assigns Content-Type by
+// file extension (.txt -> `text/plain` with no charset) and discards whatever
+// header this Response sets. Confirmed live — the deployed prerendered version
+// served `text/plain` with no `charset=utf-8`, so browsers fell back to
+// latin1/windows-1252 and rendered every Cyrillic byte as mojibake even though
+// the underlying file was correct UTF-8. SSR guarantees this header is what
+// actually reaches the client, at the cost of computing the (cheap) response
+// per request instead of once at build time.
+export const prerender = false;
 import type { APIContext } from 'astro';
 import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl } from '../lib/posts';
 import { getPages, pageUrl } from '../lib/pages';
