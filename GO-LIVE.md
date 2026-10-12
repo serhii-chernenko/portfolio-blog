@@ -3,7 +3,7 @@
 Everything the code can't do for itself. The app builds, typechecks, and lints
 clean — but it ships with placeholder IDs and empty secrets. This is the
 ordered list of manual steps to take it from "builds locally" to "live in
-production at `www.serhiichernenko.com/blog`".
+production at `serhiichernenko.com/blog`".
 
 Work top to bottom — later steps depend on earlier ones. Each item says **what**,
 **where**, the **command/action**, and **how to verify** it worked.
@@ -82,7 +82,7 @@ as a `vars` entry there (exposed to local dev automatically) and is NOT in `.dev
 Easiest path — let Keystatic create the app for you:
 
 1. [ ] Deploy once with the other config in place (step 9), then visit
-       `https://www.serhiichernenko.com/blog/keystatic`.
+       `https://serhiichernenko.com/blog/keystatic`.
 2. [ ] Keystatic detects no app is connected and walks you through creating one
        (it pre-fills the callback URLs). This yields: **App slug**, **Client ID**,
        **Client Secret**.
@@ -205,31 +205,39 @@ Or just push to `main` — **Cloudflare Workers Builds** runs `pnpm build` + dep
 automatically (dashboard Git integration). Non-`main` branches / PRs get a preview
 version with an auto-posted preview URL (see _Preview deployments_ below).
 
-The canonical host is **`www.serhiichernenko.com`**; the bare apex
-301-redirects to it. Three things outside the deploy make routing work — see
-**`docs/DNS-ROUTING.md`** for the full runbook. **Routes do not create DNS**, and
-the wrangler OAuth token and the Workers Builds deploy credential have zone
-_read_ only, so the DNS records and the redirect rule are **dashboard/API
-actions** (not `wrangler`/CI):
+The canonical host is **`serhiichernenko.com`** (the bare apex); `www`
+308-redirects to it. Three things outside the deploy make routing work — see
+**`docs/DNS-ROUTING.md`** for the full runbook, including the phased
+**www → apex migration**. **Routes do not create DNS**, and the wrangler OAuth
+token and the Workers Builds deploy credential have zone _read_ only, so the DNS
+records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
 
 - [ ] **DNS — two Proxied (orange-cloud) records** (Cloudflare → `serhiichernenko.com`
-      → **DNS → Records**): `CNAME www → serhiichernenko.com` (so `www` resolves to
-      the edge where the Worker routes fire) **and** `AAAA @ → 100::` (so the bare
-      apex resolves to the edge where the redirect rule runs). Both must be Proxied.
-- [ ] **Redirect rule — apex → www** (**Rules → Redirect Rules**): when hostname
-      equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
-      path/query. Scope to the apex only (don't match `www`, or it loops).
-- [ ] **Routes deploy to www.** `wrangler.jsonc` declares
-      `www.serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` (`zone_name`
-      stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
-      (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
-      old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
+      → **DNS → Records**): `AAAA @ → 100::` (so the apex resolves to the edge where
+      the Worker routes fire) **and** `CNAME www → serhiichernenko.com` (so `www`
+      resolves to the edge where the redirect rule runs). Both must be Proxied.
+- [ ] **Redirect rule — www → apex** (**Rules → Redirect Rules**): when hostname
+      equals `www.serhiichernenko.com`, **308** to `https://serhiichernenko.com`
+      preserving path/query. Scope to `www` only (don't match the apex, or it
+      loops). 308 keeps the method, so RFC 8058 one-click unsubscribe POSTs from
+      already-sent emails with `www` links still work. Flip an existing apex → www
+      rule in place, only after this deploy (which binds both hosts).
+- [ ] **Routes deploy to both hosts.** `wrangler.jsonc` declares
+      `serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]` and the host-root
+      files, plus the identical `www.serhiichernenko.com/...` patterns until the
+      migration finishes (`zone_name` is the apex). A route change only takes effect
+      after `pnpm wrangler:deploy` (the build regenerates the deployed config — a
+      bare `wrangler deploy` reuses the old routes). Confirm with
+      `pnpm exec wrangler deploy --dry-run | grep serhii`.
+- [ ] **GitHub App callback URLs.** Before the rule flip, list
+      `https://serhiichernenko.com/api/keystatic/github/oauth/callback` on the
+      GitHub App (see `docs/KEYSTATIC.md`).
 - [ ] Decide what serves the host root `/` (intentionally **not** bound to this
       Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
-  checks `www` resolves to a proxied edge IP, `www/blog/en/` returns 2xx, and the
-  apex `/blog` 301-redirects to `www`. Then manually confirm
-  `www.serhiichernenko.com/blog/keystatic` shows the CMS login. HTTPS may need up
+  checks the apex resolves to a proxied edge IP, `serhiichernenko.com/blog/en/`
+  returns 2xx, and `www/blog` 308-redirects to the apex. Then manually confirm
+  `serhiichernenko.com/blog/keystatic` shows the CMS login. HTTPS may need up
   to 24h for Universal SSL — test `http://` first.
 
 ---

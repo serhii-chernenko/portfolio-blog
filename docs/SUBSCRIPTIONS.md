@@ -307,11 +307,11 @@ Each campaign message must include:
 
 ```text
 List-ID: English posts <en.posts.blog.serhiichernenko.com>
-List-Unsubscribe: <https://www.serhiichernenko.com/blog/api/unsubscribe?token=SIGNED_EDITION_TOKEN>
+List-Unsubscribe: <https://serhiichernenko.com/blog/api/unsubscribe?token=SIGNED_EDITION_TOKEN>
 List-Unsubscribe-Post: List-Unsubscribe=One-Click
 ```
 
-Use the corresponding Ukrainian `List-ID` for a Ukrainian post. The implemented encrypted token
+Use the corresponding Ukrainian `List-ID` for a Ukrainian post. Mail sent before the www → apex move still carries `https://www.serhiichernenko.com/...` links; the Redirect Rule answers those with a `308` (method-preserving), so their one-click POSTs reach the apex Worker. New mail must link the apex directly. The implemented encrypted token
 identifies the recipient and exact disable action without exposing the email as a plaintext URL
 parameter. Issue `{ purpose: 'oneclick', action: 'en' }` or `action: 'uk'` for article mail. The POST body is exactly
 `List-Unsubscribe=One-Click`; it carries no cookies or login context.

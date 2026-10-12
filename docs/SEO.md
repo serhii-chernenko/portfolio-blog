@@ -1,0 +1,69 @@
+# SEO and search engine setup
+
+Canonical site: `https://serhiichernenko.com/blog/` (the bare apex; `www` redirects to it with a `308`). DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+
+## Search consoles
+
+| Service               | Property                              | Verification                                                                       | Sitemap                                              |
+| --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Google Search Console | Domain property `serhiichernenko.com` | DNS TXT `google-site-verification=...`, added 2026-10-12                           | `https://serhiichernenko.com/blog/sitemap-index.xml` |
+| Bing Webmaster Tools  | Site `https://serhiichernenko.com/`   | DNS CNAME `9dfe1cb01f17e8a86b528b2ddc8eac06` to `verify.bing.com` (DNS-only proxy) | `https://serhiichernenko.com/blog/sitemap-index.xml` |
+
+Keep both verification DNS records in place; removing them un-verifies the property. They are dashboard-managed in Cloudflare DNS (the wrangler token cannot write DNS).
+
+### www → apex migration
+
+- **Google**: the domain property already covers the apex and every subdomain. Submit the apex sitemap above and remove the old `www` one.
+- **Bing**: add `https://serhiichernenko.com/` as a site, then use **Site Move** (www → apex) from the old `www` site.
+- **IndexNow**: seed (`gh workflow run indexnow.yml -f mode=all`) only after the Redirect Rule flip. Until then the live sitemap still lists `www` URLs, which the script skips as out of scope.
+
+## IndexNow
+
+IndexNow tells Bing, Yandex and other participating engines about new, updated and removed URLs without waiting for a crawl. Google does not use it.
+
+- **Key**: `aa97432c46c58c839540be4d044ece78` (public by design).
+- **Key file**: `public/aa97432c46c58c839540be4d044ece78.txt`, served at `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` and containing exactly the key with no trailing newline. It is a static asset, so it is not in the sitemap, and `robots.txt` does not block it.
+- **Scope**: the key file lives under `/blog/`, so only URLs starting with `https://serhiichernenko.com/blog/` may be submitted. The script refuses anything else.
+- **Script**: `scripts/indexnow.mjs` (Node, no dependencies). Modes: `snapshot <file>`, `diff-submit <beforeFile>`, `submit-all`, plus `--dry-run` to print the payload without POSTing. Tests: `pnpm test:indexnow`.
+
+### Workflow
+
+`.github/workflows/indexnow.yml` runs on pushes to `main` that touch `src/**`, `public/**`, `astro.config.mts` or `package.json`.
+
+1. Snapshots the live sitemap (every URL and its `lastmod`) at the start of the run, before the deploy finishes.
+2. Polls the `Workers Builds: portfolio-blog` check run on the pushed commit every 20 seconds, for up to 20 minutes. Deploys run through Cloudflare Workers Builds, not GitHub Actions. A failed deploy ends the run with a notice and submits nothing; a timeout fails the run.
+3. Waits 30 seconds for edge propagation, re-fetches the sitemap and submits only URLs that are new, have a changed `lastmod`, or were removed (removed URLs now return 404, which IndexNow accepts as a signal).
+
+Runs are serialized (`concurrency: indexnow`, no cancellation). A change that does not alter the sitemap, such as a style tweak, submits nothing.
+
+### Manual seeding
+
+Submit every sitemap URL, for example after first setup or after a bulk change:
+
+```bash
+gh workflow run indexnow.yml -f mode=all
+```
+
+`mode=changed` has no pre-deploy snapshot on a manual run, so it is treated as `all`. To preview the payload locally without sending anything:
+
+```bash
+node scripts/indexnow.mjs submit-all --dry-run
+```
+
+## Where the SEO files live
+
+| File                                     | Source                                                                                                                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sitemap-index.xml`, `sitemap-0.xml`     | `@astrojs/sitemap` in `astro.config.mts`, policy in `src/lib/sitemap.ts`                                                                                                                   |
+| `robots.txt`                             | `public/robots.txt`                                                                                                                                                                        |
+| `llms.txt`, `llms-full.txt`              | `src/pages/llms.txt.ts`, `src/pages/llms-full.txt.ts`                                                                                                                                      |
+| Favicons, web manifest, default OG image | `public/` (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest`, `og-default.png`), regenerated by `scripts/generate-brand-assets.mjs` |
+
+`/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` are also bound at the host root through exact-path Worker routes; see [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+
+## Host root redirect
+
+Until the portfolio Worker owns `/`, the host root `https://serhiichernenko.com/` should answer with a
+temporary 302 to `/blog/en/` from a Cloudflare Redirect Rule in the zone's `http_request_dynamic_redirect`
+ruleset, next to the www → apex rule. It is a zone rule, not Worker code, so it never ships with a deploy.
+Delete it when the portfolio Worker goes live.

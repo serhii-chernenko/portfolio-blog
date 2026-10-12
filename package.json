@@ -22,6 +22,7 @@
 		"format:check": "prettier --check .",
 		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs",
 		"test:telemetry": "node scripts/test-telemetry.mjs",
+		"test:indexnow": "node scripts/test-indexnow.mjs",
 		"prepare": "husky"
 	},
 	"dependencies": {

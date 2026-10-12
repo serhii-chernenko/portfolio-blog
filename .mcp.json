@@ -2,7 +2,7 @@
 	"mcpServers": {
 		"portfolio-blog": {
 			"type": "http",
-			"url": "https://www.serhiichernenko.com/blog/api/mcp"
+			"url": "https://serhiichernenko.com/blog/api/mcp"
 		}
 	}
 }

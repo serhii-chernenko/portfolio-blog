@@ -29,10 +29,10 @@ Disallow: /blog/admin/
 # JSON-RPC API surface (including the MCP endpoint) — nothing here to index.
 Disallow: /blog/api/
 
-Sitemap: https://www.serhiichernenko.com/blog/sitemap-index.xml
+Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml
 
 # llms.txt (https://llmstxt.org) — no standardised robots.txt directive exists
 # for it (unlike Sitemap: above); these are informational pointers only. The
 # same two files are also served at the host root (/llms.txt, /llms-full.txt).
-# llms.txt: https://www.serhiichernenko.com/blog/llms.txt
-# llms-full.txt: https://www.serhiichernenko.com/blog/llms-full.txt
+# llms.txt: https://serhiichernenko.com/blog/llms.txt
+# llms-full.txt: https://serhiichernenko.com/blog/llms-full.txt

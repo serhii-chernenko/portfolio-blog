@@ -24,7 +24,7 @@ import {
 } from '../src/lib/telemetry-schema.ts';
 
 const SESSION_ID = '3f2b8a52-6a4e-4c1d-9b1a-0f6f2f1c7e11';
-const OWN_HOST = 'www.serhiichernenko.com';
+const OWN_HOST = 'serhiichernenko.com';
 const common = { sessionId: SESSION_ID, locale: 'en', pageType: 'post', contentKey: 'my-post' };
 const pageView = {
 	type: 'page_view',
@@ -215,8 +215,8 @@ const referrerCases = [
 	['chat.openai.com', 'chatgpt'],
 	['www.perplexity.ai', 'perplexity'],
 	['example.org', 'other'],
-	['www.serhiichernenko.com', 'internal'],
 	['serhiichernenko.com', 'internal'],
+	['www.serhiichernenko.com', 'internal'],
 	['WWW.SERHIICHERNENKO.COM.', 'internal'],
 	['https://www.google.com/search?q=secret', 'other'],
 	['user@example.com', 'other'],
@@ -227,6 +227,8 @@ for (const [host, expected] of referrerCases) {
 }
 assert.equal(referrerSource('localhost', 'localhost:8787'), 'internal');
 assert.equal(referrerSource('www.google.com', 'localhost:8787'), 'google');
+assert.equal(referrerSource('serhiichernenko.com', 'localhost:8787'), 'internal');
+assert.equal(referrerSource('www.serhiichernenko.com', 'localhost:8787'), 'internal');
 assert.equal(outboundSource('l.facebook.com'), 'facebook');
 assert.equal(outboundSource('example.org'), 'other');
 assert.equal(outboundSource('https://github.com/x/y'), 'other');
@@ -289,12 +291,15 @@ assert.equal(countryCode(null), 'XX');
 assert.equal(countryCode('Ukraine'), 'XX');
 assert.equal(countryCode('1.2.3.4'), 'XX');
 
+assert.equal(environmentFromHost('serhiichernenko.com'), 'production');
+assert.equal(environmentFromHost('SERHIICHERNENKO.COM:443'), 'production');
 assert.equal(environmentFromHost('www.serhiichernenko.com'), 'production');
 assert.equal(environmentFromHost('WWW.SERHIICHERNENKO.COM:443'), 'production');
 assert.equal(environmentFromHost('localhost:8787'), 'development');
 assert.equal(environmentFromHost('127.0.0.1:4321'), 'development');
 assert.equal(environmentFromHost('portfolio-blog.example.workers.dev'), 'preview');
-assert.equal(environmentFromHost('serhiichernenko.com'), 'preview');
+assert.equal(environmentFromHost('serhiichernenko.com.evil.test'), 'preview');
+assert.equal(environmentFromHost('blog.serhiichernenko.com'), 'preview');
 assert.equal(environmentFromHost('www.serhiichernenko.com.evil.test'), 'preview');
 
 const chromeDesktop =

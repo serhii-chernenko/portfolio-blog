@@ -1,0 +1,96 @@
+name: IndexNow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'astro.config.mts'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'changed needs a pre-deploy snapshot, so on a manual run it behaves like all'
+        type: choice
+        options:
+          - all
+          - changed
+        default: all
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: false
+
+env:
+  WORKERS_BUILDS_CHECK_NAME: 'Workers Builds: portfolio-blog'
+  DEPLOY_POLL_INTERVAL_SECONDS: 20
+  DEPLOY_TIMEOUT_SECONDS: 1200
+  EDGE_PROPAGATION_SECONDS: 30
+
+jobs:
+  submit:
+    name: Submit changed URLs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Snapshot sitemap before deploy
+        if: github.event_name == 'push'
+        run: node scripts/indexnow.mjs snapshot before.json
+
+      - name: Wait for Workers Builds deploy
+        id: deploy
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          deadline=$((SECONDS + DEPLOY_TIMEOUT_SECONDS))
+          while true; do
+            state=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name == env.WORKERS_BUILDS_CHECK_NAME)] | first | "\(.status // "missing") \(.conclusion // "none")"')
+            status=${state% *}
+            conclusion=${state#* }
+            echo "Check run '${WORKERS_BUILDS_CHECK_NAME}': status=${status} conclusion=${conclusion}"
+            if [ "$status" = "completed" ]; then
+              break
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::Timed out after ${DEPLOY_TIMEOUT_SECONDS}s waiting for '${WORKERS_BUILDS_CHECK_NAME}' to complete"
+              exit 1
+            fi
+            sleep "$DEPLOY_POLL_INTERVAL_SECONDS"
+          done
+          if [ "$conclusion" = "success" ]; then
+            echo "deployed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::'${WORKERS_BUILDS_CHECK_NAME}' concluded '${conclusion}', skipping IndexNow submission"
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Submit changed URLs
+        if: github.event_name == 'push' && steps.deploy.outputs.deployed == 'true'
+        run: |
+          sleep "$EDGE_PROPAGATION_SECONDS"
+          node scripts/indexnow.mjs diff-submit before.json
+
+      - name: Submit all URLs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "changed" ]; then
+            echo "::notice::mode=changed needs a pre-deploy snapshot, which a manual run does not have; submitting all URLs instead"
+          fi
+          node scripts/indexnow.mjs submit-all
