@@ -25,15 +25,15 @@ Two sources fire notifications: the **Worker** (runtime API routes) and **GitHub
 Actions** (CI). They read from _separate_ credential stores (Worker secrets vs.
 repo Actions secrets) — both must be configured.
 
-| #   | Message (prefix)                      | When                                                 | Fired by       | Source                             |
-| --- | ------------------------------------- | ---------------------------------------------------- | -------------- | ---------------------------------- |
-| 1   | `📬 New pending subscriber`           | Pending row is stored and confirmation email is sent | Worker         | `src/pages/api/subscribe.ts`       |
-| 2   | `✅ Subscriber confirmed`             | Confirmation enables both content languages          | Worker         | `src/pages/api/confirm.ts`         |
-| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | Worker         | `src/pages/api/unsubscribe.ts`     |
-| 4   | `📝 Preview deployed for PR #<n>`     | PR opened/synchronized, preview Worker deployed      | GitHub Actions | `.github/workflows/preview.yml`    |
-| 5   | `📝 New article PR opened`            | PR gets the `new article` label                      | GitHub Actions | `.github/workflows/auto-label.yml` |
-| 6   | `✅ Production deployed`              | Push to `main` deploy succeeds                       | GitHub Actions | `.github/workflows/deploy.yml`     |
-| 7   | `❌ Production deploy failed`         | Push to `main` deploy fails                          | GitHub Actions | `.github/workflows/deploy.yml`     |
+| #   | Message (prefix)                      | When                                                 | Fired by       | Source                               |
+| --- | ------------------------------------- | ---------------------------------------------------- | -------------- | ------------------------------------ |
+| 1   | `📬 New pending subscriber`           | Pending row is stored and confirmation email is sent | Worker         | `src/pages/api/subscribe.ts`         |
+| 2   | `✅ Subscriber confirmed`             | Confirmation enables both content languages          | Worker         | `src/pages/api/confirm.ts`           |
+| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | Worker         | `src/pages/api/unsubscribe.ts`       |
+| 4   | `📝 Preview deployed for PR #<n>`     | PR opened/synchronized, preview Worker deployed      | GitHub Actions | `.github/workflows/preview.yml`      |
+| 5   | `📝 New post published`               | A post is published in Sanity for the first time     | Worker         | `src/pages/api/sanity/revalidate.ts` |
+| 6   | `✅ Production deployed`              | Push to `main` deploy succeeds                       | GitHub Actions | `.github/workflows/deploy.yml`       |
+| 7   | `❌ Production deploy failed`         | Push to `main` deploy fails                          | GitHub Actions | `.github/workflows/deploy.yml`       |
 
 Events 1–3 deliberately omit the subscriber address. They carry only event type, locale, and for a
 preference change the allowlisted action.
@@ -57,7 +57,7 @@ or you never messaged the bot first).
 
 ---
 
-## Layer 1 — Worker events (1, 2, 3)
+## Layer 1 — Worker events (1, 2, 3, 5)
 
 These only fire in a **Cloudflare runtime** (workerd), never under plain `pnpm dev`.
 
@@ -66,8 +66,8 @@ subscribe/confirm/unsubscribe routes need the D1 DB binding (from
 `cloudflare:workers`) to proceed past validation, so `notify()` is never reached
 there. This is expected behaviour — use `wrangler:dev` for Worker event testing.
 
-`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional secrets accessed via
-`astro:env/server`. When unset (or empty), `notify()` in `src/lib/telegram.ts`
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional secrets read from
+`astro:env/server` on demand (`src/lib/server-secrets.ts`). When unset (or empty), `notify()` in `src/lib/telegram.ts`
 no-ops silently — no error, no notification.
 
 ### Local (`wrangler:dev`)
@@ -96,7 +96,7 @@ email; or mint one in a `wrangler:dev` session. Then:
 curl -i "http://127.0.0.1:4321/blog/api/confirm?token=<TOKEN>"
 ```
 
-Expect a 303 redirect to `…/subscribe?confirmed=1` **and** `✅ Subscription
+Expect a 303 redirect to `…/subscribe/?confirmed=1` **and** `✅ Subscription
 confirmed (en)` (or `uk`).
 
 **Event 3 — change preferences:**
@@ -113,6 +113,16 @@ Repeating the same POST remains successful but sends no duplicate notification.
 A GET to the same endpoint only redirects to the preference center and never
 changes state or sends a notification.
 
+**Event 5 — new post published:** publish a brand-new post in the Studio (the
+Sanity webhook must point at the Worker, see `docs/SANITY.md`). The webhook
+projection carries `"operation": delta::operation()`; a first publish arrives as
+`operation: "create"` and, after the cache purge succeeds, sends
+`📝 New post published: <title> (<LANG>) <absolute post URL>`. Edits
+(`update`), deletes and non-post documents purge the cache without notifying. A
+purge failure returns 503 before notifying, so Sanity's retry does not produce a
+duplicate. Locally the purge usually fails (503), so verify this event against the
+deployed Worker.
+
 ### If a Worker event doesn't arrive
 
 ```bash
@@ -125,7 +135,7 @@ the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 
 ---
 
-## Layer 2 — GitHub Actions events (4, 5, 6, 7)
+## Layer 2 — GitHub Actions events (4, 6, 7)
 
 These need the repo Actions secrets set (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
 plus the Cloudflare/`CF_*` secrets the deploy steps use). See `GO-LIVE.md` step 8.
@@ -133,7 +143,6 @@ plus the Cloudflare/`CF_*` secrets the deploy steps use). See `GO-LIVE.md` step 
 | Event                | How to trigger                                                                              | Expected                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | 4 — Preview deployed | Open a PR (or push a commit to an open PR)                                                  | `📝 Preview deployed for PR #<n>` + a PR comment with the preview URL |
-| 5 — New article PR   | Open a PR that **adds** a file under `src/content/posts/`                                   | PR gets `new article` label → `📝 New article PR opened`              |
 | 6 — Prod deploy OK   | Merge to `main` (or run the deploy workflow manually)                                       | `✅ Production deployed: <commit msg>`                                |
 | 7 — Prod deploy fail | Hard to force safely; temporarily break the build on a throwaway branch→main in a test repo | `❌ Production deploy failed on commit <sha>`                         |
 
@@ -161,6 +170,7 @@ output, and Telegram's API returns a JSON body describing any rejection.
 
 You're done when, in one pass, you've personally seen all seven message types
 land in your chat: the three newsletter events from a real subscribe→confirm→
-unsubscribe cycle against the deployed Worker, and the four CI events from one
-real article PR that you open, get previewed, label, and merge. Until you've seen
+unsubscribe cycle against the deployed Worker, the first-publish event from a new
+post in the Studio, and the three CI events from one real PR that you open, get
+previewed, and merge. Until you've seen
 a given message at least once end-to-end, treat that event as unverified.

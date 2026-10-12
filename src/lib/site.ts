@@ -1,7 +1,7 @@
 import { stegaClean } from '@sanity/client/stega';
 import { isLocale, type Locale } from '../i18n/config';
 import type { UIKey } from '../i18n/ui';
-import { localeHref, useTranslations, withBase } from '../i18n/utils';
+import { localeHref, useTranslations } from '../i18n/utils';
 import type { SanityImage } from './sanity/image';
 import { LAYOUT_QUERY } from './sanity/queries';
 import type { SanityContext } from './sanity/request';
@@ -95,8 +95,8 @@ function internalHref(internal: NonNullable<RawNavItem['internal']>): string | n
 	const slug = stegaClean(internal.slug ?? '');
 	if (!isLocale(language) || !SLUG_PATTERN.test(slug)) return null;
 	const type = stegaClean(internal._type);
-	if (type === 'post') return withBase(`${language}/posts/${slug}`);
-	if (type === 'page') return withBase(`${language}/${slug}`);
+	if (type === 'post') return localeHref(language, `posts/${slug}`);
+	if (type === 'page') return localeHref(language, slug);
 	return null;
 }
 
@@ -200,7 +200,7 @@ export async function getLayoutData(locale: Locale, ctx: SanityContext): Promise
 	});
 	const aboutSlug = stegaClean(raw?.aboutSlug ?? '');
 	const aboutPath = SLUG_PATTERN.test(aboutSlug)
-		? withBase(`${locale}/${aboutSlug}`)
+		? localeHref(locale, aboutSlug)
 		: localeHref(locale);
 	return {
 		settings: fallbackSettings(locale, raw?.settings ?? null),

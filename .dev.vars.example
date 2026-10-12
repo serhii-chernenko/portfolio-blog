@@ -40,6 +40,10 @@ SANITY_API_READ_TOKEN=
 # Optional — secret of the Sanity webhook that purges the Workers Cache.
 SANITY_WEBHOOK_SECRET=
 
+# Optional — HMAC key (32+ chars) signing the draft-session cookie. Draft mode
+# needs it together with SANITY_API_READ_TOKEN. Generate: openssl rand -hex 32
+DRAFT_MODE_COOKIE_SECRET=
+
 # ── Public build-time vars — inlined into the bundle via import.meta.env ──
 # All optional locally; features no-op when empty (comments widget, analytics).
 

@@ -1,15 +1,11 @@
 {
 	"files.associations": {
-		"*.mdoc": "markdoc",
 		"wrangler.jsonc": "jsonc",
 		".dev.vars": "properties",
 		".dev.vars.example": "properties"
 	},
 	"[astro]": {
 		"editor.defaultFormatter": "astro-build.astro-vscode"
-	},
-	"[markdoc]": {
-		"editor.defaultFormatter": "stripe.markdoc-language-support"
 	},
 	"[mdx]": {
 		"editor.defaultFormatter": "unifiedjs.vscode-mdx"
@@ -19,8 +15,7 @@
 	"editor.formatOnSave": false,
 	"tailwindCSS.experimental.classRegex": [["class:list=\"([^\"]*)\"", "[^\"]+"]],
 	"tailwindCSS.includeLanguages": {
-		"astro": "html",
-		"markdoc": "markdown"
+		"astro": "html"
 	},
 	"emmet.includeLanguages": {
 		"astro": "html"
@@ -30,15 +25,14 @@
 		"astrojs",
 		"chernenko",
 		"daisyui",
-		"keystatic",
-		"markdoc",
-		"pagefind",
+		"groq",
 		"prerender",
 		"unixepoch",
 		"giscus",
 		"shiki",
 		"wrangler",
-		"mdoc",
+		"sanity",
+		"stega",
 		"hreflang",
 		"FOUC",
 		"webp",

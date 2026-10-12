@@ -87,6 +87,8 @@ const t = useTranslations(locale);
 </dialog>
 
 <script>
+	import { previewAwareHref } from '../lib/preview-links';
+
 	interface SearchResult {
 		title: string;
 		description: string;
@@ -147,7 +149,7 @@ const t = useTranslations(locale);
 				...results.map((result, index) => {
 					const item = document.createElement('li');
 					const link = document.createElement('a');
-					link.href = result.url;
+					link.href = previewAwareHref(result.url);
 					link.id = optionId(index);
 					link.setAttribute('role', 'option');
 					link.setAttribute('aria-selected', 'false');
@@ -218,7 +220,7 @@ const t = useTranslations(locale);
 			} else if (event.key === 'Enter' && activeIndex >= 0) {
 				event.preventDefault();
 				const href = results[activeIndex]?.url;
-				if (href) window.location.assign(href);
+				if (href) window.location.assign(previewAwareHref(href));
 			}
 		};
 

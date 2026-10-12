@@ -13,11 +13,23 @@ const BODY_PROJECTION = `body[]{
 	}
 }`;
 
+const CALLOUT_TEXT = `pt::text(body[_type == "callout"].body[])`;
+
+const CODE_TEXT = `array::join(body[_type == "code" && defined(code)].code, " ")`;
+
+const SEARCHABLE_CALLOUT_TEXT = `body[].body[].children[].text`;
+
+const SEARCHABLE_CODE = `body[].code`;
+
+const WORD_COUNT = `coalesce(length(string::split(pt::text(body), " ")), 0) +
+		coalesce(length(string::split(${CALLOUT_TEXT}, " ")), 0) +
+		coalesce(length(string::split(${CODE_TEXT}, " ")), 0)`;
+
 const PUBLISHED_POST_FILTER = `_type == "post" && defined(slug.current) && defined(publishedAt) && ($includeFuture || publishedAt <= now())`;
 
 const POST_SUMMARY_FIELDS = `
 	"id": _id,
-	"isDraft": _originalId != _id,
+	"isDraft": defined(_originalId) && _originalId in path("drafts.**"),
 	language,
 	"slug": slug.current,
 	title,
@@ -26,7 +38,7 @@ const POST_SUMMARY_FIELDS = `
 	updatedAt,
 	"tags": coalesce(tags, []),
 	heroImage{ asset, hotspot, crop, alt },
-	"wordCount": coalesce(length(string::split(pt::text(body), " ")), 0),
+	"wordCount": ${WORD_COUNT},
 	"translations": ${TRANSLATIONS_PROJECTION}
 `;
 
@@ -41,7 +53,7 @@ export const POST_BY_SLUG_QUERY = `*[${PUBLISHED_POST_FILTER} && language == $lo
 
 export const POST_PLAIN_TEXT_QUERY = `*[${PUBLISHED_POST_FILTER} && language == $locale && slug.current == $slug][0]{
 	${POST_SUMMARY_FIELDS},
-	"plainText": pt::text(body)
+	"body": body[_type in ["block", "code", "callout"]]
 }`;
 
 const PAGE_SUMMARY_FIELDS = `
@@ -101,13 +113,22 @@ export const SEARCH_POSTS_QUERY = `*[
 	language == $locale &&
 	defined(slug.current) &&
 	publishedAt <= now() &&
-	(title match $terms || description match $terms || tags match $terms || pt::text(body) match $terms)
+	(
+		title match $terms ||
+		description match $terms ||
+		tags match $terms ||
+		pt::text(body) match $terms ||
+		${SEARCHABLE_CALLOUT_TEXT} match $terms ||
+		${SEARCHABLE_CODE} match $terms
+	)
 ]
 | score(
 	boost(title match $terms, 4),
 	boost(tags match $terms, 3),
 	boost(description match $terms, 2),
-	pt::text(body) match $terms
+	pt::text(body) match $terms,
+	${SEARCHABLE_CALLOUT_TEXT} match $terms,
+	${SEARCHABLE_CODE} match $terms
 )
 | order(_score desc, publishedAt desc)[0...$limit]{
 	title,

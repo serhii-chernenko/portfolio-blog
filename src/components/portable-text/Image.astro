@@ -1,15 +1,17 @@
 ---
 import { stegaClean } from '@sanity/client/stega';
 import type { TypedObjectProps } from 'astro-portabletext/types';
-import { imageSrcSet, imageUrl, type SanityImage } from '../../lib/sanity/image';
+import {
+	croppedImageDimensions,
+	imageSrcSet,
+	imageUrl,
+	type SanityImage,
+} from '../../lib/sanity/image';
 
 type Props = TypedObjectProps;
 
 interface ImageNode extends SanityImage {
 	caption?: string;
-	asset: SanityImage['asset'] & {
-		metadata?: { dimensions?: { width: number; height: number } };
-	};
 }
 
 const SRCSET_WIDTHS = [480, 768, 1024, 1536];
@@ -18,16 +20,9 @@ const SIZES = '(min-width: 1024px) 768px, 100vw';
 
 const { node } = Astro.props;
 const image = node as unknown as ImageNode;
-const dimensions = image.asset?.metadata?.dimensions;
-const crop = image.crop;
-const croppedWidth = dimensions
-	? dimensions.width * (1 - (crop?.left ?? 0) - (crop?.right ?? 0))
-	: 0;
-const croppedHeight = dimensions
-	? dimensions.height * (1 - (crop?.top ?? 0) - (crop?.bottom ?? 0))
-	: 0;
-const width = croppedWidth ? Math.min(DEFAULT_WIDTH, Math.round(croppedWidth)) : DEFAULT_WIDTH;
-const height = croppedWidth ? Math.round((width * croppedHeight) / croppedWidth) : undefined;
+const cropped = croppedImageDimensions(image);
+const width = cropped ? Math.min(DEFAULT_WIDTH, cropped.width) : DEFAULT_WIDTH;
+const height = cropped ? Math.round((width * cropped.height) / cropped.width) : undefined;
 const alt = image.alt ?? '';
 const caption = image.caption;
 ---

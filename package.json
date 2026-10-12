@@ -12,7 +12,7 @@
 		"build:astro": "astro build",
 		"preview": "astro preview",
 		"astro": "astro",
-		"wrangler:dev": "dotenv -e .dev.vars -- sh -c \"pnpm build && astro preview\"",
+		"wrangler:dev": "dotenv -e .dev.vars -- pnpm build && wrangler dev",
 		"wrangler:deploy": "pnpm build && wrangler deploy",
 		"d1:apply:local": "wrangler d1 migrations apply portfolio-blog --local",
 		"d1:apply:remote": "wrangler d1 migrations apply portfolio-blog --remote",

@@ -124,6 +124,11 @@ export default defineConfig({
 				access: 'secret',
 				optional: true,
 			}),
+			DRAFT_MODE_COOKIE_SECRET: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
 			// ── Client public vars (build-inlined from process.env via dotenv-cli) ──
 			PUBLIC_GISCUS_REPO: envField.string({
 				context: 'client',

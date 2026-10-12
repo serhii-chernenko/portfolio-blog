@@ -13,7 +13,14 @@ import { structure } from './src/structure';
 
 const PREVIEW_ORIGIN = process.env.SANITY_STUDIO_PREVIEW_ORIGIN || SITE_ORIGIN;
 
-const ALLOWED_PREVIEW_ORIGINS = [SITE_ORIGIN, 'http://localhost:*', 'https://*.workers.dev'];
+const WORKERS_DEV_PREVIEW_ORIGIN = 'https://*.chernenko.workers.dev';
+const LOCAL_PREVIEW_ORIGIN = 'http://localhost:*';
+
+const ALLOWED_PREVIEW_ORIGINS = [
+	SITE_ORIGIN,
+	WORKERS_DEV_PREVIEW_ORIGIN,
+	...(process.env.NODE_ENV === 'production' ? [] : [LOCAL_PREVIEW_ORIGIN]),
+];
 
 const HIDDEN_TEMPLATE_IDS = [
 	...LOCALIZED_DOCUMENT_TYPES,

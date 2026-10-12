@@ -20,28 +20,19 @@ const exitPreviewHref = `${withBase('api/draft-mode/disable')}?redirect=${encode
 	id="preview-exit"
 	href={exitPreviewHref}
 	class="btn btn-neutral btn-sm fixed bottom-4 right-4 z-50 shadow-lg"
-	data-base-path={basePath}
-	data-preview-param={PREVIEW_SEARCH_PARAM}
 	hidden
 >
 	{t('preview.exit')}
 </a>
 
 <script>
-	const exitLink = document.getElementById('preview-exit');
-	const basePath = exitLink?.dataset.basePath ?? '';
-	const previewParam = exitLink?.dataset.previewParam ?? 'preview';
-	const apiPath = `${basePath}/api/`;
+	import { previewAwareHref } from '../lib/preview-links';
 
 	function markPreviewLink(anchor: HTMLAnchorElement): void {
-		const url = new URL(anchor.href, window.location.href);
-		const isBlogPage =
-			url.origin === window.location.origin &&
-			url.pathname.startsWith(`${basePath}/`) &&
-			!url.pathname.startsWith(apiPath);
-		if (!isBlogPage || url.searchParams.has(previewParam)) return;
-		url.searchParams.set(previewParam, '1');
-		anchor.href = `${url.pathname}${url.search}${url.hash}`;
+		const href = anchor.getAttribute('href');
+		if (!href) return;
+		const previewHref = previewAwareHref(href);
+		if (previewHref !== href) anchor.setAttribute('href', previewHref);
 	}
 
 	document.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(markPreviewLink);
@@ -54,5 +45,6 @@ const exitPreviewHref = `${withBase('api/draft-mode/disable')}?redirect=${encode
 		true,
 	);
 
+	const exitLink = document.getElementById('preview-exit');
 	if (exitLink && window.self === window.top) exitLink.hidden = false;
 </script>

@@ -192,9 +192,14 @@ const ogImage = heroImage
 						pre.setAttribute('data-enhanced', '1');
 						const lang = pre.getAttribute('data-language') || '';
 
+						const filename = pre.previousElementSibling?.classList.contains('code-filename')
+							? pre.previousElementSibling
+							: null;
+
 						const wrap = document.createElement('div');
 						wrap.className = 'code-block-wrap mockup-code w-full';
 						pre.parentNode?.insertBefore(wrap, pre);
+						if (filename) wrap.appendChild(filename);
 						wrap.appendChild(pre);
 
 						if (lang) {

@@ -35,7 +35,7 @@ export const publishedClient = createClient({
 	projectId,
 	dataset,
 	apiVersion,
-	useCdn: true,
+	useCdn: false,
 	perspective: 'published',
 });
 

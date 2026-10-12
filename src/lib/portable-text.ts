@@ -60,3 +60,56 @@ export function annotateHeadings(body: TypedObject[] | undefined): {
 	});
 	return { blocks, headings };
 }
+
+interface PlainTextBlock extends TextBlock {
+	listItem?: string;
+}
+
+interface CodeNode extends TypedObject {
+	code?: string;
+	language?: string;
+}
+
+interface CalloutNode extends TypedObject {
+	body?: TypedObject[];
+}
+
+const BLOCK_PREFIXES: Record<string, string> = {
+	h2: '## ',
+	h3: '### ',
+	h4: '#### ',
+	blockquote: '> ',
+};
+
+const LIST_PREFIXES: Record<string, string> = {
+	bullet: '- ',
+	number: '1. ',
+};
+
+function blockToPlainText(block: PlainTextBlock): string {
+	const text = blockText(block);
+	if (!text) return '';
+	const listPrefix = block.listItem ? LIST_PREFIXES[block.listItem] : undefined;
+	return `${listPrefix ?? BLOCK_PREFIXES[block.style ?? ''] ?? ''}${text}`;
+}
+
+function codeToPlainText(node: CodeNode): string {
+	const code = node.code ?? '';
+	if (!code) return '';
+	const language = node.language && node.language !== 'text' ? node.language : '';
+	return `\`\`\`${language}\n${code}\n\`\`\``;
+}
+
+/**
+ * Flattens Portable Text into Markdown-flavoured plain text: prose blocks, callout bodies and
+ * fenced code blocks, so text consumers see everything a reader sees.
+ */
+export function portableTextToPlainText(body: TypedObject[] | undefined): string {
+	const parts = (body ?? []).map((node) => {
+		if (node._type === 'block') return blockToPlainText(node as PlainTextBlock);
+		if (node._type === 'code') return codeToPlainText(node as CodeNode);
+		if (node._type === 'callout') return portableTextToPlainText((node as CalloutNode).body);
+		return '';
+	});
+	return parts.filter(Boolean).join('\n\n');
+}

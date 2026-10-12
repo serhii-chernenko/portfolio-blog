@@ -8,11 +8,14 @@ type Props = TypedObjectProps;
 interface CodeNode {
 	code?: string;
 	language?: string;
+	filename?: string;
 }
 
 const { node } = Astro.props;
-const { code = '', language } = node as unknown as CodeNode;
+const { code = '', language, filename: rawFilename } = node as unknown as CodeNode;
+const filename = rawFilename ? stegaClean(rawFilename).trim() : '';
 const html = highlightCode(stegaClean(code), language ? stegaClean(language) : undefined);
 ---
 
+{filename && <div class="code-filename">{filename}</div>}
 <Fragment set:html={html} />

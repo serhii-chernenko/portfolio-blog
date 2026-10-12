@@ -1,8 +1,9 @@
 import { stegaClean } from '@sanity/client/stega';
 import type { TypedObject } from 'astro-portabletext/types';
 import { isLocale, type Locale } from '../i18n/config';
-import { withBase } from '../i18n/utils';
-import type { SanityContext } from './sanity/request';
+import { localeHref } from '../i18n/utils';
+import { includesScheduledContent, type SanityContext } from './sanity/request';
+import { portableTextToPlainText } from './portable-text';
 import type { SanityImage } from './sanity/image';
 import {
 	ALL_POSTS_QUERY,
@@ -50,7 +51,6 @@ interface RawPost {
 	wordCount: number;
 	translations: (TranslationRef | null)[] | null;
 	body?: TypedObject[] | null;
-	plainText?: string | null;
 }
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
@@ -60,7 +60,7 @@ export function emptyLocalizedUrls(): LocalizedUrls {
 }
 
 function isLive(ref: TranslationRef, ctx: SanityContext, now: Date): boolean {
-	if (ref._type !== 'post' || ctx.preview) return true;
+	if (ref._type !== 'post' || includesScheduledContent(ctx)) return true;
 	const publishedAt = ref.publishedAt ? new Date(stegaClean(ref.publishedAt)) : null;
 	return publishedAt !== null && publishedAt <= now;
 }
@@ -83,7 +83,7 @@ export function resolveTranslationUrls(
 }
 
 function postPath(locale: Locale, slug: string): string {
-	return withBase(`${locale}/posts/${slug}`);
+	return localeHref(locale, `posts/${slug}`);
 }
 
 function toDate(value: string | null | undefined): Date | undefined {
@@ -125,13 +125,15 @@ export function postUrl(post: Pick<Post, 'language' | 'slug'>): string {
 export async function getPublishedPosts(locale: Locale, ctx: SanityContext): Promise<Post[]> {
 	const raws = await ctx.fetch<RawPost[]>(POSTS_BY_LOCALE_QUERY, {
 		locale,
-		includeFuture: ctx.preview,
+		includeFuture: includesScheduledContent(ctx),
 	});
 	return toPosts(raws, ctx);
 }
 
 export async function getAllPublishedPosts(ctx: SanityContext): Promise<Post[]> {
-	const raws = await ctx.fetch<RawPost[]>(ALL_POSTS_QUERY, { includeFuture: ctx.preview });
+	const raws = await ctx.fetch<RawPost[]>(ALL_POSTS_QUERY, {
+		includeFuture: includesScheduledContent(ctx),
+	});
 	return toPosts(raws, ctx);
 }
 
@@ -144,7 +146,7 @@ export async function getPostBySlug(
 	const raw = await ctx.fetch<RawPost | null>(POST_BY_SLUG_QUERY, {
 		locale,
 		slug,
-		includeFuture: ctx.preview,
+		includeFuture: includesScheduledContent(ctx),
 	});
 	return raw ? toPost(raw, ctx) : null;
 }
@@ -158,10 +160,10 @@ export async function getPostPlainText(
 	const raw = await ctx.fetch<RawPost | null>(POST_PLAIN_TEXT_QUERY, {
 		locale,
 		slug,
-		includeFuture: ctx.preview,
+		includeFuture: includesScheduledContent(ctx),
 	});
 	const post = raw ? toPost(raw, ctx) : null;
-	return post ? { post, plainText: raw?.plainText ?? '' } : null;
+	return post ? { post, plainText: portableTextToPlainText(post.body) } : null;
 }
 
 export function getTranslatedPostUrls(post: Pick<Post, 'translations'>): LocalizedUrls {

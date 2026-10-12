@@ -37,7 +37,7 @@ export const resolve: PresentationPluginOptions['resolve'] = {
 					locations: [
 						{
 							title: value.title || 'Untitled',
-							href: `${BLOG_BASE_PATH}/${value.language}/posts/${value.slug}`,
+							href: `${BLOG_BASE_PATH}/${value.language}/posts/${value.slug}/`,
 						},
 						{
 							title: 'Posts',
@@ -57,7 +57,7 @@ export const resolve: PresentationPluginOptions['resolve'] = {
 					locations: [
 						{
 							title: value.title || 'Untitled',
-							href: `${BLOG_BASE_PATH}/${value.language}/${value.slug}`,
+							href: `${BLOG_BASE_PATH}/${value.language}/${value.slug}/`,
 						},
 					],
 				};

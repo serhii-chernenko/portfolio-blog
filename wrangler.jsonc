@@ -24,6 +24,10 @@
 //                                          Without it, revalidation returns 401 and
 //                                          pages refresh only when their cache TTL
 //                                          expires.
+//    DRAFT_MODE_COOKIE_SECRET              HMAC key (32+ chars) that signs the
+//                                          draft-session cookie. Draft mode needs
+//                                          it and SANITY_API_READ_TOKEN; without
+//                                          either, /api/draft-mode/enable returns 401.
 //
 //  Set them all in one go:
 //
@@ -32,6 +36,7 @@
 //    pnpm wrangler secret put TELEGRAM_CHAT_ID
 //    pnpm wrangler secret put SANITY_API_READ_TOKEN
 //    pnpm wrangler secret put SANITY_WEBHOOK_SECRET
+//    pnpm wrangler secret put DRAFT_MODE_COOKIE_SECRET
 //
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from

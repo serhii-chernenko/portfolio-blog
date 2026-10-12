@@ -4,16 +4,18 @@ import type { MarkProps } from 'astro-portabletext/types';
 
 type Props = MarkProps<{ href?: string; openInNewTab?: boolean }>;
 
-const SAFE_HREF_PATTERN = /^(https?:\/\/|mailto:|\/|#)/i;
+const EXTERNAL_HREF_PATTERN = /^(https?:)?\/\//i;
+const SAFE_HREF_PATTERN = /^(https?:\/\/|\/\/|mailto:|\/(?![/\\])|#)/i;
 
 const { node } = Astro.props;
 const rawHref = stegaClean(node.markDef.href ?? '');
 const href = SAFE_HREF_PATTERN.test(rawHref) ? rawHref : undefined;
-const opensNewTab = node.markDef.openInNewTab === true && /^https?:\/\//i.test(rawHref);
+const isExternal = href !== undefined && EXTERNAL_HREF_PATTERN.test(href);
+const opensNewTab = isExternal && node.markDef.openInNewTab === true;
 ---
 
 <a
 	href={href}
 	target={opensNewTab ? '_blank' : undefined}
-	rel={opensNewTab ? 'noopener noreferrer' : undefined}><slot /></a
+	rel={isExternal ? 'noopener noreferrer' : undefined}><slot /></a
 >

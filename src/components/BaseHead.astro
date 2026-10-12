@@ -7,6 +7,7 @@ import {
 	articleJsonLd,
 	websiteJsonLd,
 	ogLocaleFor,
+	serializeJsonLd,
 } from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
 import { imageUrl } from '../lib/sanity/image';
@@ -130,7 +131,7 @@ const jsonLd =
 <meta name="twitter:image" content={ogImage} />
 
 <!-- JSON-LD -->
-<script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+<script is:inline type="application/ld+json" set:html={serializeJsonLd(jsonLd)} />
 
 <!-- RSS auto-discovery -->
 <link

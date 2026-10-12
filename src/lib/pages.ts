@@ -1,7 +1,7 @@
 import { stegaClean } from '@sanity/client/stega';
 import type { TypedObject } from 'astro-portabletext/types';
 import { isLocale, type Locale } from '../i18n/config';
-import { withBase } from '../i18n/utils';
+import { localeHref } from '../i18n/utils';
 import { resolveTranslationUrls, type LocalizedUrls, type TranslationRef } from './posts';
 import { createPublishedContext, type SanityContext } from './sanity/request';
 import { PAGE_BY_KEY_QUERY, PAGE_BY_SLUG_QUERY, PAGES_BY_LOCALE_QUERY } from './sanity/queries';
@@ -35,7 +35,7 @@ interface RawPage {
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
 function pagePath(locale: Locale, slug: string): string {
-	return withBase(`${locale}/${slug}`);
+	return localeHref(locale, slug);
 }
 
 function toPage(raw: RawPage, ctx: SanityContext): Page | null {
@@ -92,7 +92,7 @@ export async function getPagePath(
 	ctx: SanityContext,
 ): Promise<string> {
 	const page = await getPageByKey(key, locale, ctx);
-	return page ? pageUrl(page) : withBase(`${locale}/`);
+	return page ? pageUrl(page) : localeHref(locale);
 }
 
 /**

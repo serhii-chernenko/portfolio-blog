@@ -1,8 +1,9 @@
 import type { APIContext } from 'astro';
-import { SANITY_API_READ_TOKEN } from 'astro:env/server';
 import { defineMiddleware } from 'astro:middleware';
 import { perspectiveCookieName } from '@sanity/preview-url-secret/constants';
-import { PREVIEW_SEARCH_PARAM, SANITY_CACHE_TAG } from './lib/sanity/config';
+import { getDraftModeSecrets } from './lib/server-secrets';
+import { PREVIEW_SEARCH_PARAM, SANITY_CACHE_TAG, studioUrl } from './lib/sanity/config';
+import { DRAFT_SESSION_COOKIE_NAME, isValidDraftSession } from './lib/sanity/draft-mode';
 import { createRequestContext, parseDraftPerspective } from './lib/sanity/request';
 
 const FORM_CONTENT_TYPES = [
@@ -49,12 +50,32 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 const CACHEABLE_METHODS = ['GET', 'HEAD'];
 const CACHEABLE_STATUSES = [200, 404];
 const CACHEABLE_API_PATHS = [`${RUNTIME_BASE}/api/search`];
+const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
 const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: [SANITY_CACHE_TAG] };
+const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: [SANITY_CACHE_TAG] };
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
+const FILE_EXTENSION_PATTERN = /\.[^./]+$/;
+const INTERNAL_SEGMENT_PREFIX = '/_';
+const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
+const FRAME_ANCESTORS = [
+	"'self'",
+	studioUrl,
+	...(import.meta.env.DEV ? [LOCAL_STUDIO_ORIGIN] : []),
+];
+const HTML_SECURITY_HEADERS: Record<string, string> = {
+	'x-content-type-options': 'nosniff',
+	'referrer-policy': 'strict-origin-when-cross-origin',
+	'content-security-policy': `frame-ancestors ${FRAME_ANCESTORS.join(' ')}`,
+};
+
+interface DraftMode {
+	token: string;
+	perspective: ReturnType<typeof parseDraftPerspective>;
+}
 
 function isCacheableRoute(pathname: string): boolean {
 	if (pathname.startsWith(`${RUNTIME_BASE}/admin`)) return false;
-	if (pathname.startsWith(`${RUNTIME_BASE}/api/`)) return CACHEABLE_API_PATHS.includes(pathname);
+	if (pathname.startsWith(API_PATH_PREFIX)) return CACHEABLE_API_PATHS.includes(pathname);
 	return true;
 }
 
@@ -68,27 +89,77 @@ function isCacheableResponse(response: Response): boolean {
 	);
 }
 
-function readDraftPerspective(context: APIContext) {
-	if (context.isPrerendered || !SANITY_API_READ_TOKEN) return null;
-	const cookie = context.cookies.get(perspectiveCookieName);
-	return cookie ? parseDraftPerspective(cookie.value) : null;
+function needsTrailingSlash(request: Request, pathname: string): boolean {
+	return (
+		CACHEABLE_METHODS.includes(request.method) &&
+		!pathname.endsWith('/') &&
+		pathname.startsWith(`${RUNTIME_BASE}/`) &&
+		!pathname.startsWith(API_PATH_PREFIX) &&
+		!pathname.includes(INTERNAL_SEGMENT_PREFIX) &&
+		!FILE_EXTENSION_PATTERN.test(pathname)
+	);
+}
+
+function isPreviewPageRequest(request: Request, url: URL): boolean {
+	return (
+		CACHEABLE_METHODS.includes(request.method) &&
+		url.searchParams.has(PREVIEW_SEARCH_PARAM) &&
+		!url.pathname.startsWith(API_PATH_PREFIX)
+	);
+}
+
+function redirect(location: string, status: 307 | 308): Response {
+	return new Response(null, {
+		status,
+		headers: { location, 'cache-control': 'no-store' },
+	});
+}
+
+async function resolveDraftMode(context: APIContext): Promise<DraftMode | null> {
+	const session = context.cookies.get(DRAFT_SESSION_COOKIE_NAME)?.value;
+	if (!session) return null;
+	const secrets = await getDraftModeSecrets();
+	if (!secrets || !(await isValidDraftSession(secrets.cookieSecret, session))) return null;
+	const perspective = parseDraftPerspective(context.cookies.get(perspectiveCookieName)?.value);
+	return { token: secrets.readToken, perspective };
 }
 
 function withMutableHeaders(response: Response): Response {
 	try {
-		response.headers.set('cache-control', PRIVATE_CACHE_CONTROL);
+		response.headers.set('x-content-type-options', 'nosniff');
 		return response;
 	} catch {
 		return new Response(response.body, response);
 	}
 }
 
-function disableCaching(context: APIContext, response: Response, noIndex: boolean): Response {
+function applySecurityHeaders(response: Response): Response {
+	const mutable = withMutableHeaders(response);
+	mutable.headers.set('x-content-type-options', 'nosniff');
+	const contentType = mutable.headers.get('content-type')?.toLowerCase() ?? '';
+	if (!contentType.includes('text/html')) return mutable;
+	for (const [name, value] of Object.entries(HTML_SECURITY_HEADERS)) {
+		if (!mutable.headers.has(name)) mutable.headers.set(name, value);
+	}
+	return mutable;
+}
+
+function disableCaching(context: APIContext, response: Response): Response {
 	if (context.cache.enabled) context.cache.set(false);
-	const privateResponse = withMutableHeaders(response);
-	privateResponse.headers.set('cache-control', PRIVATE_CACHE_CONTROL);
-	if (noIndex) privateResponse.headers.set('x-robots-tag', 'noindex');
-	return privateResponse;
+	response.headers.set('cache-control', PRIVATE_CACHE_CONTROL);
+	response.headers.set('x-robots-tag', 'noindex');
+	return response;
+}
+
+function applyCachePolicy(context: APIContext, response: Response): void {
+	if (
+		context.cache.enabled &&
+		CACHEABLE_METHODS.includes(context.request.method) &&
+		isCacheableRoute(context.url.pathname) &&
+		isCacheableResponse(response)
+	) {
+		context.cache.set(response.status === 404 ? NOT_FOUND_CACHE_POLICY : PUBLISHED_CACHE_POLICY);
+	}
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -111,24 +182,23 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		}
 	}
 
-	const draftPerspective = readDraftPerspective(context);
-	context.locals.sanity = createRequestContext(
-		draftPerspective ? { token: SANITY_API_READ_TOKEN, perspective: draftPerspective } : null,
-	);
+	if (isPrerendered) return next();
 
-	const response = await next();
-	if (isPrerendered) return response;
+	if (needsTrailingSlash(request, url.pathname)) {
+		return redirect(`${url.pathname}/${url.search}`, 308);
+	}
 
-	if (draftPerspective || url.searchParams.has(PREVIEW_SEARCH_PARAM)) {
-		return disableCaching(context, response, draftPerspective !== null);
+	const draftMode = await resolveDraftMode(context);
+	if (!draftMode && isPreviewPageRequest(request, url)) {
+		const cleanUrl = new URL(url);
+		cleanUrl.searchParams.delete(PREVIEW_SEARCH_PARAM);
+		return redirect(`${cleanUrl.pathname}${cleanUrl.search}`, 307);
 	}
-	if (
-		context.cache.enabled &&
-		CACHEABLE_METHODS.includes(request.method) &&
-		isCacheableRoute(url.pathname) &&
-		isCacheableResponse(response)
-	) {
-		context.cache.set(PUBLISHED_CACHE_POLICY);
-	}
+
+	context.locals.sanity = createRequestContext(draftMode);
+
+	const response = applySecurityHeaders(await next());
+	if (draftMode) return disableCaching(context, response);
+	applyCachePolicy(context, response);
 	return response;
 });

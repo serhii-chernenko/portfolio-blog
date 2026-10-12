@@ -33,7 +33,15 @@ export function withBase(path: string): string {
 	return clean ? `${base}/${clean}` : `${base}/`;
 }
 
+const FILE_EXTENSION_PATTERN = /\.[^./]+$/;
+
+/**
+ * Builds a base-prefixed page path in the canonical trailing-slash form; file-like paths such
+ * as `rss.xml` keep their extension untouched.
+ */
 export function localeHref(locale: Locale, path = ''): string {
-	const clean = path.replace(/^\/+/, '');
-	return withBase(clean ? `${locale}/${clean}` : `${locale}/`);
+	const clean = path.replace(/^\/+/, '').replace(/\/+$/, '');
+	if (!clean) return withBase(`${locale}/`);
+	const suffix = FILE_EXTENSION_PATTERN.test(clean) ? '' : '/';
+	return withBase(`${locale}/${clean}${suffix}`);
 }

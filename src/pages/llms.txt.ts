@@ -13,10 +13,14 @@ import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl } from '../lib/po
 import { getPages, pageUrl } from '../lib/pages';
 import { createPublishedContext } from '../lib/sanity/request';
 import { locales, localeLabels } from '../i18n/config';
-import { withBase } from '../i18n/utils';
+import { localeHref, withBase } from '../i18n/utils';
+
+function collapseWhitespace(text: string): string {
+	return text.replace(/\s+/g, ' ').trim();
+}
 
 function escapeLinkText(text: string): string {
-	return text.replace(/[[\]]/g, '');
+	return collapseWhitespace(text).replace(/[[\]]/g, '');
 }
 
 function absoluteUrl(site: URL | undefined, path: string): string {
@@ -49,7 +53,9 @@ export async function GET(context: APIContext) {
 		lines.push(`## Posts (${localeLabels[locale]})`);
 		for (const post of posts) {
 			const url = absoluteUrl(site, postUrl(post));
-			lines.push(`- [${escapeLinkText(post.title)}](${url}): ${post.description}`);
+			lines.push(
+				`- [${escapeLinkText(post.title)}](${url}): ${collapseWhitespace(post.description)}`,
+			);
 		}
 	}
 
@@ -59,7 +65,7 @@ export async function GET(context: APIContext) {
 		lines.push('');
 		lines.push(`## Tags (${localeLabels[locale]})`);
 		for (const { tag, count } of tags) {
-			const url = absoluteUrl(site, withBase(`${locale}/tags/${tagSlug(tag)}`));
+			const url = absoluteUrl(site, localeHref(locale, `tags/${tagSlug(tag)}`));
 			lines.push(`- [${escapeLinkText(tag)}](${url}): ${count} post${count === 1 ? '' : 's'}`);
 		}
 	}
@@ -69,7 +75,9 @@ export async function GET(context: APIContext) {
 		const pages = await getPages(locale, sanity);
 		for (const page of pages) {
 			const url = absoluteUrl(site, pageUrl(page));
-			pageLines.push(`- [${escapeLinkText(page.title)}](${url}): ${page.description}`);
+			pageLines.push(
+				`- [${escapeLinkText(page.title)}](${url}): ${collapseWhitespace(page.description)}`,
+			);
 		}
 	}
 	if (pageLines.length > 0) {

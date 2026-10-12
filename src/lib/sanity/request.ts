@@ -12,37 +12,37 @@ interface DraftModeOptions {
 	perspective: ClientPerspective;
 }
 
-const PERSPECTIVE_SEGMENT = /^[A-Za-z0-9_.-]{1,64}$/;
+const BASE_PERSPECTIVES = ['drafts', 'published'] as const;
+const RELEASE_ID_PATTERN = /^r[A-Za-z0-9]+$/;
 const MAX_STACK_DEPTH = 10;
 const DEFAULT_DRAFT_PERSPECTIVE = 'drafts';
 
-function isPerspectiveStack(value: unknown): value is string[] {
-	return (
-		Array.isArray(value) &&
-		value.length > 0 &&
-		value.length <= MAX_STACK_DEPTH &&
-		value.every((segment) => typeof segment === 'string' && PERSPECTIVE_SEGMENT.test(segment))
-	);
+type BasePerspective = (typeof BASE_PERSPECTIVES)[number];
+
+function isBasePerspective(value: string): value is BasePerspective {
+	return (BASE_PERSPECTIVES as readonly string[]).includes(value);
 }
 
-function decodePerspectiveCookie(raw: string): unknown {
-	try {
-		return JSON.parse(raw);
-	} catch {
-		return raw.includes(',') ? raw.split(',').map((segment) => segment.trim()) : raw;
-	}
+function isAllowedStackSegment(segment: string): boolean {
+	return isBasePerspective(segment) || RELEASE_ID_PATTERN.test(segment);
 }
 
 /**
- * Turns the Presentation perspective cookie (a plain perspective, a comma-separated
- * release stack, or a JSON-encoded stack) into a perspective the client accepts.
+ * Maps the perspective cookie onto an allow-listed perspective: `drafts`, `published`, or a
+ * comma-separated stack of those and release ids. Anything else falls back to `drafts`.
  */
 export function parseDraftPerspective(raw: string | undefined): ClientPerspective {
 	if (!raw) return DEFAULT_DRAFT_PERSPECTIVE;
-	const decoded = decodePerspectiveCookie(raw);
-	if (decoded === 'drafts' || decoded === 'published') return decoded;
-	if (isPerspectiveStack(decoded)) return decoded;
-	return DEFAULT_DRAFT_PERSPECTIVE;
+	if (isBasePerspective(raw)) return raw;
+	const segments = raw.split(',');
+	if (segments.length > MAX_STACK_DEPTH || !segments.every(isAllowedStackSegment)) {
+		return DEFAULT_DRAFT_PERSPECTIVE;
+	}
+	return segments as ClientPerspective;
+}
+
+export function includesScheduledContent(ctx: SanityContext): boolean {
+	return ctx.perspective !== 'published';
 }
 
 function memoKey(query: string, params: QueryParams, perspective: ClientPerspective): string {

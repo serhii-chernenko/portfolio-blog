@@ -66,7 +66,7 @@ function preferenceCenterPath(locale: Locale, token: string, result?: string): s
 	if (token) params.set('token', token);
 	if (result) params.set('result', result);
 	const query = params.toString();
-	return `${base}/${locale}/unsubscribe${query ? `?${query}` : ''}`;
+	return `${base}/${locale}/unsubscribe/${query ? `?${query}` : ''}`;
 }
 
 function internalRedirect(

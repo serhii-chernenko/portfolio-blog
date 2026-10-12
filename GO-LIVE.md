@@ -63,40 +63,56 @@ validation happens at runtime when the Worker receives its first request.
   Root key for encrypted subscription capabilities and keyed abuse hashes. If this changes
   later, all outstanding confirm links break. Declared as `required` in the
   `astro:env` schema (min length: 1).
-- [x] `KEYSTATIC_SECRET` — `openssl rand -base64 32 | wrangler secret put KEYSTATIC_SECRET` (signs the Keystatic admin auth cookie).
-- [ ] `KEYSTATIC_GITHUB_CLIENT_ID` — from the GitHub App (see step 4).
-- [ ] `KEYSTATIC_GITHUB_CLIENT_SECRET` — from the GitHub App (see step 4).
 - [x] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
 - [x] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
-- **Verify:** `wrangler secret list` shows all six names.
+- [ ] `SANITY_API_READ_TOKEN`, `DRAFT_MODE_COOKIE_SECRET` and `SANITY_WEBHOOK_SECRET` — optional, set in step 4.
+- **Verify:** `wrangler secret list` shows every secret you set (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, plus the three Sanity secrets after step 4).
 
 ---
 
-## 4. 🔴 Keystatic GitHub App (production CMS auth)
+## 4. 🔴 Sanity (content, Studio, draft preview, cache purge)
 
-In production, Keystatic runs in **GitHub mode** — editing a post creates a
-`post/<slug>` branch and opens a PR. This needs a GitHub App. The app slug
-placeholder is in `wrangler.jsonc` (`PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`) — it lives
-as a `vars` entry there (exposed to local dev automatically) and is NOT in `.dev.vars.example`.
+Content lives in Sanity (project `8xspnp7h`, dataset `production`); the project
+ID, dataset and API version are constants in `src/lib/sanity/config.ts`, so the
+site needs no config to read published content. See `docs/SANITY.md` for the
+full picture.
 
-Easiest path — let Keystatic create the app for you:
+1. [ ] **Deploy the Studio and schema** (once, and after any `studio/src/` change).
+       Log in with the account that owns the project:
+   ```bash
+   npx sanity login
+   cd studio && pnpm install && pnpm schema:deploy && pnpm deploy
+   ```
+   The Studio is served at <https://serhiichernenko-blog.sanity.studio>.
+2. [ ] **Viewer token** — <https://www.sanity.io/manage> → project `8xspnp7h` →
+       **API** → **Tokens** → add a token with the **Viewer** role, then:
+   ```bash
+   pnpm exec wrangler secret put SANITY_API_READ_TOKEN
+   ```
+   Then generate the draft-session signing key (`openssl rand -hex 32`):
+   ```bash
+   pnpm exec wrangler secret put DRAFT_MODE_COOKIE_SECRET
+   ```
+   Draft mode / Presentation needs both. Without either, the site serves
+   published content only and `/blog/api/draft-mode/enable` returns 401.
+3. [ ] **Cache-purge webhook** — generate a secret
+       (`openssl rand -base64 32`), store it, and create the webhook:
+   ```bash
+   pnpm exec wrangler secret put SANITY_WEBHOOK_SECRET
+   ```
+   Webhook settings (manage → **API** → **Webhooks**): URL
+   `https://www.serhiichernenko.com/blog/api/sanity/revalidate`, dataset
+   `production`, triggers create/update/delete, filter
+   `_type in ["post","page","navigation","siteSettings","translation.metadata"]`,
+   projection
+   `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current}`,
+   method `POST`, include drafts **off**, and the same secret. The extra fields
+   drive the "📝 New post published" Telegram notification on a post's first publish. Without it pages still refresh, but only when the cache TTL (1h) expires.
+4. [ ] Re-deploy the site if you changed any config in this step (secrets don't need a rebuild).
 
-1. [ ] Deploy once with the other config in place (step 9), then visit
-       `https://www.serhiichernenko.com/blog/keystatic`.
-2. [ ] Keystatic detects no app is connected and walks you through creating one
-       (it pre-fills the callback URLs). This yields: **App slug**, **Client ID**,
-       **Client Secret**.
-3. [ ] Put `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` (the part after `/apps/` in the
-       app URL) into `wrangler.jsonc` → `vars`.
-4. [ ] Set `KEYSTATIC_GITHUB_CLIENT_ID` and `KEYSTATIC_GITHUB_CLIENT_SECRET` as
-       Worker secrets (step 3).
-5. [ ] Confirm `GITHUB_REPO` in `keystatic.config.ts` is `serhii-chernenko/portfolio-blog`. ✅ (already set)
-6. [ ] Re-deploy so the new app slug is baked into the bundle.
-
-See `docs/KEYSTATIC.md` for the full local-vs-GitHub mode explanation.
-
-- **Verify:** log in at `/blog/keystatic`, create a throwaway draft → a
-  `post/...` branch + PR appear on GitHub.
+- **Verify:** publish a throwaway edit in the Studio → the webhook delivery log
+  in manage shows `200` and the change appears on the site within seconds. In the
+  Studio's **Presentation** tool the site loads with a draft preview.
 
 ---
 
@@ -160,19 +176,17 @@ to configure here.
 Deployment (production **and** PR previews) is handled by **Cloudflare Workers
 Builds** — the dashboard Git integration — not GitHub Actions, so **no Cloudflare
 API token lives in the repo**. The only workflows now are `ci.yml`
-(format/lint/typecheck/build — needs no secrets) and `auto-label.yml`
-(PR labels and Telegram).
+(format/lint/typecheck/build — needs no secrets). New-post Telegram
+notifications come from the Sanity revalidate webhook on the Worker, not from
+Actions.
 
 Secrets (**Settings → Secrets and variables → Actions**):
 
-- [ ] `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — used by `auto-label.yml` for the
-      "new article" notification (same values as the Worker secrets; Actions and the
-      Worker read from separate stores).
+- None required.
 
 Variables (the `vars.*` context):
 
-- [ ] `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` (and the optional `PUBLIC_GISCUS_*` /
-      `PUBLIC_CF_ANALYTICS_TOKEN`) — inlined by the `ci.yml` build step so CI builds
+- [ ] The optional `PUBLIC_GISCUS_*` / `PUBLIC_CF_ANALYTICS_TOKEN` — inlined by the `ci.yml` build step so CI builds
       match production shape. Not load-bearing for the gate.
 
 > Cloudflare credentials (`CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`)
@@ -180,17 +194,16 @@ Variables (the `vars.*` context):
 > dashboard Git integration. Configure deploys/previews at Cloudflare → Workers &
 > Pages → **portfolio-blog → Settings → Build**.
 
-Repo labels (auto-label workflow expects them to exist):
+Repo labels (optional):
 
-- [ ] Create the four labels from `.github/labels.yml`
-      (`new article`, `edit article`, `dev`, `mixed`) — manually in the repo's
+- [ ] Create the `dev` label from `.github/labels.yml` — manually in the repo's
       Labels UI, or via a labels-sync action.
 
 ---
 
 ## 9. 🔴 First production deploy
 
-Once steps 1–4 and 8 are done:
+Once steps 1–3 and 8 are done (step 4 can follow):
 
 ```bash
 pnpm wrangler:deploy      # pnpm build && wrangler deploy
@@ -220,7 +233,7 @@ actions** (not `wrangler`/CI):
       equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
       path/query. Scope to the apex only (don't match `www`, or it loops).
 - [ ] **Routes deploy to www.** `wrangler.jsonc` declares
-      `www.serhiichernenko.com/blog`, `/blog/*`, and `/api/keystatic[/*]` (`zone_name`
+      `www.serhiichernenko.com/blog`, `/blog/*`, and `/robots.txt` (`zone_name`
       stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
       (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
       old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
@@ -229,7 +242,8 @@ actions** (not `wrangler`/CI):
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
   checks `www` resolves to a proxied edge IP, `www/blog/en/` returns 2xx, and the
   apex `/blog` 301-redirects to `www`. Then manually confirm
-  `www.serhiichernenko.com/blog/keystatic` shows the CMS login. HTTPS may need up
+  a post page and `www.serhiichernenko.com/blog/api/draft-mode/enable` (401 without
+  a valid secret). HTTPS may need up
   to 24h for Universal SSL — test `http://` first.
 
 ---
@@ -256,14 +270,11 @@ auto-posts a PR comment with the preview URL — no GitHub Action involved.
       `workers.dev` is enabled (Wrangler ≥ 3.91; this repo is on 4.x). Otherwise
       enable them at **Settings → Domains & Routes → Preview URLs**. No
       `wrangler.jsonc` change is required.
-- [ ] **Make drafts visible on previews only.** Draft posts render when
-      `PREVIEW_MODE === 'true'` (`src/lib/posts.ts`). Cloudflare has no native
-      "preview-only var" (dashboard vars apply to _all_ builds and would leak drafts
-      to prod). Set it per-build instead — set the **Non-production branch deploy
-      command** (Settings → Build) to export `PREVIEW_MODE=true` before the build on
-      non-`main` branches, then `wrangler versions upload`. (A `wrangler.jsonc`
-      `env.preview` would also work but forces re-declaring **every** binding — D1,
-      KV, send_email, analytics, vars — since named envs don't inherit them.)
+- [ ] **Content on previews.** Content is read from the live Sanity dataset, so a
+      preview version shows the same published content as production — there is no
+      per-branch content. Drafts are reachable only through the Studio's
+      Presentation tool (it needs `SANITY_API_READ_TOKEN` on the Worker, and
+      `https://*.workers.dev` is an allowed preview origin in `studio/sanity.config.ts`).
 
 ---
 
@@ -277,10 +288,10 @@ Acceptance criteria that can only be checked against the live site
 - [ ] Paste a post URL into <https://app.hreflang.org> — confirm hreflang
       validates clean (reciprocal + `x-default`, consistent trailing slashes).
 - [ ] Validate `/blog/en/rss.xml` and `/blog/uk/rss.xml` as RSS 2.0.
-- [ ] End-to-end CMS flow: create post in `/blog/keystatic` → PR auto-labeled
-      `new article` → Workers Builds uploads a preview version → preview URL works
-      **at its `/blog` path** (drafts visible — see _Preview deployments_) →
-      merge → production redeploys → draft is now hidden on prod.
+- [ ] End-to-end CMS flow: create a post in the Studio → preview the draft in
+      Presentation (hidden on the public site) → publish → the webhook purges the
+      cache and the post is live within seconds → a future-dated post stays hidden
+      until its `publishedAt` passes (plus up to 1h of cache).
 - [ ] Newsletter round-trip (subscribe → confirm → welcome → unsubscribe).
 - [ ] Telegram notifications fire for each event — see `docs/TELEGRAM-TESTING.md`.
 
@@ -288,9 +299,11 @@ Acceptance criteria that can only be checked against the live site
 
 ## Quick reference — placeholders to replace
 
-| Placeholder                                    | File                      | Step |
-| ---------------------------------------------- | ------------------------- | ---- |
-| `REPLACE_WITH_REAL_ID` (D1)                    | `wrangler.jsonc`          | 1    |
-| `REPLACE_WITH_REAL_ID` (KV)                    | `wrangler.jsonc`          | 2    |
-| `your-keystatic-github-app-slug`               | `wrangler.jsonc` (`vars`) | 4    |
-| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars               | 6    |
+| Placeholder                                    | File             | Step |
+| ---------------------------------------------- | ---------------- | ---- |
+| `REPLACE_WITH_REAL_ID` (D1)                    | `wrangler.jsonc` | 1    |
+| `REPLACE_WITH_REAL_ID` (KV)                    | `wrangler.jsonc` | 2    |
+| `SANITY_API_READ_TOKEN` (Viewer token)         | Worker secret    | 4    |
+| `SANITY_WEBHOOK_SECRET` (webhook secret)       | Worker secret    | 4    |
+| `DRAFT_MODE_COOKIE_SECRET` (session HMAC key)  | Worker secret    | 4    |
+| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars      | 6    |
