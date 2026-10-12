@@ -1,13 +1,13 @@
 import { defineCliConfig } from 'sanity/cli';
-import { DATASET, PROJECT_ID, STUDIO_HOST } from './src/project';
+import { DATASET, PROJECT_ID, STUDIO_APP_ID } from './src/project';
 
 export default defineCliConfig({
 	api: {
 		projectId: PROJECT_ID,
 		dataset: DATASET,
 	},
-	studioHost: STUDIO_HOST,
 	deployment: {
+		appId: STUDIO_APP_ID,
 		autoUpdates: true,
 	},
 });
