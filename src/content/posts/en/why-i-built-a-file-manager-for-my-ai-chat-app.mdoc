@@ -11,14 +11,14 @@ tags:
   - oss
   - file-management
 heroImage: /src/assets/posts/why-i-built-a-file-manager-for-my-ai-chat-app/hero.png
-heroImageAlt: File attachment and file manager UI in an AI chat application
+heroImageAlt: Besidka logo, a pink speech-bubble mascot with big eyes above the "besidka" wordmark on a light pink background
 draft: false
 ---
-I've finally shipped file attachments for my open-source AI chat, Besidka.
+I've finally shipped file attachments for my open-source AI chat, [Besidka](https://www.linkedin.com/company/besidka).
 
 The UX feels really smooth: you can paste from the clipboard or drag & drop directly into the chat (or the modal). I also built a full file manager with grid/list views, search, and lazy loading.
 
-Here's a breakdown of the architecture.
+Here is a breakdown of the architecture.
 
 Since the app runs on Cloudflare Workers, I don't have a persistent server disk. To solve this, I'm using an R2 bucket.
 
@@ -40,11 +40,11 @@ I'm really happy with how this turned out, but I'm always open to criticism. Let
 
 ## Demo of the file attachment feature
 
-![Preview frame of the file attachment demo — see the LinkedIn post below for the full clip](/src/assets/posts/why-i-built-a-file-manager-for-my-ai-chat-app/inline-1.jpg)
+![Demo of the file attachment feature: the Besidka file manager modal showing storage used (92.9 KB of 20.0 MB), a file search field, grid and list view toggles, and one uploaded file](/src/assets/posts/why-i-built-a-file-manager-for-my-ai-chat-app/inline-1.jpg)
 
-For the full video demo, see the original LinkedIn post: https://www.linkedin.com/pulse/why-i-built-dedicated-file-manager-my-ai-chat-app-serhii-chernenko-lpulf
+For the full video demo, see the original LinkedIn article: [https://www.linkedin.com/pulse/why-i-built-dedicated-file-manager-my-ai-chat-app-serhii-chernenko-lpulf](https://www.linkedin.com/pulse/why-i-built-dedicated-file-manager-my-ai-chat-app-serhii-chernenko-lpulf)
 
 My AI chat is still in active development, but I would really appreciate it if you could take a look at the file attachment.
 
-- GitHub: https://github.com/besidka/besidka
-- Production: https://www.besidka.com/
+- GitHub: [https://github.com/besidka/besidka](https://github.com/besidka/besidka)
+- Production: [https://www.besidka.com/](https://www.besidka.com/)
