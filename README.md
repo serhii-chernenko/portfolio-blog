@@ -6,7 +6,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 **Adapter versions:** `@astrojs/cloudflare` 13 · `@astrojs/node` 10 · `wrangler` 4.
 
-**Mounted at `/blog/*`** on `chernenko.digital` — the apex and other paths are served by a separate React portfolio app.
+**Mounted at `/blog/*`** on `serhiichernenko.com` (the canonical host; `www.serhiichernenko.com` redirects to it with a `308`) — the host root and other paths are served by a separate portfolio app. See [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md).
 
 **Docs:**
 

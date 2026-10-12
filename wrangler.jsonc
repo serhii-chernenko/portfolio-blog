@@ -106,36 +106,39 @@
 		},
 	},
 	// `wrangler dev` defaults its simulated host to the first entry in `routes`
-	// (production), which makes `request.url` resolve to www.serhiichernenko.com
+	// (production), which makes `request.url` resolve to serhiichernenko.com
 	// even when serving from localhost. Forcing the dev host to localhost makes
 	// request.url match where the browser actually is — so things like
 	// self-referential confirm links work without any env-var indirection.
 	"dev": {
 		"host": "localhost:8787",
 	},
-	// Route topology — canonical host is www.serhiichernenko.com.
+	// Route topology — canonical host is the bare apex serhiichernenko.com.
+	// Every route is also bound on www.serhiichernenko.com for the www → apex
+	// migration (docs/DNS-ROUTING.md); the www entries go once the Redirect
+	// Rule sends www → apex.
 	//
-	//   www…/blog          → blog landing
-	//   www…/blog/*        → all blog routes (incl. /blog/keystatic UI)
-	//   www…/api/keystatic, www…/api/keystatic/*
+	//   …/blog             → blog landing
+	//   …/blog/*           → all blog routes (incl. /blog/keystatic UI)
+	//   …/api/keystatic, …/api/keystatic/*
 	//                       → host-root Keystatic API. The shipped Keystatic
 	//                         React UI fetches these absolute paths;
 	//                         src/middleware.ts rewrites them to
 	//                         /blog/api/keystatic/* so Astro (base: '/blog')
 	//                         can serve them.
 	//
-	// `zone_name` stays the apex (serhiichernenko.com) — that is the Cloudflare
-	// zone the www hostname lives in; the route *pattern* is what binds to www.
+	// `zone_name` is the apex (serhiichernenko.com) — the Cloudflare zone both
+	// hostnames live in; the route *pattern* is what selects the host.
 	//
-	// The bare apex serhiichernenko.com is NOT bound to this Worker. A Cloudflare
-	// Redirect Rule (dashboard → Rules → Redirect Rules) 301s the apex → www, so
-	// visitors who type the bare domain land on the canonical www host. The
-	// host root `/` (on either host) is intentionally unbound — it falls through
+	// A Cloudflare Redirect Rule (dashboard → Rules → Redirect Rules) runs before
+	// Workers and sends one host to the other, so the Worker only serves the
+	// canonical apex once the rule is flipped to www → apex (308). The host root
+	// `/` (on either host) is intentionally unbound — it falls through
 	// to the 100:: placeholder and errors for now. This domain uses path-based
 	// routing across MULTIPLE Workers (one per app, separate repos): a future
 	// portfolio Worker — its own repo, a from-scratch rewrite of the old
 	// chernenko.digital — will claim the root `/`. It can bind a catch-all
-	// `www.serhiichernenko.com/*`; these `/blog*` + `/api/keystatic*` routes are
+	// `serhiichernenko.com/*`; these `/blog*` + `/api/keystatic*` routes are
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	//
@@ -190,6 +193,50 @@
 		},
 		{
 			"pattern": "www.serhiichernenko.com/sitemap.xml",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/blog",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/blog/*",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/api/keystatic",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/api/keystatic/*",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/keystatic",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/keystatic/*",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/robots.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/favicon.ico",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/llms.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/llms-full.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/sitemap.xml",
 			"zone_name": "serhiichernenko.com",
 		},
 	],

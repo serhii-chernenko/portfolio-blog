@@ -1,8 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-export const HOST = 'www.serhiichernenko.com';
+export const HOST = 'serhiichernenko.com';
 export const SITE_ORIGIN = `https://${HOST}`;
+export const LEGACY_ORIGIN = `https://www.${HOST}`;
 export const SCOPE_PREFIX = `${SITE_ORIGIN}/blog/`;
 export const SITEMAP_INDEX_URL = `${SITE_ORIGIN}/blog/sitemap-index.xml`;
 export const INDEXNOW_KEY = 'aa97432c46c58c839540be4d044ece78';
@@ -84,6 +85,10 @@ export async function fetchSitemapEntries(indexUrl, fetchFn = fetch, depth = 0) 
 	}
 	const entries = new Map();
 	for (const childUrl of parseSitemapIndex(xml)) {
+		if (childUrl.startsWith(`${LEGACY_ORIGIN}/`)) {
+			console.warn(`Skipping child sitemap on the legacy host: ${childUrl}`);
+			continue;
+		}
 		if (!childUrl.startsWith(`${SITE_ORIGIN}/`)) {
 			throw new Error(`Refusing to fetch child sitemap outside ${SITE_ORIGIN}: ${childUrl}`);
 		}

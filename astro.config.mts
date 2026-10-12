@@ -13,7 +13,7 @@ import { createSitemapPolicy } from './src/lib/sitemap';
 // Canonical production URL — used at build time for sitemap.xml and RSS
 // absolute links. Runtime URLs are derived from the incoming request, so
 // preview Workers and local `wrangler dev` produce self-referential links.
-const SITE = 'https://www.serhiichernenko.com';
+const SITE = 'https://serhiichernenko.com';
 
 /**
  * Keystatic + base-path mode.

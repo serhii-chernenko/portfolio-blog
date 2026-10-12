@@ -3,7 +3,7 @@
 This blog exposes a read-only [Model Context Protocol](https://modelcontextprotocol.io)
 server so AI assistants can query post content directly instead of scraping HTML.
 
-- **Endpoint:** `https://www.serhiichernenko.com/blog/api/mcp` (production) /
+- **Endpoint:** `https://serhiichernenko.com/blog/api/mcp` (production) /
   `http://localhost:4321/api/mcp` (`pnpm dev`)
 - **Transport:** MCP Streamable HTTP (JSON-RPC 2.0 over a single POST endpoint)
 - **Auth:** none — same trust level as the public RSS feed. Read-only, no
@@ -66,7 +66,7 @@ npx @modelcontextprotocol/inspector http://localhost:4321/api/mcp
 ```
 
 Re-test with `pnpm build && npx wrangler dev` (`http://localhost:8787/blog/api/mcp`,
-or send a request with `Host: www.serhiichernenko.com` to check the production
+or send a request with `Host: serhiichernenko.com` to check the production
 route) before shipping any change here — that's the workerd runtime, not the
 Node adapter `pnpm dev` uses, and the two can resolve dependencies differently.
 Don't use `pnpm wrangler:dev` for this — it runs `astro preview`, which gives

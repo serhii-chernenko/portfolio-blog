@@ -2,15 +2,15 @@
 #
 # verify-routing.sh — Confirm the Worker production routing is live.
 #
-# Canonical host: www.serhiichernenko.com (the Worker routes are bound to www).
-# The bare apex serhiichernenko.com 301-redirects to www via a Cloudflare
+# Canonical host: serhiichernenko.com (the bare apex; the Worker routes are bound
+# to it). www.serhiichernenko.com 308-redirects to the apex via a Cloudflare
 # Redirect Rule (dashboard -> Rules -> Redirect Rules).
 #
 # Checks, in order:
-#   1. The canonical host (www) resolves (A and/or AAAA record present).
-#   2. www is proxied: resolves to a public Cloudflare edge IP, not 100::.
-#   3. www/blog serves the Worker (same-host 301 -> /blog/en/, then 2xx).
-#   4. The bare apex /blog 301-redirects to the canonical www host.
+#   1. The canonical host (apex) resolves (A and/or AAAA record present).
+#   2. The apex is proxied: resolves to a public Cloudflare edge IP, not 100::.
+#   3. apex/blog serves the Worker (same-host 301 -> /blog/en/, then 2xx).
+#   4. www /blog 308-redirects to the canonical apex host.
 #
 # Pure dig/curl — no Cloudflare auth required. Prints PASS/FAIL per check
 # and a clear final summary. Exit code is non-zero if any check fails.
@@ -19,11 +19,11 @@
 
 set -euo pipefail
 
-APEX="serhiichernenko.com"
-CANON="www.serhiichernenko.com"
+CANON="serhiichernenko.com"
+WWW="www.serhiichernenko.com"
 BLOG_BARE="https://${CANON}/blog"
 BLOG_EN="https://${CANON}/blog/en/"
-APEX_BLOG="https://${APEX}/blog"
+WWW_BLOG="https://${WWW}/blog"
 CURL_TIMEOUT=15
 
 # --- colors (disabled when not a TTY) ---------------------------------------
@@ -78,16 +78,15 @@ done
 
 printf '%s== Verifying production routing (canonical host: %s) ==%s\n\n' "$BOLD" "$CANON" "$RESET"
 
-# --- Check 1: canonical host (www) resolves (A and/or AAAA) -----------------
-# www is a CNAME -> apex -> proxied placeholder; grep keeps only the final IP,
-# dropping the CNAME-target line that +short prints first.
+# --- Check 1: canonical host (apex) resolves (A and/or AAAA) ---------------
+# The apex is a proxied AAAA placeholder; grep keeps only IP lines.
 A_REC="$(dig +short "$CANON" A    | grep -E '^[0-9.]+$'        | head -n1 || true)"
 AAAA_REC="$(dig +short "$CANON" AAAA | grep -E '^[0-9a-fA-F:]+$' | head -n1 || true)"
 
 if [ -n "$A_REC" ] || [ -n "$AAAA_REC" ]; then
   pass "Canonical host resolves (A='${A_REC:-none}' AAAA='${AAAA_REC:-none}')"
 else
-  fail "${CANON} does NOT resolve. Ensure the www record (CNAME -> ${APEX}) and the apex AAAA @ -> 100:: are both Proxied. See docs/DNS-ROUTING.md. (If public resolvers DO resolve it, your local DNS cached the old negative — see Troubleshooting #2.)"
+  fail "${CANON} does NOT resolve. Ensure the apex AAAA @ -> 100:: and the www record (CNAME -> ${CANON}) are both Proxied. See docs/DNS-ROUTING.md. (If public resolvers DO resolve it, your local DNS cached the old negative — see Troubleshooting #2.)"
 fi
 
 # --- Check 2: proxied (resolves to a CF edge IP, not the 100:: discard addr) -
@@ -112,46 +111,47 @@ else
   fail "No record to evaluate for proxy status (${CANON} unresolved)."
 fi
 
-# --- Check 3: www/blog serves the Worker (same-host 301 -> /blog/en/ -> 2xx) -
-# The Worker is bound to www. A redirect that leaves the www host means a
+# --- Check 3: apex/blog serves the Worker (same-host 301 -> /blog/en/ -> 2xx)
+# The Worker is bound to the apex. A redirect that leaves the apex host means a
 # Redirect Rule / route is hijacking the canonical host.
-WWW_LOC="$(curl_location "$BLOG_BARE")"
-WWW_LOC_HOST="$(host_of "$WWW_LOC")"
-if [ -n "$WWW_LOC_HOST" ] && [ "$WWW_LOC_HOST" != "$CANON" ]; then
-  fail "Canonical ${BLOG_BARE} redirects OFF-host to ${WWW_LOC_HOST} — the Worker should serve www directly. Check that no Redirect Rule rewrites www, and that routes target ${CANON}. See docs/DNS-ROUTING.md."
+CANON_LOC="$(curl_location "$BLOG_BARE")"
+CANON_LOC_HOST="$(host_of "$CANON_LOC")"
+if [ -n "$CANON_LOC_HOST" ] && [ "$CANON_LOC_HOST" != "$CANON" ]; then
+  fail "Canonical ${BLOG_BARE} redirects OFF-host to ${CANON_LOC_HOST} — the Worker should serve the apex directly. Flip the Redirect Rule to www -> apex (308) and check that routes target ${CANON}. See docs/DNS-ROUTING.md."
 else
   EN_CODE="$(curl_code "$BLOG_EN")"
   if printf '%s' "$EN_CODE" | grep -qE '^2[0-9][0-9]$'; then
-    pass "GET ${BLOG_EN} -> HTTP ${EN_CODE} (Worker serves canonical www over HTTPS)"
+    pass "GET ${BLOG_EN} -> HTTP ${EN_CODE} (Worker serves canonical apex over HTTPS)"
   elif printf '%s' "$EN_CODE" | grep -qE '^3[0-9][0-9]$'; then
-    pass "GET ${BLOG_EN} -> HTTP ${EN_CODE} (3xx; Worker reachable on www)"
+    pass "GET ${BLOG_EN} -> HTTP ${EN_CODE} (3xx; Worker reachable on the apex)"
   else
-    # HTTPS failed — maybe Universal SSL not provisioned yet. Probe HTTP.
     EN_HTTP_CODE="$(curl_code "http://${CANON}/blog/en/")"
     if printf '%s' "$EN_HTTP_CODE" | grep -qE '^(2|3)[0-9][0-9]$'; then
-      fail "HTTPS returned ${EN_CODE} but HTTP returned ${EN_HTTP_CODE} on www — route works, Universal SSL likely still provisioning (up to 24h). Re-run later."
+      fail "HTTPS returned ${EN_CODE} but HTTP returned ${EN_HTTP_CODE} on the apex — route works, Universal SSL likely still provisioning (up to 24h). Re-run later."
     else
-      fail "GET ${BLOG_EN} -> HTTP ${EN_CODE} (and http:// -> ${EN_HTTP_CODE}). Worker not reachable on www yet."
+      fail "GET ${BLOG_EN} -> HTTP ${EN_CODE} (and http:// -> ${EN_HTTP_CODE}). Worker not reachable on the apex yet."
     fi
   fi
 fi
 
-# --- Check 4: bare apex /blog 301-redirects to the canonical www host -------
-APEX_LOC="$(curl_location "$APEX_BLOG")"
-APEX_LOC_HOST="$(host_of "$APEX_LOC")"
-APEX_CODE="$(curl_code "$APEX_BLOG")"
-if [ "$APEX_LOC_HOST" = "$CANON" ]; then
-  pass "Apex ${APEX_BLOG} -> HTTP ${APEX_CODE} -> ${APEX_LOC} (redirects to canonical www)"
-elif [ -z "$APEX_LOC" ]; then
-  fail "Apex ${APEX_BLOG} does NOT redirect to www (HTTP ${APEX_CODE}, no Location). Add/keep the apex->www Redirect Rule in Rules -> Redirect Rules. See docs/DNS-ROUTING.md."
-elif [ -z "$APEX_LOC_HOST" ]; then
-  fail "Apex ${APEX_BLOG} issues a relative/same-host redirect (Location: ${APEX_LOC}) — expected an ABSOLUTE 301 to https://${CANON}. Make the Redirect Rule target absolute, e.g. concat(\"https://${CANON}\", http.request.uri.path)."
+# --- Check 4: www /blog 308-redirects to the canonical apex host ------------
+WWW_LOC="$(curl_location "$WWW_BLOG")"
+WWW_LOC_HOST="$(host_of "$WWW_LOC")"
+WWW_CODE="$(curl_code "$WWW_BLOG")"
+if [ "$WWW_LOC_HOST" = "$CANON" ] && [ "$WWW_CODE" = "308" ]; then
+  pass "www ${WWW_BLOG} -> HTTP ${WWW_CODE} -> ${WWW_LOC} (redirects to canonical apex)"
+elif [ "$WWW_LOC_HOST" = "$CANON" ]; then
+  fail "www ${WWW_BLOG} redirects to the apex with HTTP ${WWW_CODE}, expected 308 (method-preserving, keeps RFC 8058 one-click unsubscribe POSTs working). Set the Redirect Rule status code to 308."
+elif [ -z "$WWW_LOC" ]; then
+  fail "www ${WWW_BLOG} does NOT redirect to the apex (HTTP ${WWW_CODE}, no Location). Add/flip the www->apex Redirect Rule in Rules -> Redirect Rules. See docs/DNS-ROUTING.md."
+elif [ -z "$WWW_LOC_HOST" ]; then
+  fail "www ${WWW_BLOG} issues a relative/same-host redirect (Location: ${WWW_LOC}) — expected an ABSOLUTE 308 to https://${CANON}. Make the Redirect Rule target absolute, e.g. concat(\"https://${CANON}\", http.request.uri.path)."
 else
-  fail "Apex ${APEX_BLOG} redirects to '${APEX_LOC_HOST}', expected '${CANON}'. Fix the apex->www Redirect Rule."
+  fail "www ${WWW_BLOG} redirects to '${WWW_LOC_HOST}', expected '${CANON}'. Fix the www->apex Redirect Rule."
 fi
 
 # --- informational: email records are a separate concern --------------------
-MX_REC="$(dig +short "$APEX" MX | head -n1 || true)"
+MX_REC="$(dig +short "$CANON" MX | head -n1 || true)"
 if [ -n "$MX_REC" ]; then
   info "MX present ('${MX_REC}') — Email Routing DNS looks set (separate from routing)."
 else

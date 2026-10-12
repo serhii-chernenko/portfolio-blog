@@ -99,6 +99,22 @@ assert.equal(
 }
 
 {
+	const legacyIndex = `<sitemapindex><sitemap><loc>https://www.${HOST}/blog/sitemap-0.xml</loc></sitemap><sitemap><loc>${CHILD_ONE}</loc></sitemap></sitemapindex>`;
+	const { fetchFn, calls } = fakeFetch(
+		new Map([
+			[INDEX_URL, { body: legacyIndex }],
+			[CHILD_ONE, { body: childOneXml }],
+		]),
+	);
+	const warn = console.warn;
+	console.warn = () => {};
+	const entries = await fetchSitemapEntries(INDEX_URL, fetchFn);
+	console.warn = warn;
+	assert.equal(entries.size, 2, 'apex children are still read');
+	assert.equal(calls.length, 2, 'the legacy-host child sitemap is skipped, never requested');
+}
+
+{
 	const selfReferencing = `<sitemapindex><sitemap><loc>${INDEX_URL}</loc></sitemap></sitemapindex>`;
 	const { fetchFn } = fakeFetch(new Map([[INDEX_URL, { body: selfReferencing }]]));
 	await assert.rejects(fetchSitemapEntries(INDEX_URL, fetchFn), /nesting deeper/);
@@ -162,6 +178,11 @@ assert.equal(isInScope(`https://${HOST}/`), false);
 assert.equal(isInScope('https://example.com/blog/en/'), false);
 assert.equal(isInScope(`http://${HOST}/blog/en/`), false, 'http scheme is rejected');
 assert.equal(isInScope(`https://${HOST}.evil.example/blog/en/`), false);
+assert.equal(
+	isInScope(`https://www.${HOST}/blog/en/`),
+	false,
+	'the www host is outside the key scope',
+);
 
 assert.deepEqual(batchUrls([]), []);
 assert.deepEqual(batchUrls(['a', 'b', 'c'], 2), [['a', 'b'], ['c']]);

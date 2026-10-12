@@ -1,4 +1,8 @@
-export const PRODUCTION_HOST = 'www.serhiichernenko.com';
+export const CANONICAL_HOST = 'serhiichernenko.com';
+export const PRODUCTION_HOSTS: ReadonlySet<string> = new Set([
+	CANONICAL_HOST,
+	`www.${CANONICAL_HOST}`,
+]);
 
 export const CLIENT_EVENT_TYPES = [
 	'page_view',
@@ -309,7 +313,7 @@ export function shouldEmitHttpEvent(route: string, status: number): boolean {
 
 export function environmentFromHost(host: string): BlogEnvironment {
 	const hostname = hostnameOf(host);
-	if (hostname === PRODUCTION_HOST) return 'production';
+	if (PRODUCTION_HOSTS.has(hostname)) return 'production';
 	if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
 		return 'development';
 	}
@@ -357,7 +361,7 @@ export function referrerSource(referrerHost: string | undefined, ownHost: string
 	const hostname = normalizeHostname(referrerHost);
 	if (!hostname) return 'other';
 	const ownHostname = hostnameOf(ownHost);
-	if (withoutWww(hostname) === withoutWww(ownHostname) || hostname === PRODUCTION_HOST) {
+	if (withoutWww(hostname) === withoutWww(ownHostname) || PRODUCTION_HOSTS.has(hostname)) {
 		return 'internal';
 	}
 	return outboundSource(hostname);

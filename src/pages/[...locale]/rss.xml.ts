@@ -15,7 +15,7 @@ export async function GET(context: APIContext) {
 	const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
 
 	const posts = await getPublishedPosts(locale);
-	const site = context.site ?? new URL('https://www.serhiichernenko.com');
+	const site = context.site ?? new URL('https://serhiichernenko.com');
 	const channelUrl = new URL(localeHref(locale), site);
 	const feedUrl = new URL(withPageBase(`${locale}/rss.xml`), site);
 	const siteName = ui[locale]['site.name'];

@@ -1,23 +1,29 @@
 # SEO and search engine setup
 
-Canonical site: `https://www.serhiichernenko.com/blog/`. DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+Canonical site: `https://serhiichernenko.com/blog/` (the bare apex; `www` redirects to it with a `308`). DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
 
 ## Search consoles
 
-| Service               | Property                                | Verification                                                                       | Sitemap                                                  |
-| --------------------- | --------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Google Search Console | Domain property `serhiichernenko.com`   | DNS TXT `google-site-verification=...`, added 2026-10-12                           | `https://www.serhiichernenko.com/blog/sitemap-index.xml` |
-| Bing Webmaster Tools  | Site `https://www.serhiichernenko.com/` | DNS CNAME `9dfe1cb01f17e8a86b528b2ddc8eac06` to `verify.bing.com` (DNS-only proxy) | `https://www.serhiichernenko.com/blog/sitemap-index.xml` |
+| Service               | Property                              | Verification                                                                       | Sitemap                                              |
+| --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Google Search Console | Domain property `serhiichernenko.com` | DNS TXT `google-site-verification=...`, added 2026-10-12                           | `https://serhiichernenko.com/blog/sitemap-index.xml` |
+| Bing Webmaster Tools  | Site `https://serhiichernenko.com/`   | DNS CNAME `9dfe1cb01f17e8a86b528b2ddc8eac06` to `verify.bing.com` (DNS-only proxy) | `https://serhiichernenko.com/blog/sitemap-index.xml` |
 
 Keep both verification DNS records in place; removing them un-verifies the property. They are dashboard-managed in Cloudflare DNS (the wrangler token cannot write DNS).
+
+### www → apex migration
+
+- **Google**: the domain property already covers the apex and every subdomain. Submit the apex sitemap above and remove the old `www` one.
+- **Bing**: add `https://serhiichernenko.com/` as a site, then use **Site Move** (www → apex) from the old `www` site.
+- **IndexNow**: seed (`gh workflow run indexnow.yml -f mode=all`) only after the Redirect Rule flip. Until then the live sitemap still lists `www` URLs, which the script skips as out of scope.
 
 ## IndexNow
 
 IndexNow tells Bing, Yandex and other participating engines about new, updated and removed URLs without waiting for a crawl. Google does not use it.
 
 - **Key**: `aa97432c46c58c839540be4d044ece78` (public by design).
-- **Key file**: `public/aa97432c46c58c839540be4d044ece78.txt`, served at `https://www.serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` and containing exactly the key with no trailing newline. It is a static asset, so it is not in the sitemap, and `robots.txt` does not block it.
-- **Scope**: the key file lives under `/blog/`, so only URLs starting with `https://www.serhiichernenko.com/blog/` may be submitted. The script refuses anything else.
+- **Key file**: `public/aa97432c46c58c839540be4d044ece78.txt`, served at `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` and containing exactly the key with no trailing newline. It is a static asset, so it is not in the sitemap, and `robots.txt` does not block it.
+- **Scope**: the key file lives under `/blog/`, so only URLs starting with `https://serhiichernenko.com/blog/` may be submitted. The script refuses anything else.
 - **Script**: `scripts/indexnow.mjs` (Node, no dependencies). Modes: `snapshot <file>`, `diff-submit <beforeFile>`, `submit-all`, plus `--dry-run` to print the payload without POSTing. Tests: `pnpm test:indexnow`.
 
 ### Workflow
@@ -57,7 +63,7 @@ node scripts/indexnow.mjs submit-all --dry-run
 
 ## Host root redirect
 
-Until the portfolio Worker owns `/`, the host root `https://www.serhiichernenko.com/` should answer with a
+Until the portfolio Worker owns `/`, the host root `https://serhiichernenko.com/` should answer with a
 temporary 302 to `/blog/en/` from a Cloudflare Redirect Rule in the zone's `http_request_dynamic_redirect`
-ruleset, next to the apex → www rule. It is a zone rule, not Worker code, so it never ships with a deploy.
+ruleset, next to the www → apex rule. It is a zone rule, not Worker code, so it never ships with a deploy.
 Delete it when the portfolio Worker goes live.
