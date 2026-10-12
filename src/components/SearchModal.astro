@@ -22,9 +22,7 @@ const t = useTranslations(locale);
 					class="size-5"
 					aria-hidden="true"
 				>
-					<path
-						d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-					></path>
+					<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"></path>
 				</svg>
 			</button>
 		</form>
@@ -36,7 +34,47 @@ const t = useTranslations(locale);
 </dialog>
 
 <script>
+	const RESULTS_REPORT_DELAY_MS = 1500;
+	const LEADING_COUNT = /^\s*(\d+)/;
 	let pagefindLoaded = false;
+
+	function readResultsCount(container: HTMLElement): number | null {
+		const messageText = container.querySelector('.pagefind-ui__message')?.textContent?.trim();
+		const hasSettledResults = container.querySelector('.pagefind-ui__results') !== null;
+		if (!messageText || !hasSettledResults) return null;
+		const leadingCount = LEADING_COUNT.exec(messageText);
+		if (leadingCount) return Number(leadingCount[1]);
+		return container.querySelectorAll('.pagefind-ui__result').length;
+	}
+
+	function reportSearchUsed(resultsCount: number) {
+		document.dispatchEvent(
+			new CustomEvent('blog:telemetry', { detail: { type: 'search_used', resultsCount } }),
+		);
+	}
+
+	function observeSearchUsage(container: HTMLElement) {
+		let reportedQuery = '';
+		let reportTimer: number | undefined;
+
+		function reportOnceSettled() {
+			const query =
+				container.querySelector<HTMLInputElement>('.pagefind-ui__search-input')?.value.trim() ?? '';
+			if (!query) {
+				reportedQuery = '';
+				return;
+			}
+			const resultsCount = readResultsCount(container);
+			if (query === reportedQuery || resultsCount === null) return;
+			reportedQuery = query;
+			reportSearchUsed(resultsCount);
+		}
+
+		new MutationObserver(() => {
+			window.clearTimeout(reportTimer);
+			reportTimer = window.setTimeout(reportOnceSettled, RESULTS_REPORT_DELAY_MS);
+		}).observe(container, { childList: true, subtree: true, characterData: true });
+	}
 
 	function loadScript(src: string): Promise<void> {
 		return new Promise((resolve, reject) => {
@@ -69,6 +107,7 @@ const t = useTranslations(locale);
 			await loadScript(`${pagefindBase}pagefind-ui.js`);
 			// Pagefind builds a separate index per <html lang>, so same-language
 			// isolation is automatic — no explicit locale filter needed here.
+			const container = document.getElementById('pagefind-ui-container');
 			// @ts-expect-error – PagefindUI is a global injected by the script above
 			new PagefindUI({
 				element: '#pagefind-ui-container',
@@ -79,6 +118,7 @@ const t = useTranslations(locale);
 					zero_results: locale === 'uk' ? 'Нічого не знайдено' : 'No results for [SEARCH_TERM]',
 				},
 			});
+			if (container) observeSearchUsage(container);
 		} catch (e) {
 			// Pagefind not available (only after `pnpm build`)
 			const container = document.getElementById('pagefind-ui-container');
@@ -100,7 +140,7 @@ const t = useTranslations(locale);
 	}
 
 	// Expose for Header trigger
-	(window as any).__openSearch = openSearch;
+	(window as Window & { __openSearch?: () => void }).__openSearch = openSearch;
 
 	// Keyboard shortcut: "/" opens search (skip when typing in inputs)
 	document.addEventListener('keydown', (e) => {

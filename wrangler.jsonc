@@ -86,6 +86,16 @@
 			"dataset": "portfolio_blog_events",
 		},
 	],
+	"ratelimits": [
+		{
+			"name": "EVENTS_RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 60,
+				"period": 60,
+			},
+		},
+	],
 	"observability": {
 		"enabled": true,
 		// Bearer capabilities are carried in query strings for email-client

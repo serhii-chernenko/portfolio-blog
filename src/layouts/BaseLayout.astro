@@ -5,6 +5,8 @@ import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import SearchModal from '../components/SearchModal.astro';
+import Telemetry from '../components/Telemetry.astro';
+import type { PageType } from '../lib/telemetry-schema';
 import '../styles/global.css';
 
 export interface Props {
@@ -24,6 +26,8 @@ export interface Props {
 	authorUrl?: string;
 	/** Prevent sensitive or utility pages from appearing in search results. */
 	noIndex?: boolean;
+	pageType: PageType;
+	contentKey?: string;
 }
 
 const {
@@ -39,6 +43,8 @@ const {
 	translatedUrls,
 	authorUrl,
 	noIndex = false,
+	pageType,
+	contentKey,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -71,5 +77,7 @@ const lang = htmlLangAttribute[locale];
 		<Footer locale={locale} currentPath={Astro.url.pathname} translatedUrls={translatedUrls} />
 
 		<SearchModal locale={locale} />
+
+		<Telemetry locale={locale} pageType={pageType} contentKey={contentKey} />
 	</body>
 </html>

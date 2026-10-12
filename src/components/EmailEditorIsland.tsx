@@ -284,7 +284,7 @@ export default function EmailEditorIsland({ slug }: Props) {
 							content={template?.json}
 							onUpdate={handleEditorUpdate}
 							className="min-h-[520px]"
-							// @ts-expect-error — validateUrl is exposed by patches/@react-email__editor@1.4.1.patch
+							// @ts-expect-error — validateUrl is exposed by patches/@react-email__editor@1.7.12.patch
 							validateUrl={validateEmailUrl}
 						/>
 					</div>

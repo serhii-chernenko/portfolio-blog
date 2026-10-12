@@ -72,19 +72,17 @@ const currentPathname = currentPath ?? Astro.url.pathname;
 			<!-- Center: desktop nav links -->
 			<nav class="navbar-center hidden lg:flex" aria-label="Main navigation">
 				<ul class="menu menu-horizontal gap-1 p-0">
-					{
-						navLinks.map(({ key, href }) => (
-							<li>
-								<a
-									href={href}
-									class={currentPathname.startsWith(href) ? 'active font-medium' : 'font-medium'}
-									aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
-								>
-									{t(key)}
-								</a>
-							</li>
-						))
-					}
+					{navLinks.map(({ key, href }) => (
+						<li>
+							<a
+								href={href}
+								class={currentPathname.startsWith(href) ? 'active font-medium' : 'font-medium'}
+								aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+							>
+								{t(key)}
+							</a>
+						</li>
+					))}
 				</ul>
 			</nav>
 
@@ -136,19 +134,17 @@ const currentPathname = currentPath ?? Astro.url.pathname;
 				{t('site.name')}
 			</a>
 			<ul class="menu w-full">
-				{
-					navLinks.map(({ key, href }) => (
-						<li>
-							<a
-								href={href}
-								class={currentPathname.startsWith(href) ? 'active' : ''}
-								aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
-							>
-								{t(key)}
-							</a>
-						</li>
-					))
-				}
+				{navLinks.map(({ key, href }) => (
+					<li>
+						<a
+							href={href}
+							class={currentPathname.startsWith(href) ? 'active' : ''}
+							aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+						>
+							{t(key)}
+						</a>
+					</li>
+				))}
 			</ul>
 		</nav>
 	</div>

@@ -18,14 +18,13 @@ const src = `https://www.youtube-nocookie.com/embed/${id}`;
 				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 				allowfullscreen
 				loading="lazy"
-				referrerpolicy="strict-origin-when-cross-origin"></iframe>
+				referrerpolicy="strict-origin-when-cross-origin"
+			></iframe>
 		</div>
-		{
-			title && title !== 'YouTube video' && (
-				<div class="card-body py-2 px-4">
-					<p class="text-sm text-base-content/60">{title}</p>
-				</div>
-			)
-		}
+		{title && title !== 'YouTube video' && (
+			<div class="card-body py-2 px-4">
+				<p class="text-sm text-base-content/60">{title}</p>
+			</div>
+		)}
 	</div>
 </div>

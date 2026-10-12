@@ -53,12 +53,12 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 	alternates={alternates ?? translatedUrls}
 	translatedUrls={translatedUrls}
 	authorUrl={authorUrl}
+	pageType="post"
+	contentKey={post.data.translationKey}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">
-		<div
-			class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col gap-8 py-8 sm:py-10 lg:py-14"
-		>
+		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col gap-8 py-8 sm:py-10 lg:py-14">
 			<!-- Back button -->
 			<a
 				href={localeHref(locale, 'posts/')}
@@ -75,7 +75,8 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 					class="cta-icon-left"
 					aria-hidden="true"
 				>
-					<path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path>
+					<path d="M19 12H5"></path>
+					<path d="m12 19-7-7 7-7"></path>
 				</svg>
 				{t('nav.posts')}
 			</a>
@@ -85,18 +86,14 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 				{showDraft && <span class="badge badge-warning">{t('post.draft')}</span>}
 
 				<div class="space-y-4">
-					<h1
-						class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl"
-					>
+					<h1 class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl">
 						{post.data.title}
 					</h1>
-					{
-						post.data.description && (
-							<p class="max-w-3xl text-lg sm:text-xl leading-8 text-base-content/70">
-								{post.data.description}
-							</p>
-						)
-					}
+					{post.data.description && (
+						<p class="max-w-3xl text-lg sm:text-xl leading-8 text-base-content/70">
+							{post.data.description}
+						</p>
+					)}
 				</div>
 
 				<!-- Meta badges -->
@@ -105,56 +102,48 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 						datetime={post.data.publishedAt.toISOString()}
 						class="badge badge-primary badge-outline badge-sm rounded-full"
 					>
-						{
-							post.data.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric',
-							})
-						}
+						{post.data.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric',
+						})}
 					</time>
-					{
-						readingTime != null && (
-							<span class="badge badge-primary badge-outline badge-sm rounded-full">
-								{t('post.readingTime', { minutes: readingTime })}
-							</span>
-						)
-					}
-					{
-						tags.map((tag) => (
-							<a
-								href={localeHref(locale, `tags/${tagSlug(tag)}`)}
-								class="badge badge-primary badge-outline badge-sm rounded-full hover:badge-primary hover:text-primary-content transition-colors"
-							>
-								{tag}
-							</a>
-						))
-					}
+					{readingTime != null && (
+						<span class="badge badge-primary badge-outline badge-sm rounded-full">
+							{t('post.readingTime', { minutes: readingTime })}
+						</span>
+					)}
+					{tags.map((tag) => (
+						<a
+							href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+							class="badge badge-primary badge-outline badge-sm rounded-full hover:badge-primary hover:text-primary-content transition-colors"
+						>
+							{tag}
+						</a>
+					))}
 				</div>
 			</div>
 
 			<!-- Hero image -->
-			{
-				post.data.heroImage && (
-					<div class="overflow-hidden rounded-box bg-base-300 shadow-sm">
-						<div class="relative aspect-video w-full">
-							<img
-								src={
-									typeof post.data.heroImage === 'string'
-										? post.data.heroImage
-										: post.data.heroImage.src
-								}
-								alt={post.data.heroImageAlt ?? post.data.title}
-								width={1200}
-								height={675}
-								class="w-full h-full object-cover object-center"
-								loading="eager"
-								decoding="async"
-							/>
-						</div>
+			{post.data.heroImage && (
+				<div class="overflow-hidden rounded-box bg-base-300 shadow-sm">
+					<div class="relative aspect-video w-full">
+						<img
+							src={
+								typeof post.data.heroImage === 'string'
+									? post.data.heroImage
+									: post.data.heroImage.src
+							}
+							alt={post.data.heroImageAlt ?? post.data.title}
+							width={1200}
+							height={675}
+							class="w-full h-full object-cover object-center"
+							loading="eager"
+							decoding="async"
+						/>
 					</div>
-				)
-			}
+				</div>
+			)}
 		</div>
 	</section>
 
@@ -174,23 +163,21 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 				</article>
 
 				<!-- Tags at bottom -->
-				{
-					tags.length > 0 && (
-						<div class="mt-10 pt-8 border-t border-base-300">
-							<p class="text-sm font-medium text-base-content/60 mb-3">{t('post.tags')}</p>
-							<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
-								{tags.map((tag) => (
-									<a
-										href={localeHref(locale, `tags/${tagSlug(tag)}`)}
-										class="badge badge-outline hover:badge-primary transition-colors"
-									>
-										{tag}
-									</a>
-								))}
-							</div>
+				{tags.length > 0 && (
+					<div class="mt-10 pt-8 border-t border-base-300">
+						<p class="text-sm font-medium text-base-content/60 mb-3">{t('post.tags')}</p>
+						<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
+							{tags.map((tag) => (
+								<a
+									href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+									class="badge badge-outline hover:badge-primary transition-colors"
+								>
+									{tag}
+								</a>
+							))}
 						</div>
-					)
-				}
+					</div>
+				)}
 
 				<!-- Comments -->
 				<Giscus locale={locale} />
@@ -232,14 +219,7 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 							try {
 								await navigator.clipboard.writeText(text);
 							} catch {
-								const ta = document.createElement('textarea');
-								ta.value = text;
-								ta.style.position = 'fixed';
-								ta.style.opacity = '0';
-								document.body.appendChild(ta);
-								ta.select();
-								document.execCommand('copy');
-								document.body.removeChild(ta);
+								return;
 							}
 							btn.setAttribute('aria-label', 'Copied!');
 							setTimeout(() => btn.setAttribute('aria-label', 'Copy code'), 1500);
@@ -251,7 +231,6 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 				enhanceCodeBlocks();
 				document.addEventListener('astro:after-swap', enhanceCodeBlocks);
 			</script>
-
 			<!-- Sidebar: Table of Contents (lg+) -->
 			<aside class="hidden lg:block" aria-label={t('post.toc')}>
 				<TableOfContents headings={headings} locale={locale} />
