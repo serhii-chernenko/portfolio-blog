@@ -41,7 +41,7 @@ const SITE = 'https://www.serhiichernenko.com';
  *        so Astro's router (which lives under base: '/blog') can serve them.
  *   This /blog handling is actually split across two places: the middleware
  *   rewrite above adds the /blog prefix so Astro's router matches, then
- *   patches/@keystatic__astro@5.2.0.patch strips it back off inside
+ *   patches/@keystatic__astro@6.0.0.patch strips it back off inside
  *   Keystatic's API route handler before its generic handler parses params.
  */
 // astro.config.mts runs in Node before Vite kicks in, so it reads from
