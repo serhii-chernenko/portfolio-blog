@@ -10,7 +10,7 @@ import {
 } from './posts';
 import { getPostSlug } from './post-slug';
 import { locales, type Locale } from '../i18n/config';
-import { withBase } from '../i18n/utils';
+import { localeHref } from '../i18n/utils';
 
 const localeSchema = z.enum(locales);
 const TAG_DESCRIPTION = "Tag label or slug (as returned by list_tags' `tag`/`slug` fields)";
@@ -182,7 +182,7 @@ export function buildMcpServer(): McpServer {
 						slug: tagSlug(tag),
 						count,
 						locale: l,
-						url: withBase(`${l}/tags/${tagSlug(tag)}`),
+						url: localeHref(l, `tags/${tagSlug(tag)}`),
 					}));
 				}),
 			);

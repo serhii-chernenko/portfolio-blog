@@ -1,5 +1,7 @@
 import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
+import { GET as getLlmsTxt } from './pages/llms.txt';
+import { GET as getLlmsFullTxt } from './pages/llms-full.txt';
 import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
 import {
 	httpOutcome,
@@ -80,6 +82,32 @@ const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 // assets serve it directly ahead of any Worker code — see that script and
 // docs/DNS-ROUTING.md.
 
+const APEX_ENDPOINTS: Record<string, (context: APIContext) => Promise<Response>> = {
+	'/llms.txt': getLlmsTxt,
+	'/llms-full.txt': getLlmsFullTxt,
+};
+const SITEMAP_ALIAS_PATHS = new Set(['/sitemap.xml', `${RUNTIME_BASE}/sitemap.xml`]);
+const SITEMAP_INDEX_PATH = `${RUNTIME_BASE}/sitemap-index.xml`;
+const SITEMAP_REDIRECT_CACHE_CONTROL = 'public, max-age=3600';
+
+function apexEndpointFor(request: Request, pathname: string) {
+	if (RUNTIME_BASE === '' || !['GET', 'HEAD'].includes(request.method)) return undefined;
+	return APEX_ENDPOINTS[pathname];
+}
+
+function redirectSitemapAlias(request: Request, url: URL): Response | null {
+	if (!SAFE_METHODS.includes(request.method) || !SITEMAP_ALIAS_PATHS.has(url.pathname)) {
+		return null;
+	}
+	return new Response(null, {
+		status: 301,
+		headers: {
+			location: new URL(SITEMAP_INDEX_PATH, url.origin).toString(),
+			'cache-control': SITEMAP_REDIRECT_CACHE_CONTROL,
+		},
+	});
+}
+
 function handleRequest(context: APIContext, next: MiddlewareNext) {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
@@ -104,7 +132,13 @@ function handleRequest(context: APIContext, next: MiddlewareNext) {
 		return next();
 	}
 
+	const sitemapRedirect = redirectSitemapAlias(request, url);
+	if (sitemapRedirect) return sitemapRedirect;
+
 	const { pathname, search } = context.url;
+
+	const apexEndpoint = apexEndpointFor(request, pathname);
+	if (apexEndpoint) return apexEndpoint(context);
 
 	for (const prefix of APEX_PREFIXES) {
 		if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {

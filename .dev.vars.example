@@ -51,6 +51,11 @@ PUBLIC_GISCUS_REPO_ID=
 PUBLIC_GISCUS_CATEGORY=Comments
 PUBLIC_GISCUS_CATEGORY_ID=
 
+# Search engine site-verification meta tags (fallback to DNS verification).
+# Empty → the tag is not rendered.
+PUBLIC_GOOGLE_SITE_VERIFICATION=
+PUBLIC_BING_SITE_VERIFICATION=
+
 # Cloudflare Web Analytics is auto-injected by Cloudflare's edge (auto-install
 # enabled for the serhiichernenko.com zone) — no token or env var needed here.
 

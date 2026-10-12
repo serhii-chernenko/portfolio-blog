@@ -9,7 +9,7 @@
 # Checks, in order:
 #   1. The canonical host (www) resolves (A and/or AAAA record present).
 #   2. www is proxied: resolves to a public Cloudflare edge IP, not 100::.
-#   3. www/blog serves the Worker (same-host 308 -> /blog/en/, then 2xx).
+#   3. www/blog serves the Worker (same-host 301 -> /blog/en/, then 2xx).
 #   4. The bare apex /blog 301-redirects to the canonical www host.
 #
 # Pure dig/curl — no Cloudflare auth required. Prints PASS/FAIL per check
@@ -112,7 +112,7 @@ else
   fail "No record to evaluate for proxy status (${CANON} unresolved)."
 fi
 
-# --- Check 3: www/blog serves the Worker (same-host 308 -> /blog/en/ -> 2xx) -
+# --- Check 3: www/blog serves the Worker (same-host 301 -> /blog/en/ -> 2xx) -
 # The Worker is bound to www. A redirect that leaves the www host means a
 # Redirect Rule / route is hijacking the canonical host.
 WWW_LOC="$(curl_location "$BLOG_BARE")"

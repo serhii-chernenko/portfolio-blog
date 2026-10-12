@@ -137,7 +137,7 @@ dropped.
 latter already emit the `newsletter_*` domain events, and unmatched routes are scanner noise. `route` is a template, never the raw path or query (confirm
 and unsubscribe URLs carry bearer tokens): `/api/subscribe`, `/api/confirm`, `/api/unsubscribe`,
 `/api/mcp`, `/api/emails/templates`, `/api/emails/templates/:slug`, `/admin/emails`,
-`/admin/emails/:slug`, `/:locale/unsubscribe`, `/llms.txt`, otherwise `/unknown`. `/api/events` and
+`/admin/emails/:slug`, `/:locale/unsubscribe`, `/llms.txt`, `/llms-full.txt`, otherwise `/unknown`. `/api/events` and
 Keystatic routes are not logged here.
 
 ## Privacy

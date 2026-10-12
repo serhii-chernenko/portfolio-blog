@@ -2,8 +2,9 @@ export const prerender = true;
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { getPublishedPosts, postUrl } from '../../lib/posts';
+import { localeHref, withPageBase } from '../../i18n/utils';
 import { ui } from '../../i18n/ui';
-import { isLocale, type Locale } from '../../i18n/config';
+import { htmlLangAttribute, isLocale, type Locale } from '../../i18n/config';
 
 export function getStaticPaths() {
 	return [{ params: { locale: 'en' } }, { params: { locale: 'uk' } }];
@@ -14,22 +15,25 @@ export async function GET(context: APIContext) {
 	const locale: Locale = isLocale(rawLocale) ? rawLocale : 'en';
 
 	const posts = await getPublishedPosts(locale);
-	const siteUrl = context.site?.toString() ?? 'https://chernenko.digital';
+	const site = context.site ?? new URL('https://www.serhiichernenko.com');
+	const channelUrl = new URL(localeHref(locale), site);
+	const feedUrl = new URL(withPageBase(`${locale}/rss.xml`), site);
 	const siteName = ui[locale]['site.name'];
 	const description = ui[locale]['site.description'];
-	const langCode = locale === 'en' ? 'en-US' : 'uk-UA';
+	const langCode = htmlLangAttribute[locale];
 
 	return rss({
 		title: `${siteName} — ${locale === 'en' ? 'Posts' : 'Дописи'}`,
 		description,
-		site: siteUrl,
+		site: channelUrl,
+		xmlns: { atom: 'http://www.w3.org/2005/Atom' },
 		items: posts.map((post) => ({
 			title: post.data.title,
 			description: post.data.description,
 			pubDate: post.data.publishedAt,
 			link: postUrl(post),
-			customData: `<language>${langCode}</language>`,
+			categories: post.data.tags,
 		})),
-		customData: `<language>${langCode}</language>`,
+		customData: `<language>${langCode}</language><atom:link href="${feedUrl.toString()}" rel="self" type="application/rss+xml" />`,
 	});
 }

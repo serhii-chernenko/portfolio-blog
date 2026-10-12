@@ -443,6 +443,7 @@ const STATIC_ROUTES = new Set([
 	'/api/emails/templates',
 	'/admin/emails',
 	'/llms.txt',
+	'/llms-full.txt',
 ]);
 
 export function normalizeRoute(pathname: string, base: string): string {

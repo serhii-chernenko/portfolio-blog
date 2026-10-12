@@ -368,9 +368,11 @@ const routeCases = [
 	['/blog/en/unsubscribe', '/blog', '/:locale/unsubscribe'],
 	['/blog/uk/unsubscribe', '/blog', '/:locale/unsubscribe'],
 	['/blog/llms.txt', '/blog', '/llms.txt'],
+	['/blog/llms-full.txt', '/blog', '/llms-full.txt'],
 	['/api/subscribe', '/', '/api/subscribe'],
 	['/en/unsubscribe', '/', '/:locale/unsubscribe'],
 	['/llms.txt', '', '/llms.txt'],
+	['/llms-full.txt', '', '/llms-full.txt'],
 	['/blog/does-not-exist', '/blog', '/unknown'],
 	['/blog', '/blog', '/unknown'],
 	['/blog/de/unsubscribe', '/blog', '/unknown'],
@@ -446,6 +448,7 @@ for (const route of [
 	'/admin/emails',
 	'/:locale/unsubscribe',
 	'/llms.txt',
+	'/llms-full.txt',
 ]) {
 	assert.equal(shouldEmitHttpEvent(route, 200), true, route);
 	assert.equal(shouldEmitHttpEvent(route, 404), true, route);

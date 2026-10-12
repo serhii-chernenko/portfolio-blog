@@ -3,7 +3,7 @@ export const prerender = true;
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostCard from '../../../components/PostCard.astro';
 import { getPublishedPosts } from '../../../lib/posts';
-import { useTranslations, localeHref } from '../../../i18n/utils';
+import { useTranslations, localeHref, mirroredLocaleHrefs } from '../../../i18n/utils';
 import { locales, type Locale } from '../../../i18n/config';
 
 export async function getStaticPaths() {
@@ -39,9 +39,10 @@ const t = useTranslations(locale);
 	title={t('nav.posts')}
 	description={t('site.description')}
 	locale={locale}
+	alternates={mirroredLocaleHrefs('posts/')}
 	pageType="post_list"
 >
-	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
 		<div class="flex flex-col gap-10">
 			<!-- Page header: centered title -->
 			<header class="max-w-3xl mx-auto space-y-3 text-center">
@@ -91,5 +92,5 @@ const t = useTranslations(locale);
 				</div>
 			)}
 		</div>
-	</main>
+	</div>
 </BaseLayout>

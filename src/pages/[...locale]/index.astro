@@ -5,7 +5,7 @@ import SubscribeForm from '../../components/SubscribeForm.astro';
 import Carousel from '../../components/Carousel.astro';
 import CarouselItem from '../../components/CarouselItem.astro';
 import { locales, type Locale } from '../../i18n/config';
-import { useTranslations, localeHref } from '../../i18n/utils';
+import { useTranslations, localeHref, mirroredLocaleHrefs } from '../../i18n/utils';
 import { getPublishedPosts, getTagsForLocale, tagSlug } from '../../lib/posts';
 import { getPagePath } from '../../lib/pages';
 
@@ -23,10 +23,7 @@ const allPosts = await getPublishedPosts(locale);
 const latest = allPosts.slice(0, 6);
 const tags = (await getTagsForLocale(locale)).slice(0, 14);
 
-const alternates: Record<Locale, string> = {
-	en: localeHref('en'),
-	uk: localeHref('uk'),
-};
+const alternates = mirroredLocaleHrefs();
 ---
 
 <BaseLayout

@@ -159,7 +159,7 @@ export const GET: APIRoute = async (context) => {
 			]);
 			const origin = new URL(context.request.url).origin;
 			const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-			const manageUrl = `${origin}${base}/${communicationLocale}/unsubscribe?token=${encodeURIComponent(manageToken)}`;
+			const manageUrl = `${origin}${base}/${communicationLocale}/unsubscribe/?token=${encodeURIComponent(manageToken)}`;
 			const globalOneClickUrl = `${origin}${base}/api/unsubscribe?token=${encodeURIComponent(globalOneClickToken)}&action=all&oneclick=1`;
 			const privacySlug = await resolvePageSlug('privacy', communicationLocale, 'privacy');
 			const privacyUrl = `${origin}${homeHrefFor(communicationLocale)}${privacySlug}/`;
@@ -186,5 +186,5 @@ export const GET: APIRoute = async (context) => {
 	reportResult(confirmation.changed ? 'confirmed' : 'already_confirmed', communicationLocale);
 
 	// Redirect to subscribe page with confirmed flag
-	return tokenRedirect(context, `${homeHrefFor(communicationLocale)}subscribe?confirmed=1`);
+	return tokenRedirect(context, `${homeHrefFor(communicationLocale)}subscribe/?confirmed=1`);
 };

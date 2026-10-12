@@ -7,7 +7,14 @@ const locale = getLocaleFromUrl(Astro.url);
 const t = useTranslations(locale);
 ---
 
-<BaseLayout title={t('404.title')} description={t('404.body')} locale={locale} pageType="not_found">
+<BaseLayout
+	title={t('404.title')}
+	description={t('404.body')}
+	locale={locale}
+	noIndex
+	omitCanonical
+	pageType="not_found"
+>
 	<section class="flex min-h-[90svh] items-center py-16 bg-base-200">
 		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col items-start justify-center grow gap-6">
 			<p class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest opacity-50">

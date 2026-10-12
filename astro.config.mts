@@ -7,6 +7,8 @@ import markdoc from '@astrojs/markdoc';
 import keystatic from '@keystatic/astro';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath } from 'node:url';
+import { createSitemapPolicy } from './src/lib/sitemap';
 
 // Canonical production URL — used at build time for sitemap.xml and RSS
 // absolute links. Runtime URLs are derived from the incoming request, so
@@ -50,18 +52,19 @@ const SITE = 'https://www.serhiichernenko.com';
 const LOCAL_MODE = process.env.PUBLIC_KEYSTATIC_MODE === 'local';
 const BASE_PATH = LOCAL_MODE ? '/' : '/blog';
 
+const sitemapPolicy = createSitemapPolicy({
+	site: SITE,
+	base: BASE_PATH,
+	contentRoot: fileURLToPath(new URL('./src/content', import.meta.url)),
+	includeDrafts: process.env.PREVIEW_MODE === 'true',
+});
+
 const integrations = [
 	react(),
 	markdoc(),
 	sitemap({
-		i18n: {
-			defaultLocale: 'en',
-			locales: { en: 'en-US', uk: 'uk-UA' },
-		},
-		// /blog/admin is Disallow'd in public/robots.txt — submitting it in the
-		// sitemap too gets flagged by Search Console ("submitted URL blocked by
-		// robots.txt"), and the route itself 404s outside local/preview mode.
-		filter: (page) => !page.includes('/blog/admin'),
+		filter: sitemapPolicy.filter,
+		serialize: sitemapPolicy.serialize,
 	}),
 	keystatic(), // always loaded — dev uses base `/`, prod uses `/blog/`
 ];
@@ -98,12 +101,6 @@ export default defineConfig({
 		defaultLocale: 'en',
 		routing: {
 			prefixDefaultLocale: true,
-			// src/pages/index.astro already implements this redirect as a prerendered
-			// static page. redirectToDefaultLocale: true makes Astro generate its own
-			// competing redirect at the same route — since Astro 7 changed route-priority
-			// resolution, that generated route now wins over the custom page instead of
-			// losing to it as it did on Astro 6, serving a slower SSR redirect with an
-			// added noindex tag instead of the custom page's instant one.
 			redirectToDefaultLocale: false,
 		},
 	},
@@ -147,6 +144,16 @@ export default defineConfig({
 				optional: true,
 			}),
 			PUBLIC_GISCUS_CATEGORY_ID: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_GOOGLE_SITE_VERIFICATION: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_BING_SITE_VERIFICATION: envField.string({
 				context: 'client',
 				access: 'public',
 				optional: true,

@@ -14,6 +14,9 @@ export interface Props {
 	description: string;
 	locale: Locale;
 	image?: string;
+	imageWidth?: number;
+	imageHeight?: number;
+	imageAlt?: string;
 	type?: 'website' | 'article';
 	publishedAt?: Date;
 	updatedAt?: Date;
@@ -26,6 +29,8 @@ export interface Props {
 	authorUrl?: string;
 	/** Prevent sensitive or utility pages from appearing in search results. */
 	noIndex?: boolean;
+	noIndexFollow?: boolean;
+	omitCanonical?: boolean;
 	pageType: PageType;
 	contentKey?: string;
 }
@@ -35,6 +40,9 @@ const {
 	description,
 	locale,
 	image,
+	imageWidth,
+	imageHeight,
+	imageAlt,
 	type,
 	publishedAt,
 	updatedAt,
@@ -43,6 +51,8 @@ const {
 	translatedUrls,
 	authorUrl,
 	noIndex = false,
+	noIndexFollow = false,
+	omitCanonical = false,
 	pageType,
 	contentKey,
 } = Astro.props;
@@ -58,6 +68,9 @@ const lang = htmlLangAttribute[locale];
 			description={description}
 			locale={locale}
 			image={image}
+			imageWidth={imageWidth}
+			imageHeight={imageHeight}
+			imageAlt={imageAlt}
 			type={type}
 			publishedAt={publishedAt}
 			updatedAt={updatedAt}
@@ -65,6 +78,9 @@ const lang = htmlLangAttribute[locale];
 			alternates={alternates}
 			authorUrl={authorUrl}
 			noIndex={noIndex}
+			noIndexFollow={noIndexFollow}
+			omitCanonical={omitCanonical}
+			pageType={pageType}
 		/>
 	</head>
 	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">
