@@ -2,21 +2,41 @@
 export const prerender = true;
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostCard from '../../../components/PostCard.astro';
-import { getPublishedPosts, getTagsForLocale, tagSlug } from '../../../lib/posts';
+import { getPostsForTagSlug, getTagsForLocale } from '../../../lib/posts';
+import type { AnyPost } from '../../../lib/posts';
 import { useTranslations, localeHref } from '../../../i18n/utils';
 import { locales, type Locale } from '../../../i18n/config';
+import { MIN_POSTS_FOR_TAG_INDEXING } from '../../../lib/tag-slug';
 
 export async function getStaticPaths() {
 	const paths = [];
+	const tagSlugsByLocale = Object.fromEntries(
+		await Promise.all(
+			locales.map(async (locale) => [
+				locale,
+				new Set((await getTagsForLocale(locale)).map(({ slug }) => slug)),
+			]),
+		),
+	) as Record<Locale, Set<string>>;
 	for (const locale of locales) {
 		const tags = await getTagsForLocale(locale);
-		for (const { tag } of tags) {
-			const slug = tagSlug(tag);
-			const posts = await getPublishedPosts(locale);
-			const filtered = posts.filter((p) => (p.data.tags ?? []).includes(tag));
+		for (const { tag, slug } of tags) {
+			const translatedUrls = Object.fromEntries(
+				locales.map((target) => [
+					target,
+					tagSlugsByLocale[target].has(slug)
+						? localeHref(target, `tags/${slug}`)
+						: localeHref(target, 'tags/'),
+				]),
+			) as Record<Locale, string>;
 			paths.push({
 				params: { locale, tag: slug },
-				props: { locale, tagLabel: tag, posts: filtered },
+				props: {
+					locale,
+					tagLabel: tag,
+					posts: await getPostsForTagSlug(locale, slug),
+					translatedUrls,
+				},
 			});
 		}
 	}
@@ -26,22 +46,25 @@ export async function getStaticPaths() {
 type Props = {
 	locale: Locale;
 	tagLabel: string;
-	posts: Awaited<ReturnType<typeof getPublishedPosts>>;
+	posts: AnyPost[];
+	translatedUrls: Record<Locale, string>;
 };
 
-const { locale, tagLabel, posts } = Astro.props as Props;
+const { locale, tagLabel, posts, translatedUrls } = Astro.props as Props;
 const t = useTranslations(locale);
 const title = t('tag.title', { tag: tagLabel });
 ---
 
 <BaseLayout
 	title={title}
-	description={t('site.description')}
+	description={`${title}. ${t('site.tagline')}`}
 	locale={locale}
+	translatedUrls={translatedUrls}
+	noIndexFollow={posts.length < MIN_POSTS_FOR_TAG_INDEXING}
 	pageType="tag"
 	contentKey={Astro.params.tag}
 >
-	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
 		<div class="flex flex-col gap-10">
 			<!-- Back + heading -->
 			<header class="space-y-4">
@@ -95,5 +118,5 @@ const title = t('tag.title', { tag: tagLabel });
 				</div>
 			)}
 		</div>
-	</main>
+	</div>
 </BaseLayout>

@@ -4,7 +4,7 @@ export const prerender = false;
 import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { defaultLocale, isLocale, locales, type Locale } from '../../i18n/config';
-import { useTranslations, withBase } from '../../i18n/utils';
+import { useTranslations, withBase, localeHref } from '../../i18n/utils';
 import { getDB, getSubscriberPreferences, type SubscriberPreferences } from '../../lib/d1';
 import { verifyManageToken } from '../../lib/tokens';
 import type { UIKey } from '../../i18n/ui';
@@ -56,7 +56,7 @@ const postAction = withBase('api/unsubscribe');
 const translatedUrls = Object.fromEntries(
 	locales.map((targetLocale) => [
 		targetLocale,
-		`${withBase(`${targetLocale}/unsubscribe`)}?token=${encodeURIComponent(token)}`,
+		`${localeHref(targetLocale, 'unsubscribe/')}?token=${encodeURIComponent(token)}`,
 	]),
 ) as Record<Locale, string>;
 const anyEnabled = preferences?.languages.en || preferences?.languages.uk;

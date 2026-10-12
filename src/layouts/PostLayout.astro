@@ -34,11 +34,8 @@ const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MOD
 // Tags with computed slugs
 const tags = post.data.tags ?? [];
 
-// Resolve hero image as og:image when available so social shares use the post image
-// (Astro returns ImageMetadata for image() schema fields and a string for raw paths.)
-const heroImageHref =
-	typeof post.data.heroImage === 'string' ? post.data.heroImage : post.data.heroImage?.src;
-const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : undefined;
+const heroImage = post.data.heroImage;
+const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : undefined;
 ---
 
 <BaseLayout
@@ -46,6 +43,9 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 	description={post.data.description}
 	locale={locale}
 	image={ogImage}
+	imageWidth={heroImage?.width}
+	imageHeight={heroImage?.height}
+	imageAlt={post.data.heroImageAlt || post.data.title}
 	type="article"
 	publishedAt={post.data.publishedAt}
 	updatedAt={post.data.updatedAt}

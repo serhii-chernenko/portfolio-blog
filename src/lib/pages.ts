@@ -1,6 +1,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import type { Locale } from '../i18n/config';
-import { withBase } from '../i18n/utils';
+import { withPageBase } from '../i18n/utils';
 import { getPageSlug } from './page-slug';
 
 export type AnyPage = CollectionEntry<'pagesEn'> | CollectionEntry<'pagesUk'>;
@@ -17,7 +17,7 @@ export function localeOf(page: AnyPage): Locale {
 
 export function pageUrl(page: AnyPage): string {
 	const locale = localeOf(page);
-	return withBase(`${locale}/${getPageSlug(page)}`);
+	return withPageBase(`${locale}/${getPageSlug(page)}`);
 }
 
 export async function getPages(locale: Locale): Promise<AnyPage[]> {
@@ -36,7 +36,7 @@ export async function getPageByKey(
 export async function getPagePath(translationKey: string, locale: Locale): Promise<string> {
 	const page = await getPageByKey(translationKey, locale);
 	if (page) return pageUrl(page);
-	return withBase(`${locale}/`);
+	return withPageBase(`${locale}/`);
 }
 
 /**

@@ -182,12 +182,12 @@ These are intentionally left as placeholders — none of them have safe defaults
 
 There are three distinct sources for runtime values — use the right one for each variable:
 
-| Source                            | What it covers                                                                                                | How to access in code                                                                                                             |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `astro:env/server`                | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'`                                                                  |
-| `astro:env/client`                | Public build-time vars: `PUBLIC_GISCUS_*`                                                                     | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`                                                                           |
-| `cloudflare:workers` env          | Bindings (DB, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                                       | `import { env } from 'cloudflare:workers'`                                                                                        |
-| `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts`         | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
+| Source                            | What it covers                                                                                                          | How to access in code                                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `astro:env/server`                | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional)           | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'`                                                                  |
+| `astro:env/client`                | Public build-time vars: `PUBLIC_GISCUS_*`, optional `PUBLIC_GOOGLE_SITE_VERIFICATION` / `PUBLIC_BING_SITE_VERIFICATION` | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`                                                                           |
+| `cloudflare:workers` env          | Bindings (DB, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                                                 | `import { env } from 'cloudflare:workers'`                                                                                        |
+| `process.env` / `import.meta.env` | Config-only, build time only: `PUBLIC_KEYSTATIC_MODE` in `astro.config.mts` and `keystatic.config.ts`                   | `process.env.PUBLIC_KEYSTATIC_MODE` (in astro.config), `import.meta.env.PUBLIC_KEYSTATIC_MODE` (in keystatic.config / middleware) |
 
 > **Removed in v13:** `Astro.locals.runtime.env` no longer exists. Do not use it. All binding access goes through `cloudflare:workers`.
 

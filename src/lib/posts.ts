@@ -1,7 +1,10 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import type { Locale } from '../i18n/config';
-import { withBase } from '../i18n/utils';
+import { withPageBase } from '../i18n/utils';
 import { getPostSlug } from './post-slug';
+import { tagSlug } from './tag-slug';
+
+export { tagSlug };
 
 export type AnyPost = CollectionEntry<'postsEn'> | CollectionEntry<'postsUk'>;
 
@@ -18,7 +21,7 @@ export function localeOf(post: AnyPost): Locale {
 export function postUrl(post: AnyPost): string {
 	const locale = localeOf(post);
 	const slug = getPostSlug(post);
-	return withBase(`${locale}/posts/${slug}`);
+	return withPageBase(`${locale}/posts/${slug}`);
 }
 
 export async function getPublishedPosts(locale: Locale): Promise<AnyPost[]> {
@@ -38,24 +41,32 @@ export async function getAllPublishedPosts(): Promise<AnyPost[]> {
 	return [...en, ...uk];
 }
 
-export async function getTagsForLocale(locale: Locale): Promise<{ tag: string; count: number }[]> {
-	const posts = await getPublishedPosts(locale);
-	const counts = new Map<string, number>();
-	for (const p of posts) {
-		for (const tag of p.data.tags ?? []) {
-			counts.set(tag, (counts.get(tag) ?? 0) + 1);
-		}
-	}
-	return Array.from(counts.entries())
-		.map(([tag, count]) => ({ tag, count }))
-		.sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+export function postHasTagSlug(post: AnyPost, slug: string): boolean {
+	return (post.data.tags ?? []).some((tag) => tagSlug(tag) === slug);
 }
 
-export function tagSlug(tag: string): string {
-	return tag
-		.toLowerCase()
-		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/[^a-z0-9Ѐ-ӿ]+/g, '-')
-		.replace(/^-+|-+$/g, '');
+export async function getPostsForTagSlug(locale: Locale, slug: string): Promise<AnyPost[]> {
+	const posts = await getPublishedPosts(locale);
+	return posts.filter((post) => postHasTagSlug(post, slug));
+}
+
+export async function getTagsForLocale(
+	locale: Locale,
+): Promise<{ tag: string; slug: string; count: number }[]> {
+	const posts = await getPublishedPosts(locale);
+	const bySlug = new Map<string, { tag: string; count: number }>();
+	for (const post of posts) {
+		const slugsInPost = new Set<string>();
+		for (const tag of post.data.tags ?? []) {
+			const slug = tagSlug(tag);
+			if (slugsInPost.has(slug)) continue;
+			slugsInPost.add(slug);
+			const entry = bySlug.get(slug);
+			if (entry) entry.count += 1;
+			else bySlug.set(slug, { tag, count: 1 });
+		}
+	}
+	return Array.from(bySlug, ([slug, { tag, count }]) => ({ tag, slug, count })).sort(
+		(a, b) => b.count - a.count || a.tag.localeCompare(b.tag),
+	);
 }

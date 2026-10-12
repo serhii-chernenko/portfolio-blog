@@ -176,6 +176,22 @@
 			"pattern": "www.serhiichernenko.com/robots.txt",
 			"zone_name": "serhiichernenko.com",
 		},
+		{
+			"pattern": "www.serhiichernenko.com/favicon.ico",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "www.serhiichernenko.com/llms.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "www.serhiichernenko.com/llms-full.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "www.serhiichernenko.com/sitemap.xml",
+			"zone_name": "serhiichernenko.com",
+		},
 	],
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
 	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.

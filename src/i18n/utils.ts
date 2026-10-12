@@ -2,6 +2,7 @@ import { ui, type UIKey } from './ui';
 import { defaultLocale, isLocale, type Locale } from './config';
 import { getPostSlug } from '../lib/post-slug';
 import { getPageSlug } from '../lib/page-slug';
+import { withTrailingSlash } from '../lib/trailing-slash';
 
 export function getLocaleFromUrl(url: URL): Locale {
 	const [, maybeLocale] = url.pathname.split('/');
@@ -31,9 +32,18 @@ export function withBase(path: string): string {
 	return clean ? `${base}/${clean}` : `${base}/`;
 }
 
+export function withPageBase(path: string): string {
+	const clean = path.replace(/^\/+/, '');
+	return withBase(withTrailingSlash(clean));
+}
+
 export function localeHref(locale: Locale, path = ''): string {
 	const clean = path.replace(/^\/+/, '');
-	return withBase(clean ? `${locale}/${clean}` : `${locale}/`);
+	return withPageBase(clean ? `${locale}/${clean}` : `${locale}/`);
+}
+
+export function mirroredLocaleHrefs(path = ''): Record<Locale, string> {
+	return { en: localeHref('en', path), uk: localeHref('uk', path) };
 }
 
 /**
@@ -53,7 +63,7 @@ export async function getTranslatedPostUrls(
 	const result: Record<Locale, string | null> = { en: null, uk: null };
 	for (const m of matches) {
 		const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';
-		result[locale] = withBase(`${locale}/posts/${getPostSlug(m)}`);
+		result[locale] = withPageBase(`${locale}/posts/${getPostSlug(m)}`);
 	}
 	return result;
 }
@@ -74,7 +84,7 @@ export async function getTranslatedPageUrls(
 	const result: Record<Locale, string | null> = { en: null, uk: null };
 	for (const m of matches) {
 		const locale: Locale = m.collection === 'pagesEn' ? 'en' : 'uk';
-		result[locale] = withBase(`${locale}/${getPageSlug(m)}`);
+		result[locale] = withPageBase(`${locale}/${getPageSlug(m)}`);
 	}
 	return result;
 }
