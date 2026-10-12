@@ -14,7 +14,12 @@ const t = useTranslations(locale);
 const tags = await getTagsForLocale(locale);
 ---
 
-<BaseLayout title={t('tags.title')} description={t('site.description')} locale={locale}>
+<BaseLayout
+	title={t('tags.title')}
+	description={t('site.description')}
+	locale={locale}
+	pageType="tag_list"
+>
 	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
 		<div class="flex flex-col gap-10">
 			<header class="max-w-3xl mx-auto space-y-3 text-center">

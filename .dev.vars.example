@@ -32,6 +32,7 @@ SUBSCRIBE_RATE_LIMIT_SECRET=local-dev-only-secret-replace-in-prod
 # Optional locally — leave empty to skip notifications. notify() no-ops gracefully.
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+NEW_RELIC_LICENSE_KEY=
 
 # Keystatic GitHub mode — REQUIRED for `pnpm wrangler:dev` (the Worker runtime
 # can't use Keystatic local storage; only `pnpm dev` can). Get the values from

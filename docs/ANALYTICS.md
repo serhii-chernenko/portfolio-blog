@@ -2,6 +2,8 @@
 
 This document covers the server-side Analytics Engine integration, which runs alongside Cloudflare Web Analytics (the client-side RUM layer). Web Analytics is injected **automatically** by Cloudflare's edge for the proxied zone — there is no beacon script or `PUBLIC_CF_ANALYTICS_TOKEN` in this app.
 
+> **See also:** [`docs/OBSERVABILITY.md`](./OBSERVABILITY.md). Newsletter events are now also emitted to New Relic (EU) through evlog with outcome detail (result categories, locale, source, enabled languages). Analytics Engine, described below, stays the lightweight aggregate counter; New Relic carries the richer funnel, page-view, engagement, and SSR health data.
+
 ---
 
 ## Architecture overview

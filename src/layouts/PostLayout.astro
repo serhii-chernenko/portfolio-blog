@@ -53,6 +53,8 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 	alternates={alternates ?? translatedUrls}
 	translatedUrls={translatedUrls}
 	authorUrl={authorUrl}
+	pageType="post"
+	contentKey={post.data.translationKey}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">

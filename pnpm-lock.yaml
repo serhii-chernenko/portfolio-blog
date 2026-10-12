@@ -48,6 +48,9 @@ importers:
       astro:
         specifier: ^7.1.6
         version: 7.1.6(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(@types/node@24.12.4)(idb-keyval@6.2.2)(jiti@2.7.0)(yaml@2.9.0)
+      evlog:
+        specifier: 2.24.0
+        version: 2.24.0(h3@1.15.11)(ofetch@1.5.1)(react@19.2.6)(vite@8.2.0(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -3507,6 +3510,66 @@ packages:
 
   eventemitter3@5.0.4:
     resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
+
+  evlog@2.24.0:
+    resolution: {integrity: sha512-sfxb/nwGIqCBk0UeFezNMxRtGZaf4y70PEYECQGIMJVEYuzjAsHn2LouiMiattfE57ygc8TqolJSDjc0imTJRw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@nestjs/common': '>=11.1.28'
+      '@nuxt/kit': ^4.4.2
+      '@orpc/server': '>=1.14.8'
+      '@tanstack/start-client-core': ^1.170.14
+      ai: '>=6.0.168 <8.0.0'
+      elysia: '>=1.4.29'
+      eve: '>=0.24.3'
+      express: '>=5.2.1'
+      fastify: '>=5.10.0'
+      h3: ^1.15.11
+      hono: '>=4.12.30'
+      next: '>=16.2.10'
+      nitro: ^3.0.260311-beta
+      nitropack: ^2.13.4
+      ofetch: ^1.5.1
+      react: '>=19.2.7'
+      react-router: '>=7.18.1'
+      vite: ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      '@nestjs/common':
+        optional: true
+      '@nuxt/kit':
+        optional: true
+      '@orpc/server':
+        optional: true
+      '@tanstack/start-client-core':
+        optional: true
+      ai:
+        optional: true
+      elysia:
+        optional: true
+      eve:
+        optional: true
+      express:
+        optional: true
+      fastify:
+        optional: true
+      h3:
+        optional: true
+      hono:
+        optional: true
+      next:
+        optional: true
+      nitro:
+        optional: true
+      nitropack:
+        optional: true
+      ofetch:
+        optional: true
+      react:
+        optional: true
+      react-router:
+        optional: true
+      vite:
+        optional: true
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
@@ -9201,6 +9264,13 @@ snapshots:
   event-target-shim@6.0.2: {}
 
   eventemitter3@5.0.4: {}
+
+  evlog@2.24.0(h3@1.15.11)(ofetch@1.5.1)(react@19.2.6)(vite@8.2.0(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)):
+    optionalDependencies:
+      h3: 1.15.11
+      ofetch: 1.5.1
+      react: 19.2.6
+      vite: 8.2.0(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)
 
   extend@3.0.2: {}
 

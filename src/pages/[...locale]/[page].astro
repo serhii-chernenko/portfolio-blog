@@ -44,6 +44,8 @@ const { Content } = await render(page);
 	description={page.data.description}
 	locale={locale}
 	translatedUrls={alternates}
+	pageType="page"
+	contentKey={page.data.translationKey}
 >
 	<!-- Header section with bg-base-200 -->
 	<section class="bg-base-200">

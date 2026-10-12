@@ -74,6 +74,7 @@ function hrefFor(target: Locale): string {
 					<a
 						href={hrefFor(loc)}
 						hreflang={htmlLangAttribute[loc]}
+						data-telemetry-locale={loc}
 						role="menuitem"
 						aria-current={loc === locale ? 'true' : undefined}
 						class={loc === locale ? 'active' : ''}

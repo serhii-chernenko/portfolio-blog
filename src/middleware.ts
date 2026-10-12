@@ -1,4 +1,12 @@
+import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
+import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
+import {
+	httpOutcome,
+	isUntrackedRoute,
+	normalizeRoute,
+	shouldEmitHttpEvent,
+} from './lib/telemetry-schema';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -72,7 +80,7 @@ const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
 // assets serve it directly ahead of any Worker code — see that script and
 // docs/DNS-ROUTING.md.
 
-export const onRequest = defineMiddleware((context, next) => {
+function handleRequest(context: APIContext, next: MiddlewareNext) {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
 		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
@@ -105,4 +113,37 @@ export const onRequest = defineMiddleware((context, next) => {
 	}
 
 	return next();
+}
+
+export const onRequest = defineMiddleware(async (context, next) => {
+	const { request, url, isPrerendered } = context;
+	if (isPrerendered || isUntrackedRoute(url.pathname, RUNTIME_BASE)) {
+		return handleRequest(context, next);
+	}
+
+	const route = normalizeRoute(url.pathname, RUNTIME_BASE);
+	const telemetry = startTelemetryEvent(telemetryInputFromContext(context), {
+		method: request.method,
+		path: route,
+	});
+	const report = (status: number, thrownErrorType?: string) => {
+		if (!shouldEmitHttpEvent(route, status)) return;
+		telemetry.emit({
+			eventName: 'http_request_completed',
+			outcome: httpOutcome(status),
+			method: request.method,
+			route,
+			status,
+			errorType: thrownErrorType,
+		});
+	};
+
+	try {
+		const response = await handleRequest(context, next);
+		report(response.status);
+		return response;
+	} catch (error) {
+		report(500, errorType(error));
+		throw error;
+	}
 });

@@ -21,6 +21,7 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs",
+		"test:telemetry": "node scripts/test-telemetry.mjs",
 		"prepare": "husky"
 	},
 	"dependencies": {
@@ -36,6 +37,7 @@
 		"@modelcontextprotocol/server": "^2.0.0",
 		"@react-email/editor": "1.4.1",
 		"astro": "^7.1.6",
+		"evlog": "2.24.0",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.6",
 		"sharp": "^0.34.3",
