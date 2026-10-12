@@ -1,8 +1,8 @@
 ---
-title: "ChatGPT Meets Telegram: Building My Own AI Bot"
+title: "ChatGPT and Telegram: How to Make Two Platforms Work Together"
 translationKey: chatgpt-telegram-bot-integration
-description: How I built a Telegram bot on Node.js that talks to ChatGPT through the OpenAI API, from setup to an endless conversation.
-publishedAt: 2023-03-17T17:00:03.000Z
+description: How I built a Telegram bot on Node.js that talks to ChatGPT through the OpenAI API.
+publishedAt: 2023-03-17T15:00:03.000Z
 tags:
   - chatgpt
   - telegram
@@ -11,18 +11,16 @@ tags:
   - bots
   - artificial-intelligence
 heroImage: /src/assets/posts/chatgpt-telegram-bot-integration/hero.png
-heroImageAlt: "A hello-from-the-2000s meme, a screenshot of an old-school chat interface"
+heroImageAlt: "Clippy, the Microsoft Office paperclip assistant, in front of a sheet of yellow lined paper"
 draft: false
 ---
-This article started life as a post on [DOU](https://dou.ua/forums/topic/42590/). I'm bringing it over here mostly unchanged.
-
 Is ChatGPT already in Telegram? Spoiler — of course not, and it's unlikely to arrive "out of the box," as they say. So what's stopping us from stuffing it in there ourselves? Nothing at all! That's exactly what we're doing today...
 
-Hi everyone, I'm Serhii Chernenko, a Magento Front-End Lead developer. Personally, I spend a lot more time in Telegram than I'd like to admit. What I like about it: all my friends and important conversations are there, the app is cross-platform, and it works even on a very slow connection — on trains, in the mountains (perfect time to travel, right?), and during the recent regular blackouts that mattered a lot more than usual.
+Hi everyone, I'm Serhii Chernenko, a Magento Front-End Lead developer. Personally, I spend a lot more time in Telegram than I'd like to admit. What I like about it: all my friends and important conversations are there, the app is cross-platform, and it works even on a very slow connection — on trains, in the mountains (perfect time to travel, right?), and during the recent frequent power outages, oh boy, was that noticeable.
 
-Ever since [ChatGPT](https://chat.openai.com/) showed up, it's all anyone talks about. For a long time it wasn't officially available in Ukraine, but people still found ways to sign up and try the new thing. There was clearly demand, so I had to see for myself what kind of beast this was.
+Ever since [ChatGPT](https://chat.openai.com/) showed up, it's all anyone talks about. For a long time it wasn't available in Ukraine, but people still found ways to sign up and try the new thing. There was clearly demand, so I had to see for myself what kind of beast this was.
 
-The hype inflated expectations, and that's understandable. But does that kill the desire to actually use it? Not at all — especially once you figure out what you want it for. For me, that's advanced search. Nothing more, nothing less.
+The hype inflated expectations, and that's understandable. But does that kill the desire to actually use it? Not at all — especially once you figure out what you want it for. For me, that's advanced search. I don't expect more, and I don't need more.
 
 But if search were limited to work tasks and StackOverflow, closing tickets would be a lot simpler. We look up information every day, and far more often than we realize: we google things, ask family, friends, acquaintances, colleagues; scroll through threads, browser bookmarks, Slack search results; use Google and DuckDuckGo; read Telegram channels, Twitter threads, and watch Instagram stories.
 
@@ -71,14 +69,14 @@ npm install --save-dev nodemon
 In short:
 
 1. [**openai**](https://www.npmjs.com/package/openai) — not my idea, the Open AI docs say so.
-2. [**telegraf**](https://www.npmjs.com/package/telegraf) — the [Telegraf](https://github.com/telegraf/telegraf) framework ([docs](https://telegraf.js.org/index.html), [bot examples](https://github.com/feathers-studio/telegraf-docs/tree/master/examples)) makes working with the [Telegram API](https://core.telegram.org/bots/samples) on Node much nicer. More abstractions for the god of abstractions.
+2. [**telegraf**](https://www.npmjs.com/package/telegraf) — the [Telegraf](https://github.com/telegraf/telegraf) framework ([docs](https://telegraf.js.org/index.html), [bot examples](https://github.com/feathers-studio/telegraf-docs/tree/master/examples)) makes working with the [Telegram API](https://core.telegram.org/bots/samples) on Node a lot more fun. More abstractions for the god of abstractions.
 3. [**@puregram/session**](https://www.npmjs.com/package/@puregram/session) — instead of complicating the bot with databases or writing state to some `*.json` file, we can keep dialogs in the bot's context. Recent versions of Telegraf dropped built-in session support, so we lean on this package to fill the gap.
 4. [**dotenv**](https://www.npmjs.com/package/dotenv) — we'll store our ENV variables here, to look like we understand architecture (we don't).
 5. [**nodemon**](https://www.npmjs.com/package/nodemon) — lets us run a dev server that restarts itself every time we change a file. The `--save-dev` flag means this package won't get installed in production mode, since it's dev-only.
 
 ### First files
 
-Create (imperative-abusive form, yeah) 2 files:
+Create (yes, I'm bossing you around) 2 files:
 
 ```
 touch index.js .env
@@ -137,7 +135,7 @@ bot.launch();
 
 That's all it takes to be happy and get the bot running. To make sure this creature is actually alive, let's have it say something. Write the next pieces of code between the comments I left.
 
-Add the function that fires the first time a conversation with the bot starts, or via the inline `/start` command:
+Add the function that fires the first time a conversation with the bot starts, or via the `/start` command:
 
 ```javascript
 bot.start(async ctx => await ctx.sendMessage('Hello there!'));
@@ -151,7 +149,7 @@ nodemon index.js
 
 Go to the chat with the bot in Telegram and hit /start. You should get "Hello there!" back.
 
-![Screenshot of the Telegram bot replying "Hello there!"](/src/assets/posts/chatgpt-telegram-bot-integration/inline-1.png)
+![The Star Wars "Hello there" meme: General Grievous greets Obi-Wan Kenobi, lightsabers drawn](/src/assets/posts/chatgpt-telegram-bot-integration/inline-1.png)
 
 From here on, nodemon should auto-restart the server on any change to `index.js`, so we can forget about the terminal for a while.
 
@@ -289,7 +287,7 @@ try {
 
 #### Conversation format
 
-Question-and-answer is nice, sure, but the Open AI web interface lets us actually hold a conversation with the AI. We can point to something based on previous answers — ask for a translation, adjust a response based on extra info, and so on. That's exactly what I wanted to reproduce in the Telegram bot.
+Question-and-answer is nice, sure, but the Open AI web interface lets us actually hold a conversation with the AI. We can refer back to previous answers — ask for a translation, adjust a response based on extra info, and so on. That's exactly what I wanted to reproduce in the Telegram bot.
 
 After we added logging in dev mode:
 
@@ -412,7 +410,7 @@ const slicedContext = dialog => {
 };
 ```
 
-Here, through recursion, we run through the dialog array as many times as needed until the total character count is at or below the max available context length of 4096 tokens. And don't forget to subtract the max number of tokens expected in the API's response — as a reminder, that's controlled by the `max_tokens` option.
+Here, through recursion, we run through the dialog array as many times as needed until the total number of tokens is at or below the max available context length of 4096 tokens. And don't forget to subtract the max number of tokens expected in the API's response — as a reminder, that's controlled by the `max_tokens` option.
 
 #### The result
 
@@ -539,4 +537,4 @@ We're living in interesting, if dark, times. With the war, the crisis, unemploym
 
 Updates and tools like this, the ones the whole world is talking about, can remind us that life goes on, that progress isn't going anywhere, and that we can be part of it and use these new things to make our everyday tasks a little easier and more efficient.
 
-If you read all the way to the end, come subscribe to my [YouTube channel](https://youtube.com/@serhii.chernenko) — that's where I record a free Magento 2 front-end course.
+If you've read this far, I invite you to subscribe to my [YouTube channel](https://youtube.com/@serhii.chernenko) — not for self-promotion, since I was told self-promotion isn't allowed here, but to help grow and spread Ukrainian-language YouTube. There I record a free Magento 2 frontend course.
