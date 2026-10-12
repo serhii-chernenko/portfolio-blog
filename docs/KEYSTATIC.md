@@ -61,9 +61,11 @@ When it finishes, GitHub redirects back with **four** values:
 
 > **Callback and homepage URLs.** The GitHub App lists the canonical-host OAuth
 > callback `https://serhiichernenko.com/api/keystatic/github/oauth/callback` and
-> the homepage `https://serhiichernenko.com/keystatic`. The old `www` callback
-> can be removed: `www` now 308-redirects to the apex before Workers run (see
-> _www → apex migration_ in [`DNS-ROUTING.md`](./DNS-ROUTING.md)).
+> the homepage `https://serhiichernenko.com/keystatic`, plus the local
+> `127.0.0.1` callbacks. The `www` callback was removed on 2026-10-12: `www`
+> 308-redirects to the apex before Workers run (see _www → apex migration_ in
+> [`DNS-ROUTING.md`](./DNS-ROUTING.md)), so Keystatic always sends the apex
+> callback. Login and saving on the apex were verified the same day.
 
 ### 3. Capture the values
 
