@@ -26,7 +26,9 @@ const t = useTranslations(locale);
 		data-message-error={t('subscribe.error')}
 		aria-label={t('subscribe.title')}
 	>
-		<label for="subscribe-email" class="sr-only">{t('subscribe.email')}</label>
+		<label for="subscribe-email" class="sr-only">
+			{t('subscribe.email')}
+		</label>
 		<input
 			id="subscribe-email"
 			type="email"

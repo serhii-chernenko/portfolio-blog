@@ -28,40 +28,36 @@ const formattedDate = post.data.publishedAt.toLocaleDateString(
 		class="group card flex size-full flex-col overflow-hidden bg-base-100 no-underline shadow-sm ring-1 ring-base-300 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 focus-visible:motion-safe:shadow-xl focus-visible:motion-safe:-translate-y-1"
 	>
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
-			{
-				post.data.heroImage ? (
-					<img
-						src={
-							typeof post.data.heroImage === 'string'
-								? post.data.heroImage
-								: post.data.heroImage.src
-						}
-						alt={post.data.heroImageAlt ?? post.data.title}
-						class="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:motion-safe:scale-[1.02] group-focus-within:motion-safe:scale-[1.02]"
-						loading="lazy"
-						decoding="async"
-					/>
-				) : (
-					<div class="flex size-full items-center justify-center">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							class="size-12 opacity-30"
-							aria-hidden="true"
-						>
-							<rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-							<circle cx="9" cy="9" r="2" />
-							<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-						</svg>
-						<span class="sr-only">No image</span>
-					</div>
-				)
-			}
+			{post.data.heroImage ? (
+				<img
+					src={
+						typeof post.data.heroImage === 'string' ? post.data.heroImage : post.data.heroImage.src
+					}
+					alt={post.data.heroImageAlt ?? post.data.title}
+					class="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:motion-safe:scale-[1.02] group-focus-within:motion-safe:scale-[1.02]"
+					loading="lazy"
+					decoding="async"
+				/>
+			) : (
+				<div class="flex size-full items-center justify-center">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="size-12 opacity-30"
+						aria-hidden="true"
+					>
+						<rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+						<circle cx="9" cy="9" r="2" />
+						<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+					</svg>
+					<span class="sr-only">No image</span>
+				</div>
+			)}
 		</figure>
 
 		<div class="card-body grow gap-4">
@@ -77,11 +73,9 @@ const formattedDate = post.data.publishedAt.toLocaleDateString(
 
 			<h2 class="card-title text-xl leading-tight">{post.data.title}</h2>
 
-			{
-				post.data.description && (
-					<p class="text-sm text-base-content/70 line-clamp-3">{post.data.description}</p>
-				)
-			}
+			{post.data.description && (
+				<p class="text-sm text-base-content/70 line-clamp-3">{post.data.description}</p>
+			)}
 
 			<div class="card-actions justify-end">
 				<span class="group/cta btn btn-primary btn-sm">
