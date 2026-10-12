@@ -10,7 +10,7 @@ tags:
   - ci-cd
   - devops
 heroImage: /src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/hero.jpg
-heroImageAlt: "Коментар бота GitHub Actions «Deployed to Cloudflare Workers» із таблицею: розмір бандла, час збірки, коміти, превью-URL"
+heroImageAlt: "Коментар бота GitHub Actions «Deployed to Cloudflare Workers» із таблицею: розмір бандла, час збірки, коміти, автор, превью-URL"
 draft: false
 ---
 Я створив власну інтеграцію GitHub Actions для деплою в Cloudflare Workers. У ній більше можливостей і кроків збірки — зокрема запуск лінтерів і тестів, — і вона зручніша. Я скоротив час збірки з 8 хвилин до якихось 2,5 — утричі швидше.
@@ -21,11 +21,11 @@ draft: false
 
 Завдання: побудувати воркфлоу для продакшн- і превью-збірок у Cloudflare Workers. Продакшн-збірка запускається лише пушем або мерджем pull request у захищену гілку main. У Cloudflare є готова інтеграція з GitHub.
 
-Але вона вміє лише дві команди: build і deploy. І навіть так збірка триває 6–8 хвилин залежно від фреймворку. Вона також не дає зручного способу запускати лінтери й тести.
+Але вона вміє лише дві команди: build і deploy. І навіть попри це збірка триває 6–8 хвилин залежно від фреймворку. Вона також не дає зручного способу запускати лінтери й тести.
 
 ![Сторінка Build details у Cloudflare: збірка завершилася помилкою за 7 хвилин 18 секунд, з них 5 хвилин 49 секунд — етап Building application](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-2.png)
 
-Що в їхній інтеграції справді класно, так це привітні коментарі, які вона лишає в PR для превью-деплоїв.
+Що в їхній інтеграції справді класно — це привітні коментарі, які вона лишає в PR для превью-деплоїв.
 
 ![Коментар бота Cloudflare в PR «Deploying with Cloudflare Workers» зі статусом Deployment failed](/src/assets/posts/3x-shvydshe-yak-ya-pryskoryv-deploy-cloudflare-worker/inline-3.png)
 
