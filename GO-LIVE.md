@@ -229,10 +229,12 @@ records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
       after `pnpm wrangler:deploy` (the build regenerates the deployed config — a
       bare `wrangler deploy` reuses the old routes). Confirm with
       `pnpm exec wrangler deploy --dry-run | grep serhii`.
-- [ ] **GitHub App URLs.** List the callback
-      `https://serhiichernenko.com/api/keystatic/github/oauth/callback` and the
-      homepage `https://serhiichernenko.com/keystatic` on the GitHub App (see
-      `docs/KEYSTATIC.md`); the old `www` callback can be removed later.
+- [x] **GitHub App URLs.** The GitHub App lists only the callback
+      `https://serhiichernenko.com/api/keystatic/github/oauth/callback` (plus the
+      local `127.0.0.1` ones) and the homepage
+      `https://serhiichernenko.com/keystatic`; the `www` callback was removed on
+      2026-10-12 after login and saving were verified on the apex (see
+      `docs/KEYSTATIC.md`).
 - [ ] Decide what serves the host root `/` (intentionally **not** bound to this
       Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
