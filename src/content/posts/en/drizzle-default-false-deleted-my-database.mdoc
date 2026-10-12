@@ -12,7 +12,7 @@ tags:
   - database
   - migrations
 heroImage: /src/assets/posts/drizzle-default-false-deleted-my-database/hero.png
-heroImageAlt: A cascading chain of broken database tables
+heroImageAlt: Git diff of the auth.ts schema where the emailVerified column changes from .notNull() to .default(false).notNull()
 draft: false
 ---
 So last Friday night I shipped what looked like the most boring schema change of my career. One line, one default value, a migration that drizzle-kit generated for me without complaining. I clicked the button. Five minutes later most of my database was gone.
@@ -190,7 +190,7 @@ So the working solution exists in the sense that a unicycle exists. You can tech
 
 I wrapped the whole thing in pnpm matrix so anyone can reproduce it in two minutes. Here's what it prints:
 
-![pnpm matrix output](/src/assets/posts/drizzle-default-false-deleted-my-database/inline-1.png)
+![pnpm matrix output: terminal summary table of migration test results per path, where only the one-connection one-exec SQLite run preserves users, chats and messages](/src/assets/posts/drizzle-default-false-deleted-my-database/inline-1.png)
 
 Nine out of ten paths lose data. The tenth requires you to bypass the framework. MySQL and Postgres don't care because their ALTER COLUMN ... SET DEFAULT is a one-statement in-place metadata change—no rebuild, no DROP, no cascade.
 
@@ -220,4 +220,4 @@ PS: Finally, I asked Claude (Opus 4.7, which was used for the suggestion and cha
 
 > I am genuinely sorry.
 
-![I am genuinely sorry (c) Claude](/src/assets/posts/drizzle-default-false-deleted-my-database/inline-2.png)
+![I am genuinely sorry (c) Claude: Claude Code terminal message apologizing for a DROP TABLE users migration that cascaded through foreign keys](/src/assets/posts/drizzle-default-false-deleted-my-database/inline-2.png)
