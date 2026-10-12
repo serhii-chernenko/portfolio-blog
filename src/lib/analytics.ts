@@ -7,10 +7,7 @@ import { env } from 'cloudflare:workers';
  * Keep this union low-cardinality — it is the sampling key (indexes[0]).
  */
 export type EventName =
-	| 'subscribe_pending'
-	| 'subscribe_confirmed'
-	| 'subscription_preferences_changed'
-	| 'unsubscribed';
+	'subscribe_pending' | 'subscribe_confirmed' | 'subscription_preferences_changed' | 'unsubscribed';
 
 /**
  * Non-identifying dimensions allowed in trackEvent() calls.
