@@ -44,9 +44,14 @@ unique integer string.
 
 ## New Relic setup
 
-Account `8569908` (EU). Create a data partition `Log_blog` (standard 30-day retention) with the rule
-`` `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' ``, then import
-`docs/newrelic-dashboard.json`. All queries read `Log_blog`.
+Account `8569908` (EU). The data partition `Log_blog` (standard 30-day retention) uses the rule
+`` `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' `` and was created on
+2026-10-12, together with the
+[Portfolio Blog — Production Analytics dashboard](https://one.eu.newrelic.com/dashboards/detail/ODU2OTkwOHxWSVp8REFTSEJPQVJEfGRhOjI3NjQ0OTQ?account=8569908)
+imported from `docs/newrelic-dashboard.json`. All queries read `Log_blog`. A partition rule only
+applies to data ingested after it exists, and preview or local traffic never ships, so the first
+events appear after the first production deploy. The New Relic MCP server is not available on this
+account's plan; manage partitions and dashboards in the New Relic UI.
 
 ## Event contract
 
