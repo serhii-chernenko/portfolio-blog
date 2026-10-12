@@ -1,0 +1,45 @@
+---
+import { stegaClean } from '@sanity/client/stega';
+import type { TypedObjectProps } from 'astro-portabletext/types';
+
+type Props = TypedObjectProps;
+
+interface YouTubeNode {
+	videoId?: string;
+	title?: string;
+}
+
+const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
+const DEFAULT_TITLE = 'YouTube video';
+
+const { node } = Astro.props;
+const { videoId = '', title: rawTitle } = node as unknown as YouTubeNode;
+const id = stegaClean(videoId);
+const title = rawTitle ? stegaClean(rawTitle) : DEFAULT_TITLE;
+const src = `https://www.youtube-nocookie.com/embed/${id}`;
+---
+
+{
+	VIDEO_ID_PATTERN.test(id) && (
+		<div class="not-prose my-8">
+			<div class="card bg-base-200 border border-base-300 overflow-hidden">
+				<div class="relative w-full" style="padding-bottom: 56.25%;">
+					<iframe
+						src={src}
+						title={title}
+						class="absolute inset-0 w-full h-full"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+						allowfullscreen
+						loading="lazy"
+						referrerpolicy="strict-origin-when-cross-origin"
+					/>
+				</div>
+				{title !== DEFAULT_TITLE && (
+					<div class="card-body py-2 px-4">
+						<p class="text-sm text-base-content/60">{title}</p>
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}

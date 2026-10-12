@@ -30,13 +30,6 @@ worker-configuration.d.ts
 # jetbrains setting folder
 .idea/
 
-# pagefind
-public/pagefind/
-dist/client/pagefind/
-
-# keystatic local mode
-keystatic.cache.json
-
 # AI
 .claude/*.lock
 .claude/plans

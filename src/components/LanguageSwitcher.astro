@@ -6,18 +6,17 @@ import { useTranslations, localeHref } from '../i18n/utils';
 export interface Props {
 	locale: Locale;
 	currentPath?: string;
-	translationKey?: string;
-	/** Pre-resolved translated URLs, keyed by locale. Passed from PostLayout via getTranslatedPostUrls(). */
+	/** Pre-resolved translated URLs, keyed by locale, for routes whose slugs differ per locale. */
 	translatedUrls?: Partial<Record<Locale, string | null>>;
 }
 
-const { locale, currentPath, translationKey: _translationKey, translatedUrls } = Astro.props;
+const { locale, currentPath, translatedUrls } = Astro.props;
 
 const t = useTranslations(locale);
 
 function hrefFor(target: Locale): string {
 	// If we have explicit translated URLs (e.g. from a post page), use them.
-	// These are already base-prefixed from getTranslatedPostUrls().
+	// These are already base-prefixed.
 	if (translatedUrls) {
 		const url = translatedUrls[target];
 		if (url) return url;

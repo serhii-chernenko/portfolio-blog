@@ -1,7 +1,7 @@
 {
 	"extends": "astro/tsconfigs/strict",
 	"include": [".astro/types.d.ts", "**/*"],
-	"exclude": ["dist", ".wrangler"],
+	"exclude": ["dist", ".wrangler", "studio"],
 	"compilerOptions": {
 		"strictNullChecks": true,
 		"jsx": "react-jsx",

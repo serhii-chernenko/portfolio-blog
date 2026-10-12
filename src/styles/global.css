@@ -253,11 +253,3 @@ html[data-theme='dark'] .astro-code span {
 :where(html) {
 	scroll-behavior: smooth;
 }
-
-/* Pagefind UI dark mode tweak */
-html[data-theme='dark'] .pagefind-ui {
-	--pagefind-ui-background: var(--color-base-100);
-	--pagefind-ui-text: var(--color-base-content);
-	--pagefind-ui-primary: var(--color-primary);
-	--pagefind-ui-border: var(--color-base-300);
-}

@@ -1,15 +1,15 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/server';
 import {
-	getPublishedPosts,
+	getPostPlainText,
+	getPostsForLocales,
 	getTagsForLocale,
 	tagSlug,
 	postUrl,
-	localeOf,
-	type AnyPost,
+	type Post,
 } from './posts';
-import { getPostSlug } from './post-slug';
-import { locales, type Locale } from '../i18n/config';
+import { createPublishedContext } from './sanity/request';
+import { locales } from '../i18n/config';
 import { withBase } from '../i18n/utils';
 
 const localeSchema = z.enum(locales);
@@ -26,27 +26,26 @@ const postSummarySchema = z.object({
 	tags: z.array(z.string()),
 });
 
-function toSummary(post: AnyPost) {
+const translationsSchema = z.object({
+	en: z.string().nullable(),
+	uk: z.string().nullable(),
+});
+
+function toSummary(post: Post) {
 	return {
-		locale: localeOf(post),
-		slug: getPostSlug(post),
-		title: post.data.title,
-		description: post.data.description,
+		locale: post.language,
+		slug: post.slug,
+		title: post.title,
+		description: post.description,
 		url: postUrl(post),
-		publishedAt: post.data.publishedAt.toISOString(),
-		updatedAt: post.data.updatedAt?.toISOString(),
-		tags: post.data.tags ?? [],
+		publishedAt: post.publishedAt.toISOString(),
+		updatedAt: post.updatedAt?.toISOString(),
+		tags: post.tags,
 	};
 }
 
 function matchesTag(postTags: string[], query: string): boolean {
 	return postTags.some((t) => t === query || tagSlug(t) === tagSlug(query));
-}
-
-async function getPostsForLocales(locale: Locale | undefined): Promise<AnyPost[]> {
-	const targets = locale ? [locale] : locales;
-	const lists = await Promise.all(targets.map((l) => getPublishedPosts(l)));
-	return lists.flat().sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime());
 }
 
 function textResult(value: unknown, structuredContent?: Record<string, unknown>) {
@@ -58,6 +57,7 @@ function textResult(value: unknown, structuredContent?: Record<string, unknown>)
 
 export function buildMcpServer(): McpServer {
 	const server = new McpServer({ name: 'portfolio-blog', version: '1.0.0' });
+	const sanity = createPublishedContext();
 
 	server.registerTool(
 		'list_posts',
@@ -74,8 +74,8 @@ export function buildMcpServer(): McpServer {
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ locale, tag, limit, offset }) => {
-			let posts = await getPostsForLocales(locale);
-			if (tag) posts = posts.filter((p) => matchesTag(p.data.tags ?? [], tag));
+			let posts = await getPostsForLocales(locale, sanity);
+			if (tag) posts = posts.filter((p) => matchesTag(p.tags, tag));
 			const page = posts.slice(offset, offset + limit).map(toSummary);
 			const output = { total: posts.length, posts: page };
 			return textResult(output, output);
@@ -104,24 +104,23 @@ export function buildMcpServer(): McpServer {
 				publishedAt: z.string(),
 				updatedAt: z.string().optional(),
 				tags: z.array(z.string()),
-				translationKey: z.string(),
+				translations: translationsSchema,
 				body: z.string(),
 			}),
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ locale, slug }) => {
-			const posts = await getPublishedPosts(locale);
-			const post = posts.find((p) => getPostSlug(p) === slug);
-			if (!post) {
+			const result = await getPostPlainText(locale, slug, sanity);
+			if (!result) {
 				return {
 					isError: true,
 					content: [{ type: 'text' as const, text: 'No published post found for that slug.' }],
 				};
 			}
 			const output = {
-				...toSummary(post),
-				translationKey: post.data.translationKey,
-				body: post.body ?? '',
+				...toSummary(result.post),
+				translations: result.post.translations,
+				body: result.plainText,
 			};
 			return textResult(output, output);
 		},
@@ -142,8 +141,8 @@ export function buildMcpServer(): McpServer {
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ tag, locale, limit, offset }) => {
-			const posts = (await getPostsForLocales(locale)).filter((p) =>
-				matchesTag(p.data.tags ?? [], tag),
+			const posts = (await getPostsForLocales(locale, sanity)).filter((p) =>
+				matchesTag(p.tags, tag),
 			);
 			const output = {
 				total: posts.length,
@@ -176,7 +175,7 @@ export function buildMcpServer(): McpServer {
 			const targets = locale ? [locale] : locales;
 			const perLocale = await Promise.all(
 				targets.map(async (l) => {
-					const tags = await getTagsForLocale(l);
+					const tags = await getTagsForLocale(l, sanity);
 					return tags.map(({ tag, count }) => ({
 						tag,
 						slug: tagSlug(tag),

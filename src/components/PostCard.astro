@@ -1,25 +1,32 @@
 ---
-import type { AnyPost } from '../lib/posts';
-import { postUrl, localeOf } from '../lib/posts';
+import type { Post } from '../lib/posts';
+import { postUrl } from '../lib/posts';
 import { readingTimeMinutes } from '../lib/reading-time';
+import { imageSrcSet, imageUrl } from '../lib/sanity/image';
 import { useTranslations } from '../i18n/utils';
 
 export interface Props {
-	post: AnyPost;
+	post: Post;
 }
 
+const CARD_ASPECT_RATIO = 16 / 9;
+const CARD_IMAGE_WIDTH = 640;
+const CARD_SRCSET_WIDTHS = [400, 640, 960, 1280];
+const CARD_SIZES = '(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw';
+
 const { post } = Astro.props;
-const locale = localeOf(post);
+const locale = post.language;
 const t = useTranslations(locale);
 const url = postUrl(post);
-const minutes = readingTimeMinutes(typeof post.body === 'string' ? post.body : '');
-const isDraft = post.data.draft;
-const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true');
+const minutes = readingTimeMinutes(post.wordCount);
+const heroImage = post.heroImage;
+const cardImageHeight = Math.round(CARD_IMAGE_WIDTH / CARD_ASPECT_RATIO);
 
-const formattedDate = post.data.publishedAt.toLocaleDateString(
-	locale === 'uk' ? 'uk-UA' : 'en-US',
-	{ year: 'numeric', month: 'short', day: 'numeric' },
-);
+const formattedDate = post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
+	year: 'numeric',
+	month: 'short',
+	day: 'numeric',
+});
 ---
 
 <article class="size-full">
@@ -29,14 +36,14 @@ const formattedDate = post.data.publishedAt.toLocaleDateString(
 	>
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			{
-				post.data.heroImage ? (
+				heroImage ? (
 					<img
-						src={
-							typeof post.data.heroImage === 'string'
-								? post.data.heroImage
-								: post.data.heroImage.src
-						}
-						alt={post.data.heroImageAlt ?? post.data.title}
+						src={imageUrl(heroImage, { width: CARD_IMAGE_WIDTH, height: cardImageHeight })}
+						srcset={imageSrcSet(heroImage, CARD_SRCSET_WIDTHS, CARD_ASPECT_RATIO)}
+						sizes={CARD_SIZES}
+						width={CARD_IMAGE_WIDTH}
+						height={cardImageHeight}
+						alt={heroImage.alt ?? post.title}
 						class="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:motion-safe:scale-[1.02] group-focus-within:motion-safe:scale-[1.02]"
 						loading="lazy"
 						decoding="async"
@@ -65,21 +72,25 @@ const formattedDate = post.data.publishedAt.toLocaleDateString(
 		</figure>
 
 		<div class="card-body grow gap-4">
-			{showDraft && <span class="badge badge-warning badge-sm self-start">{t('post.draft')}</span>}
+			{
+				post.isDraft && (
+					<span class="badge badge-warning badge-sm self-start">{t('post.draft')}</span>
+				)
+			}
 
 			<div class="flex flex-wrap items-center gap-2 text-xs uppercase text-base-content/60">
-				<time datetime={post.data.publishedAt.toISOString()} class="font-bold tracking-widest">
+				<time datetime={post.publishedAt.toISOString()} class="font-bold tracking-widest">
 					{formattedDate}
 				</time>
 				<span aria-hidden="true">&middot;</span>
 				<span>{t('post.readingTime', { minutes })}</span>
 			</div>
 
-			<h2 class="card-title text-xl leading-tight">{post.data.title}</h2>
+			<h2 class="card-title text-xl leading-tight">{post.title}</h2>
 
 			{
-				post.data.description && (
-					<p class="text-sm text-base-content/70 line-clamp-3">{post.data.description}</p>
+				post.description && (
+					<p class="text-sm text-base-content/70 line-clamp-3">{post.description}</p>
 				)
 			}
 

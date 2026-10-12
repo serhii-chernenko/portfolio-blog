@@ -11,6 +11,7 @@ export const prerender = false;
 import type { APIContext } from 'astro';
 import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl } from '../lib/posts';
 import { getPages, pageUrl } from '../lib/pages';
+import { createPublishedContext } from '../lib/sanity/request';
 import { locales, localeLabels } from '../i18n/config';
 import { withBase } from '../i18n/utils';
 
@@ -21,14 +22,13 @@ function escapeLinkText(text: string): string {
 function absoluteUrl(site: URL | undefined, path: string): string {
 	// `new URL()` doesn't percent-encode `(`/`)` in the pathname, but every
 	// caller here embeds the result as markdown `(url)` link syntax — an
-	// unescaped `)` (e.g. from a free-form CMS `slug` override, which unlike
-	// `translationKey` has no character-class restriction in content.config.ts)
-	// would prematurely close the link and truncate the rendered line.
+	// unescaped `)` would prematurely close the link and truncate the rendered line.
 	return new URL(path, site).toString().replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 export async function GET(context: APIContext) {
 	const site = context.site;
+	const sanity = createPublishedContext();
 	const lines: string[] = [];
 
 	lines.push('# Serhii Chernenko — Blog');
@@ -43,18 +43,18 @@ export async function GET(context: APIContext) {
 	lines.push(`Base URL: ${absoluteUrl(site, withBase(''))}`);
 
 	for (const locale of locales) {
-		const posts = await getPublishedPosts(locale);
+		const posts = await getPublishedPosts(locale, sanity);
 		if (posts.length === 0) continue;
 		lines.push('');
 		lines.push(`## Posts (${localeLabels[locale]})`);
 		for (const post of posts) {
 			const url = absoluteUrl(site, postUrl(post));
-			lines.push(`- [${escapeLinkText(post.data.title)}](${url}): ${post.data.description}`);
+			lines.push(`- [${escapeLinkText(post.title)}](${url}): ${post.description}`);
 		}
 	}
 
 	for (const locale of locales) {
-		const tags = await getTagsForLocale(locale);
+		const tags = await getTagsForLocale(locale, sanity);
 		if (tags.length === 0) continue;
 		lines.push('');
 		lines.push(`## Tags (${localeLabels[locale]})`);
@@ -66,10 +66,10 @@ export async function GET(context: APIContext) {
 
 	const pageLines: string[] = [];
 	for (const locale of locales) {
-		const pages = await getPages(locale);
+		const pages = await getPages(locale, sanity);
 		for (const page of pages) {
 			const url = absoluteUrl(site, pageUrl(page));
-			pageLines.push(`- [${escapeLinkText(page.data.title)}](${url}): ${page.data.description}`);
+			pageLines.push(`- [${escapeLinkText(page.title)}](${url}): ${page.description}`);
 		}
 	}
 	if (pageLines.length > 0) {

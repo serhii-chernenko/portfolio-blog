@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import {
 	buildCanonical,
@@ -8,8 +9,9 @@ import {
 	ogLocaleFor,
 } from '../lib/seo';
 import { defaultOgImage } from '../lib/og';
-import { useTranslations, withBase } from '../i18n/utils';
-import { getPagePath } from '../lib/pages';
+import { imageUrl } from '../lib/sanity/image';
+import type { LayoutData } from '../lib/site';
+import { withBase } from '../i18n/utils';
 
 export interface Props {
 	title: string;
@@ -21,30 +23,43 @@ export interface Props {
 	updatedAt?: Date;
 	tags?: string[];
 	alternates?: Partial<Record<Locale, string | null>>;
-	authorUrl?: string;
 	noIndex?: boolean;
+	layout: LayoutData;
 }
 
+const OG_IMAGE_WIDTH = 1200;
+const OG_IMAGE_HEIGHT = 630;
+
 const {
-	title,
-	description,
+	title: rawTitle,
+	description: rawDescription,
 	locale,
 	image,
 	type = 'website',
 	publishedAt,
 	updatedAt,
-	tags,
-	alternates,
-	authorUrl,
+	tags: rawTags,
+	alternates: rawAlternates,
 	noIndex = false,
+	layout,
 } = Astro.props;
 
-const t = useTranslations(locale);
+const title = stegaClean(rawTitle);
+const description = stegaClean(rawDescription);
+const tags = rawTags?.map((tag) => stegaClean(tag));
+const alternates = rawAlternates ? stegaClean(rawAlternates) : undefined;
 const site = Astro.site!;
 const canonical = buildCanonical(site, Astro.url.pathname);
 const hreflangLinks = buildHreflang(site, locale, Astro.url.pathname, alternates);
-const ogImage = image ?? defaultOgImage(site);
-const siteName = t('site.name');
+const settingsOgImage = layout.settings.defaultOgImage
+	? imageUrl(layout.settings.defaultOgImage, {
+			width: OG_IMAGE_WIDTH,
+			height: OG_IMAGE_HEIGHT,
+			format: 'jpg',
+		})
+	: undefined;
+const ogImage = image ?? settingsOgImage ?? defaultOgImage(site);
+const siteName = stegaClean(layout.settings.siteName);
 
 const jsonLd =
 	type === 'article' && publishedAt
@@ -58,11 +73,7 @@ const jsonLd =
 				publishedAt,
 				updatedAt,
 				authorName: 'Serhii Chernenko',
-				// Author URL points at the About page, resolved dynamically from
-				// Keystatic content so it tracks the per-locale About slug.
-				// PostLayout passes a pre-resolved authorUrl; the content lookup
-				// is only the fallback when a caller omits it.
-				authorUrl: authorUrl ?? (await getPagePath('about', locale)),
+				authorUrl: layout.aboutPath,
 			})
 		: websiteJsonLd({
 				site,

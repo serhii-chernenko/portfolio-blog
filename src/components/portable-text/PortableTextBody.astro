@@ -1,0 +1,26 @@
+---
+import { PortableText } from 'astro-portabletext';
+import type { SomePortableTextComponents, TypedObject } from 'astro-portabletext/types';
+import { annotateHeadings } from '../../lib/portable-text';
+import Callout from './Callout.astro';
+import CodeBlock from './CodeBlock.astro';
+import Heading from './Heading.astro';
+import Image from './Image.astro';
+import Link from './Link.astro';
+import YouTube from './YouTube.astro';
+
+export interface Props {
+	value: TypedObject[] | undefined;
+}
+
+const { value } = Astro.props;
+const { blocks } = annotateHeadings(value);
+
+const components: SomePortableTextComponents = {
+	type: { image: Image, code: CodeBlock, callout: Callout, youtube: YouTube },
+	block: { h2: Heading, h3: Heading, h4: Heading },
+	mark: { link: Link },
+};
+---
+
+<PortableText value={blocks} components={components} />

@@ -1,0 +1,12 @@
+---
+import type { BlockProps } from 'astro-portabletext/types';
+import type { HeadingBlock } from '../../lib/portable-text';
+
+type Props = BlockProps;
+
+const { node } = Astro.props;
+const { style, headingId } = node as unknown as HeadingBlock;
+const Tag = style === 'h3' ? 'h3' : style === 'h4' ? 'h4' : 'h2';
+---
+
+<Tag id={headingId}><slot /></Tag>

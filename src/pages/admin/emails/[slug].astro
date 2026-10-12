@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import EmailEditorIsland from '../../../components/EmailEditorIsland';
 
-if (import.meta.env.PUBLIC_KEYSTATIC_MODE !== 'local') {
+if (!import.meta.env.DEV) {
 	return new Response('Not found', { status: 404 });
 }
 

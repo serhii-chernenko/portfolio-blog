@@ -7,19 +7,7 @@
 type Runtime = import('@astrojs/cloudflare').Runtime;
 
 declare namespace App {
-	interface Locals extends Runtime {}
-}
-
-interface ImportMetaEnv {
-	readonly PREVIEW_MODE?: string;
-	/**
-	 * Drives Keystatic storage kind AND Astro base path. Set to `'local'`
-	 * by `pnpm dev` only. Unset for `pnpm wrangler:dev` and `pnpm build`
-	 * (both use GitHub OAuth and base `/blog`).
-	 */
-	readonly PUBLIC_KEYSTATIC_MODE?: 'local';
-}
-
-interface ImportMeta {
-	readonly env: ImportMetaEnv;
+	interface Locals extends Runtime {
+		sanity: import('./lib/sanity/request').SanityContext;
+	}
 }

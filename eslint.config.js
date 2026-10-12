@@ -6,7 +6,7 @@ import prettierConfig from 'eslint-config-prettier';
 export default tseslint.config(
 	// Global ignores
 	{
-		ignores: ['dist/', '.astro/', '.wrangler/', 'node_modules/', 'patches/', 'scripts/'],
+		ignores: ['dist/', '.astro/', '.wrangler/', 'node_modules/', 'patches/', 'scripts/', 'studio/'],
 	},
 
 	// TypeScript files

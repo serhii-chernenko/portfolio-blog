@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Prose from '../../components/Prose.astro';
+import PortableTextBody from '../../components/portable-text/PortableTextBody.astro';
+import { isLocale } from '../../i18n/config';
+import { getPageBySlug } from '../../lib/pages';
+import { getSanityContext } from '../../lib/sanity/request';
+
+export const prerender = false;
+
+const locale = Astro.params.locale ?? '';
+const slug = Astro.params.page ?? '';
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+const page = await getPageBySlug(locale, slug, getSanityContext(Astro.locals));
+if (!page) return new Response(null, { status: 404 });
+---
+
+<BaseLayout
+	title={page.title}
+	description={page.description}
+	locale={locale}
+	alternates={page.translations}
+	translatedUrls={page.translations}
+>
+	<section class="bg-base-200">
+		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-14">
+			<h1 class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl">
+				{page.title}
+			</h1>
+		</div>
+	</section>
+
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16">
+		<div class="max-w-3xl">
+			<Prose>
+				<PortableTextBody value={page.body} />
+			</Prose>
+		</div>
+	</div>
+</BaseLayout>
