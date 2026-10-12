@@ -130,11 +130,6 @@ export default defineConfig({
 				access: 'secret',
 				optional: true,
 			}),
-			NEW_RELIC_LICENSE_KEY: envField.string({
-				context: 'server',
-				access: 'secret',
-				optional: true,
-			}),
 			// ── Client public vars (build-inlined from process.env via dotenv-cli) ──
 			PUBLIC_GISCUS_REPO: envField.string({
 				context: 'client',

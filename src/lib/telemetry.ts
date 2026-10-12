@@ -1,4 +1,4 @@
-import { NEW_RELIC_LICENSE_KEY } from 'astro:env/server';
+import { env } from 'cloudflare:workers';
 import { createRequestLogger, type RequestLogger, type WideEvent } from 'evlog';
 import { createOTLPDrain } from 'evlog/otlp';
 import { initWorkersLogger } from 'evlog/workers';
@@ -66,7 +66,7 @@ function shipToNewRelic(
 	blogEnvironment: BlogEnvironment,
 	waitUntil: WaitUntil | undefined,
 ): void {
-	const licenseKey = NEW_RELIC_LICENSE_KEY;
+	const licenseKey = (env as { NEW_RELIC_LICENSE_KEY?: string }).NEW_RELIC_LICENSE_KEY;
 	if (blogEnvironment !== 'production' || !licenseKey) return;
 
 	const delivery = Promise.resolve()
