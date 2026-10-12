@@ -1,4 +1,3 @@
-import { env } from 'cloudflare:workers';
 import { createRequestLogger, type RequestLogger, type WideEvent } from 'evlog';
 import { createOTLPDrain } from 'evlog/otlp';
 import { initWorkersLogger } from 'evlog/workers';
@@ -61,16 +60,21 @@ function warnTelemetryFailure(event: string, error: unknown): void {
 	console.warn(JSON.stringify({ event, errorType: errorType(error) }));
 }
 
+async function readNewRelicLicenseKey(): Promise<string | undefined> {
+	const { env } = await import('cloudflare:workers');
+	return (env as { NEW_RELIC_LICENSE_KEY?: string }).NEW_RELIC_LICENSE_KEY;
+}
+
 function shipToNewRelic(
 	event: WideEvent,
 	blogEnvironment: BlogEnvironment,
 	waitUntil: WaitUntil | undefined,
 ): void {
-	const licenseKey = (env as { NEW_RELIC_LICENSE_KEY?: string }).NEW_RELIC_LICENSE_KEY;
-	if (blogEnvironment !== 'production' || !licenseKey) return;
+	if (blogEnvironment !== 'production') return;
 
-	const delivery = Promise.resolve()
-		.then(() => {
+	const delivery = readNewRelicLicenseKey()
+		.then((licenseKey) => {
+			if (!licenseKey) return;
 			const drain = createOTLPDrain({
 				endpoint: NEW_RELIC_OTLP_ENDPOINT,
 				serviceName: 'portfolio-blog',
