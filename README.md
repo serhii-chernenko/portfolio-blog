@@ -12,6 +12,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 - [`docs/CONTENT.md`](./docs/CONTENT.md) — author flow: how to write, edit, translate, schedule posts via Keystatic
 - [`docs/EMAIL.md`](./docs/EMAIL.md) — Cloudflare Email Workers setup + newsletter constraints
+- [`docs/SEO.md`](./docs/SEO.md) — search consoles, IndexNow submissions, sitemap/robots/llms/favicon locations
 - [`docs/TELEGRAM.md`](./docs/TELEGRAM.md) — Telegram bot setup + events
 - [`blog-build-plan.md`](./blog-build-plan.md) — original spec
 
