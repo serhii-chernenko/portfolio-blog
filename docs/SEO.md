@@ -1,6 +1,6 @@
 # SEO and search engine setup
 
-Canonical site: `https://serhiichernenko.com/blog/` (the bare apex; `www` redirects to it with a `308`). DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+Canonical site: `https://serhiichernenko.com/blog/` (the bare apex; the legacy `www` host redirects to it with a `308` before Workers run). DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
 
 ## Search consoles
 
@@ -15,7 +15,7 @@ Keep both verification DNS records in place; removing them un-verifies the prope
 
 - **Google**: the domain property already covers the apex and every subdomain. Submit the apex sitemap above and remove the old `www` one.
 - **Bing**: add `https://serhiichernenko.com/` as a site, then use **Site Move** (www → apex) from the old `www` site.
-- **IndexNow**: seed (`gh workflow run indexnow.yml -f mode=all`) only after the Redirect Rule flip. Until then the live sitemap still lists `www` URLs, which the script skips as out of scope.
+- **IndexNow**: the Redirect Rule flip is done (2026-10-12) and the live sitemap lists apex URLs only, so seed with `gh workflow run indexnow.yml -f mode=all`. The script refuses any child sitemap outside the apex origin.
 
 ## IndexNow
 
@@ -64,6 +64,7 @@ node scripts/indexnow.mjs submit-all --dry-run
 ## Host root redirect
 
 Until the portfolio Worker owns `/`, the host root `https://serhiichernenko.com/` should answer with a
-temporary 302 to `/blog/en/` from a Cloudflare Redirect Rule in the zone's `http_request_dynamic_redirect`
-ruleset, next to the www → apex rule. It is a zone rule, not Worker code, so it never ships with a deploy.
+temporary 302 to `/blog/en/` from a Cloudflare Redirect Rule (live since 2026-10-12, rule
+`6e234d678cdd4cec838189114c83331a`) in the zone's `http_request_dynamic_redirect` ruleset, next to the
+www → apex rule. It is a zone rule, not Worker code, so it never ships with a deploy.
 Delete it when the portfolio Worker goes live.

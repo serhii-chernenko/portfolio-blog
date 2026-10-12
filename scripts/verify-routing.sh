@@ -3,14 +3,14 @@
 # verify-routing.sh — Confirm the Worker production routing is live.
 #
 # Canonical host: serhiichernenko.com (the bare apex; the Worker routes are bound
-# to it). www.serhiichernenko.com 308-redirects to the apex via a Cloudflare
-# Redirect Rule (dashboard -> Rules -> Redirect Rules).
+# to it; www is not bound). www.serhiichernenko.com 308-redirects to the apex via
+# a Cloudflare Redirect Rule that runs before Workers (Rules -> Redirect Rules).
 #
 # Checks, in order:
 #   1. The canonical host (apex) resolves (A and/or AAAA record present).
 #   2. The apex is proxied: resolves to a public Cloudflare edge IP, not 100::.
 #   3. apex/blog serves the Worker (same-host 301 -> /blog/en/, then 2xx).
-#   4. www /blog 308-redirects to the canonical apex host.
+#   4. www /blog 308-redirects to the canonical apex host (legacy host).
 #
 # Pure dig/curl — no Cloudflare auth required. Prints PASS/FAIL per check
 # and a clear final summary. Exit code is non-zero if any check fails.
