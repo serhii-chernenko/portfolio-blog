@@ -1,8 +1,6 @@
 export const CANONICAL_HOST = 'serhiichernenko.com';
-export const PRODUCTION_HOSTS: ReadonlySet<string> = new Set([
-	CANONICAL_HOST,
-	`www.${CANONICAL_HOST}`,
-]);
+export const LEGACY_REFERRER_HOST = `www.${CANONICAL_HOST}`;
+export const PRODUCTION_HOSTS: ReadonlySet<string> = new Set([CANONICAL_HOST]);
 
 export const CLIENT_EVENT_TYPES = [
 	'page_view',
@@ -361,7 +359,11 @@ export function referrerSource(referrerHost: string | undefined, ownHost: string
 	const hostname = normalizeHostname(referrerHost);
 	if (!hostname) return 'other';
 	const ownHostname = hostnameOf(ownHost);
-	if (withoutWww(hostname) === withoutWww(ownHostname) || PRODUCTION_HOSTS.has(hostname)) {
+	const isOwnSite =
+		withoutWww(hostname) === withoutWww(ownHostname) ||
+		PRODUCTION_HOSTS.has(hostname) ||
+		hostname === LEGACY_REFERRER_HOST;
+	if (isOwnSite) {
 		return 'internal';
 	}
 	return outboundSource(hostname);

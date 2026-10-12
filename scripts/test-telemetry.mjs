@@ -293,8 +293,8 @@ assert.equal(countryCode('1.2.3.4'), 'XX');
 
 assert.equal(environmentFromHost('serhiichernenko.com'), 'production');
 assert.equal(environmentFromHost('SERHIICHERNENKO.COM:443'), 'production');
-assert.equal(environmentFromHost('www.serhiichernenko.com'), 'production');
-assert.equal(environmentFromHost('WWW.SERHIICHERNENKO.COM:443'), 'production');
+assert.equal(environmentFromHost('www.serhiichernenko.com'), 'preview');
+assert.equal(environmentFromHost('WWW.SERHIICHERNENKO.COM:443'), 'preview');
 assert.equal(environmentFromHost('localhost:8787'), 'development');
 assert.equal(environmentFromHost('127.0.0.1:4321'), 'development');
 assert.equal(environmentFromHost('portfolio-blog.example.workers.dev'), 'preview');

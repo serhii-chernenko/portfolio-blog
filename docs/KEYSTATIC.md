@@ -59,11 +59,11 @@ When it finishes, GitHub redirects back with **four** values:
 - App slug (the part after `/apps/` in the GitHub App URL)
 - A redirect URL that Keystatic stored in the App config
 
-> **Callback URLs.** The GitHub App must list the canonical-host OAuth callback
-> `https://serhiichernenko.com/api/keystatic/github/oauth/callback` before the
-> `www` → apex Redirect Rule is flipped (see _www → apex migration_ in
-> [`DNS-ROUTING.md`](./DNS-ROUTING.md)). GitHub Apps accept multiple callback
-> URLs, so keep the existing `www` one until the migration finishes.
+> **Callback and homepage URLs.** The GitHub App lists the canonical-host OAuth
+> callback `https://serhiichernenko.com/api/keystatic/github/oauth/callback` and
+> the homepage `https://serhiichernenko.com/keystatic`. The old `www` callback
+> can be removed: `www` now 308-redirects to the apex before Workers run (see
+> _www → apex migration_ in [`DNS-ROUTING.md`](./DNS-ROUTING.md)).
 
 ### 3. Capture the values
 

@@ -2,33 +2,32 @@
 
 > **Architecture** — The blog is served by the Worker on the **canonical host
 > `serhiichernenko.com`** (the bare apex, at base path `/blog`). `www`
-> **308-redirects to the apex** via a Cloudflare Redirect Rule. Two DNS records
-> (both **Proxied**) plus that redirect rule make it work; the Worker `routes` in
-> `wrangler.jsonc` are bound to the apex (and to `www` until the migration below
-> is finished).
+> **308-redirects to the apex** via a Cloudflare Redirect Rule that runs before
+> Workers. Two DNS records (both **Proxied**) plus that redirect rule make it
+> work; the Worker `routes` in `wrangler.jsonc` are bound to the apex only.
 
 ---
 
 ## www → apex migration
 
-The canonical host moved from `www.serhiichernenko.com` to the bare apex. A
-Redirect Rule runs **before** Workers, so the order of the steps matters for
-zero downtime:
+The canonical host moved from `www.serhiichernenko.com` to the bare apex
+(**done, 2026-10-12**). A Redirect Rule runs **before** Workers, so the order of
+the steps mattered for zero downtime:
 
-1. **This deploy binds both hosts.** `wrangler.jsonc` keeps every
-   `www.serhiichernenko.com/...` route and adds the identical
-   `serhiichernenko.com/...` patterns. Build-time URLs (sitemap, canonical, RSS,
-   `robots.txt`) become apex. Telemetry treats both hosts as `production`.
-   While the old apex → www rule is still active, nothing visible changes.
-2. **Owner flips the Redirect Rule in place** to **www → apex, 308**
-   (see _The www → apex Redirect Rule_), and adds the apex host-root `302` to
-   `/blog/en/` (see `docs/SEO.md`). Before flipping, make sure the GitHub App
-   lists the apex OAuth callback (`docs/KEYSTATIC.md`). Verify with
-   `./scripts/verify-routing.sh`.
-3. **Follow-up PR removes the `www` routes** from `wrangler.jsonc` and the `www`
-   entry from `PRODUCTION_HOSTS` in `src/lib/telemetry-schema.ts` (plus the
-   matching test assertions). The rule keeps redirecting `www`; the routes are no
-   longer needed because the rule answers before Workers run.
+1. **Done.** The deploy bound both hosts: every `www.serhiichernenko.com/...`
+   route plus the identical `serhiichernenko.com/...` patterns. Build-time URLs
+   (sitemap, canonical, RSS, `robots.txt`) became apex.
+2. **Done (2026-10-12).** The Redirect Rule was flipped to **www → apex, 308**
+   (see _The www → apex Redirect Rule_) and the apex host-root `302` to
+   `/blog/en/` was added (see `docs/SEO.md`). Zone `http_request_dynamic_redirect`
+   ruleset `3dbd052f46a1486397b3d681d5602160`:
+   - www → apex 308 rule `4bfde77c603b463e96fbb87712ce20b2`
+   - apex root `/` → `/blog/en/` 302 rule `6e234d678cdd4cec838189114c83331a`
+     (delete it when the portfolio Worker takes `/`)
+3. **Done.** The `www` routes were removed from `wrangler.jsonc` and `www` from
+   `PRODUCTION_HOSTS` in `src/lib/telemetry-schema.ts`. `www` is still
+   recognised as an _internal_ referrer (old links redirect through it). The rule
+   keeps redirecting `www`; the Worker never sees that host.
 
 `308` (not `301`) keeps the HTTP method and body, so RFC 8058 one-click
 unsubscribe POSTs from already-sent emails with `www` links still reach the
@@ -38,13 +37,13 @@ Worker.
 
 ## The moving parts (and who owns each)
 
-| Piece                                                                                                                                                                                                                  | Where                                                           | Purpose                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Worker routes** → `serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]`, `/keystatic[/*]`, `/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt`, `/sitemap.xml` (and the same on `www.` until phase 3) | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` is the apex `serhiichernenko.com` (the zone) — the _pattern_ selects the host.  |
-| **apex DNS record**                                                                                                                                                                                                    | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the Worker routes fire. `100::` is the reserved discard address for an originless host. |
-| **`www` DNS record**                                                                                                                                                                                                   | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the redirect rule can run.                                                             |
-| **www → apex redirect**                                                                                                                                                                                                | Cloudflare → **Rules → Redirect Rules**                         | 308s `www.serhiichernenko.com/*` → `serhiichernenko.com/*` so visitors on the old host land on the canonical one.                  |
-| **Canonical URL**                                                                                                                                                                                                      | `astro.config.mts` → `site: 'https://serhiichernenko.com'`      | Build-time absolute links (sitemap, RSS, canonical, `robots.txt`) use the apex. Runtime links derive from the request host.        |
+| Piece                                                                                                                                                                           | Where                                                           | Purpose                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Worker routes** → `serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]`, `/keystatic[/*]`, `/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt`, `/sitemap.xml` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` is the apex `serhiichernenko.com` (the zone) — the _pattern_ selects the host.  |
+| **apex DNS record**                                                                                                                                                             | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the Worker routes fire. `100::` is the reserved discard address for an originless host. |
+| **`www` DNS record**                                                                                                                                                            | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the redirect rule can run.                                                             |
+| **www → apex redirect**                                                                                                                                                         | Cloudflare → **Rules → Redirect Rules**                         | 308s `www.serhiichernenko.com/*` → `serhiichernenko.com/*` so visitors on the old host land on the canonical one.                  |
+| **Canonical URL**                                                                                                                                                               | `astro.config.mts` → `site: 'https://serhiichernenko.com'`      | Build-time absolute links (sitemap, RSS, canonical, `robots.txt`) use the apex. Runtime links derive from the request host.        |
 
 **Routes are not DNS.** `wrangler deploy` only binds the Worker to a route
 pattern — it never creates a DNS record. If the matched hostname has no proxied
@@ -76,8 +75,8 @@ proxied record, as above.
 
 ## The www → apex Redirect Rule
 
-Dashboard → **Rules → Redirect Rules** (edit the existing apex → www rule in
-place; flip it only after the both-hosts deploy is live):
+Dashboard → **Rules → Redirect Rules** (live since 2026-10-12, rule
+`4bfde77c603b463e96fbb87712ce20b2`):
 
 - **When incoming requests match:** `Hostname` `equals` `www.serhiichernenko.com`
 - **Then... URL redirect → Dynamic:**
@@ -92,8 +91,9 @@ place; flip it only after the both-hosts deploy is live):
 > body. RFC 8058 one-click unsubscribe POSTs from emails already sent with `www`
 > links would otherwise be downgraded to GET and fail.
 
-A second rule in the same ruleset answers the apex host root `/` with a
-temporary `302` to `/blog/en/` (see `docs/SEO.md`).
+A second rule in the same ruleset (`6e234d678cdd4cec838189114c83331a`) answers
+the apex host root `/` with a temporary `302` to `/blog/en/` (see
+`docs/SEO.md`). Delete it when the portfolio Worker takes `/`.
 
 > **Why not a Worker Custom Domain instead of routes + redirect?** A Custom Domain
 > is hostname-only and captures **all** paths of the host (including `/`), and you
@@ -151,7 +151,7 @@ built routes.
 ## What happens to `/` (host root)
 
 Only `/blog*`, `/api/keystatic*`, `/keystatic*`, and the exact paths `/robots.txt`,
-`/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` are bound to the Worker. The **host root `/`** itself (on either the apex or `www`)
+`/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` are bound to the Worker. The **host root `/`** itself (on the apex)
 is unbound — it falls through to the `100::` black hole and returns a
 Cloudflare edge error (`522`/`523`/`1016`) until a separate landing ships (open
 decision #8 in `blog-build-plan.md`); the temporary apex `302` to `/blog/en/`
@@ -274,11 +274,11 @@ The most common cause after switching hosts: the Worker `routes` were changed in
 `wrangler.jsonc` but **not redeployed**, so the live Worker is still bound to the
 old host. Run `pnpm wrangler:deploy` (a plain `wrangler deploy` without a fresh
 `pnpm build` reuses the old built routes — see _Deploying a route change_).
-Confirm the deployed routes target the apex (and `www` until phase 3):
+Confirm the deployed routes target the apex only:
 
 ```bash
 pnpm exec wrangler deploy --dry-run 2>&1 | grep -i serhiichernenko
-#  -> serhiichernenko.com/blog, /blog/*, /api/keystatic[/*] (plus the www. twins)
+#  -> serhiichernenko.com/blog, /blog/*, /api/keystatic[/*]
 ```
 
 If the apex itself doesn't resolve, check the `AAAA @ → 100::` record exists and

@@ -99,19 +99,10 @@ assert.equal(
 }
 
 {
-	const legacyIndex = `<sitemapindex><sitemap><loc>https://www.${HOST}/blog/sitemap-0.xml</loc></sitemap><sitemap><loc>${CHILD_ONE}</loc></sitemap></sitemapindex>`;
-	const { fetchFn, calls } = fakeFetch(
-		new Map([
-			[INDEX_URL, { body: legacyIndex }],
-			[CHILD_ONE, { body: childOneXml }],
-		]),
-	);
-	const warn = console.warn;
-	console.warn = () => {};
-	const entries = await fetchSitemapEntries(INDEX_URL, fetchFn);
-	console.warn = warn;
-	assert.equal(entries.size, 2, 'apex children are still read');
-	assert.equal(calls.length, 2, 'the legacy-host child sitemap is skipped, never requested');
+	const legacyIndex = `<sitemapindex><sitemap><loc>https://www.${HOST}/blog/sitemap-0.xml</loc></sitemap></sitemapindex>`;
+	const { fetchFn, calls } = fakeFetch(new Map([[INDEX_URL, { body: legacyIndex }]]));
+	await assert.rejects(fetchSitemapEntries(INDEX_URL, fetchFn), /Refusing to fetch child sitemap/);
+	assert.equal(calls.length, 1, 'the legacy www host is refused like any foreign origin');
 }
 
 {

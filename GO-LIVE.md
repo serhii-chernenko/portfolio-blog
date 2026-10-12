@@ -206,7 +206,7 @@ automatically (dashboard Git integration). Non-`main` branches / PRs get a previ
 version with an auto-posted preview URL (see _Preview deployments_ below).
 
 The canonical host is **`serhiichernenko.com`** (the bare apex); `www`
-308-redirects to it. Three things outside the deploy make routing work — see
+308-redirects to it before Workers run. Three things outside the deploy make routing work — see
 **`docs/DNS-ROUTING.md`** for the full runbook, including the phased
 **www → apex migration**. **Routes do not create DNS**, and the wrangler OAuth
 token and the Workers Builds deploy credential have zone _read_ only, so the DNS
@@ -216,22 +216,23 @@ records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
       → **DNS → Records**): `AAAA @ → 100::` (so the apex resolves to the edge where
       the Worker routes fire) **and** `CNAME www → serhiichernenko.com` (so `www`
       resolves to the edge where the redirect rule runs). Both must be Proxied.
-- [ ] **Redirect rule — www → apex** (**Rules → Redirect Rules**): when hostname
-      equals `www.serhiichernenko.com`, **308** to `https://serhiichernenko.com`
-      preserving path/query. Scope to `www` only (don't match the apex, or it
-      loops). 308 keeps the method, so RFC 8058 one-click unsubscribe POSTs from
-      already-sent emails with `www` links still work. Flip an existing apex → www
-      rule in place, only after this deploy (which binds both hosts).
-- [ ] **Routes deploy to both hosts.** `wrangler.jsonc` declares
+- [x] **Redirect rules** (**Rules → Redirect Rules**, live 2026-10-12): when
+      hostname equals `www.serhiichernenko.com`, **308** to
+      `https://serhiichernenko.com` preserving path/query (scoped to `www` only,
+      or the apex would loop; 308 keeps RFC 8058 one-click unsubscribe POSTs from
+      old emails working), plus a `302` from the apex host root `/` to
+      `/blog/en/` (delete it when the portfolio Worker takes `/`). Rule IDs are in
+      `docs/DNS-ROUTING.md`.
+- [ ] **Routes deploy to the apex only.** `wrangler.jsonc` declares
       `serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]` and the host-root
-      files, plus the identical `www.serhiichernenko.com/...` patterns until the
-      migration finishes (`zone_name` is the apex). A route change only takes effect
+      files (`zone_name` is the apex); `www` is not bound. A route change only takes effect
       after `pnpm wrangler:deploy` (the build regenerates the deployed config — a
       bare `wrangler deploy` reuses the old routes). Confirm with
       `pnpm exec wrangler deploy --dry-run | grep serhii`.
-- [ ] **GitHub App callback URLs.** Before the rule flip, list
-      `https://serhiichernenko.com/api/keystatic/github/oauth/callback` on the
-      GitHub App (see `docs/KEYSTATIC.md`).
+- [ ] **GitHub App URLs.** List the callback
+      `https://serhiichernenko.com/api/keystatic/github/oauth/callback` and the
+      homepage `https://serhiichernenko.com/keystatic` on the GitHub App (see
+      `docs/KEYSTATIC.md`); the old `www` callback can be removed later.
 - [ ] Decide what serves the host root `/` (intentionally **not** bound to this
       Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it

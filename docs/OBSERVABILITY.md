@@ -26,7 +26,7 @@ asset fetches as visits, and still give no engagement data.
 
 - Module: `src/lib/telemetry.ts` (`initWorkersLogger`, `createRequestLogger`, OTLP drain to
   `https://otlp.eu01.nr-data.net`, `service.name = portfolio-blog`).
-- `blogEnvironment` is derived from the request host: `serhiichernenko.com` and `www.serhiichernenko.com` → `production` (the `PRODUCTION_HOSTS` set in `src/lib/telemetry-schema.ts`; `www` is dropped from it once it only redirects),
+- `blogEnvironment` is derived from the request host: `serhiichernenko.com` → `production` (the `PRODUCTION_HOSTS` set in `src/lib/telemetry-schema.ts`; `www` only redirects and never reaches the Worker),
   `localhost` / `127.0.0.1` → `development`, anything else (Workers preview URLs) → `preview`.
 - Events are shipped to New Relic only when `blogEnvironment = production` **and** the optional
   secret `NEW_RELIC_LICENSE_KEY` is set. Every environment still writes the event to Workers logs.
