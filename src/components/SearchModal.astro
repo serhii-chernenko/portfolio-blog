@@ -142,7 +142,7 @@ const t = useTranslations(locale);
 	}
 
 	// Expose for Header trigger
-	(window as any).__openSearch = openSearch;
+	(window as Window & { __openSearch?: () => void }).__openSearch = openSearch;
 
 	// Keyboard shortcut: "/" opens search (skip when typing in inputs)
 	document.addEventListener('keydown', (e) => {

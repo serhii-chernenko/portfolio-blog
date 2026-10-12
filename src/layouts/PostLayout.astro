@@ -234,14 +234,7 @@ const ogImage = heroImageHref ? new URL(heroImageHref, Astro.site).toString() : 
 							try {
 								await navigator.clipboard.writeText(text);
 							} catch {
-								const ta = document.createElement('textarea');
-								ta.value = text;
-								ta.style.position = 'fixed';
-								ta.style.opacity = '0';
-								document.body.appendChild(ta);
-								ta.select();
-								document.execCommand('copy');
-								document.body.removeChild(ta);
+								return;
 							}
 							btn.setAttribute('aria-label', 'Copied!');
 							setTimeout(() => btn.setAttribute('aria-label', 'Copy code'), 1500);
