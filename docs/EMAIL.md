@@ -120,7 +120,7 @@ plain text semantically equivalent and preserve all required variables:
 | Confirmation | `{{confirmUrl}}`, `{{privacyUrl}}` |
 | Welcome      | `{{manageUrl}}`, `{{privacyUrl}}`  |
 
-The local admin at `/admin/emails` can edit both body formats. A missing variable remains visibly
+The local admin at `/admin/emails/` can edit both body formats. A missing variable remains visibly
 unexpanded, so preview and exercise every link before deploy. Adding a communication locale
 requires a complete set of templates and TypeScript mappings; adding a content edition also
 requires the consent and audience work in `SUBSCRIPTIONS.md`.
