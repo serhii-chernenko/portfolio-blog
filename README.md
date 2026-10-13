@@ -6,7 +6,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 **Adapter versions:** `@astrojs/cloudflare` 14 · `@astrojs/node` 11 · `wrangler` 4.
 
-**Mounted at `/blog/*`** on `serhiichernenko.com` (the canonical host; the legacy `www.serhiichernenko.com` redirects to it with a `308` before Workers run) — the host root and other paths are served by a separate portfolio app. See [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md).
+**Mounted at `/blog/*`** on `serhiichernenko.com` (the canonical host; the legacy `www.serhiichernenko.com` redirects to it with a `308` before Workers run) — the host root belongs to a separate portfolio app that hasn't shipped yet; until then a temporary Cloudflare rule redirects `/` to `/blog/en/` and this Worker serves a few host-root files. When the portfolio ships, follow _When the portfolio Worker ships_ in [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md).
 
 **Content:** posts, pages, menus and site copy live in [Sanity](https://www.sanity.io) (project `8xspnp7h`, dataset `production`) and are edited in the hosted Studio at <https://serhiichernenko-blog.sanity.studio>. The Studio source is in [`studio/`](./studio). Pages render on demand and are cached on Workers Cache; a signed Sanity webhook purges the cache on publish.
 
@@ -56,7 +56,7 @@ Opens at <http://localhost:4321/blog/>. HMR and hot-reload. Published content co
 What this gives you:
 
 - All pages, layouts, components, Tailwind/DaisyUI, live Sanity content, search, theme toggle, language switcher
-- The email template editor at <http://localhost:4321/blog/admin/emails> (only available in `astro dev`)
+- The email template editor at <http://localhost:4321/blog/admin/emails/> (only available in `astro dev`)
 - API routes mount, but **they have no Cloudflare bindings here** (no D1). `/api/subscribe`, `/api/confirm`, `/api/unsubscribe` throw "D1 binding 'DB' is not available". For full API testing, use option 2.
 
 What this does **not** give you:
