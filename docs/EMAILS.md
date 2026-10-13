@@ -7,7 +7,7 @@ Notion-style WYSIWYG editor for transactional email templates, built on
 
 ```bash
 pnpm dev
-# open http://localhost:4321/blog/admin/emails
+# open http://localhost:4321/blog/admin/emails/
 ```
 
 The list page shows all templates in `src/emails/`. Click one to open the
@@ -21,6 +21,11 @@ editor, edit, click **Save**. Click **New template** to create one.
   plus metadata (`name`, `subject`, `locale`, `updatedAt`).
 - **Editor**: `src/components/EmailEditorIsland.tsx` mounts `<EmailEditor>`
   as a React island (`client:only="react"` — TipTap needs DOM).
+- **Routes**: the admin pages live in `src/dev-routes/emails/`, not `src/pages/`,
+  and `astro.config.mts` injects them only for `astro dev` (`devAdminRoutes`).
+  Astro's i18n router 404s every file-based page route that has no locale
+  prefix (`/blog/admin/...`), but exempts integration-injected routes. Production
+  builds therefore contain no admin routes at all.
 - **API**: `src/pages/api/emails/templates*` provides REST CRUD. All routes
   are guarded by `import.meta.env.DEV` (true only under `astro dev`), so they
   403 in production (the Cloudflare Worker doesn't have `fs` anyway).
@@ -62,8 +67,8 @@ import them statically) or move the registry into D1.
 
 | Method | Path                           | Notes                                              |
 | ------ | ------------------------------ | -------------------------------------------------- |
-| GET    | `/admin/emails`                | List + create UI                                   |
-| GET    | `/admin/emails/[slug]`         | Editor UI                                          |
+| GET    | `/admin/emails/`               | List + create UI                                   |
+| GET    | `/admin/emails/[slug]/`        | Editor UI                                          |
 | GET    | `/api/emails/templates`        | `{ templates: Summary[] }`                         |
 | POST   | `/api/emails/templates`        | Create. Body: `{slug,name,subject,locale}`         |
 | GET    | `/api/emails/templates/[slug]` | Full template (json + html + text)                 |

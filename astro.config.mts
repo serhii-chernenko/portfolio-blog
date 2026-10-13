@@ -1,5 +1,5 @@
 // @ts-check
-import type { AstroUserConfig } from 'astro';
+import type { AstroIntegration, AstroUserConfig } from 'astro';
 import { defineConfig, envField } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import { cacheCloudflare } from '@astrojs/cloudflare/cache';
@@ -48,6 +48,32 @@ function inlineSanityUiStyles(): VitePlugin {
 	};
 }
 
+const DEV_ADMIN_ROUTES = [
+	{ pattern: '/admin/emails', entrypoint: './src/dev-routes/emails/index.astro', prerender: false },
+	{
+		pattern: '/admin/emails/[slug]',
+		entrypoint: './src/dev-routes/emails/[slug].astro',
+		prerender: false,
+	},
+];
+
+/**
+ * Astro's i18n router 404s every page route outside a locale prefix, but exempts routes injected
+ * by integrations. The local admin lives outside `src/pages` and is injected only for `astro dev`,
+ * so production builds contain no admin routes at all.
+ */
+function devAdminRoutes(): AstroIntegration {
+	return {
+		name: 'dev-admin-routes',
+		hooks: {
+			'astro:config:setup': ({ command, injectRoute }) => {
+				if (command !== 'dev') return;
+				for (const route of DEV_ADMIN_ROUTES) injectRoute(route);
+			},
+		},
+	};
+}
+
 const runtimeConfig = USE_NODE_DEV_ADAPTER
 	? { adapter: node({ mode: 'standalone' }) }
 	: {
@@ -82,7 +108,7 @@ export default defineConfig({
 			redirectToDefaultLocale: false,
 		},
 	},
-	integrations: [react()],
+	integrations: [react(), devAdminRoutes()],
 	env: {
 		// validateSecrets defaults to false — so production CI builds without secrets present are fine.
 		// astro:env validates secrets at runtime (worker startup), not build time.

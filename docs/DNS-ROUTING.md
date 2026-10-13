@@ -35,6 +35,44 @@ Worker.
 
 ---
 
+## When the portfolio Worker ships (checklist)
+
+The blog temporarily owns a few host-root paths that belong to the future
+portfolio Worker. Do these steps together when the portfolio goes live; the
+details are in the sections further down.
+
+1. **Bind the portfolio Worker** to `serhiichernenko.com/*`. The blog keeps
+   `serhiichernenko.com/blog` and `serhiichernenko.com/blog/*`, which are more
+   specific and keep winning (re-check Cloudflare's route precedence then).
+2. **Delete the temporary root redirect** (apex `/` → `/blog/en/`, 302) in the
+   same deploy window:
+
+   ```bash
+   cf rulesets account-rulesets rules delete 6e234d678cdd4cec838189114c83331a --ruleset-id 3dbd052f46a1486397b3d681d5602160 -z serhiichernenko.com
+   ```
+
+   Keep rule `4bfde77c603b463e96fbb87712ce20b2` (www → apex 308).
+
+3. **Hand over the host-root files** from this repo to the portfolio:
+
+   | Path             | Remove from this repo                                                                   | The portfolio must serve                                                            |
+   | ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+   | `/robots.txt`    | route in `wrangler.jsonc`, the copy step in `scripts/post-build.mjs`                    | its own file, keeping `Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml` |
+   | `/favicon.ico`   | route in `wrangler.jsonc`, the copy step in `scripts/post-build.mjs`                    | its own favicon                                                                     |
+   | `/llms.txt`      | route in `wrangler.jsonc`, `APEX_ENDPOINTS` entry in `src/middleware.ts`                | its own file, linking `https://serhiichernenko.com/blog/llms.txt`                   |
+   | `/llms-full.txt` | route in `wrangler.jsonc`, `APEX_ENDPOINTS` entry in `src/middleware.ts`                | its own file or a redirect to `/blog/llms-full.txt`                                 |
+   | `/sitemap.xml`   | route in `wrangler.jsonc`, `SITEMAP_ALIAS_PATHS` host-root entry in `src/middleware.ts` | a sitemap index listing its own sitemap and `/blog/sitemap-index.xml`               |
+
+4. **Search engines.** The Google Search Console Domain property and the Bing
+   site already cover the whole domain; only submit the portfolio's own sitemap.
+   IndexNow submissions from this repo are scoped to `/blog/` by its key file at
+   `/blog/<key>.txt`; the portfolio needs its own key file at its root to submit
+   root URLs.
+5. **Docs and monitors.** Update `README.md`, this file and `docs/SEO.md`, and
+   point uptime monitors at the portfolio's `/` as well as `/blog/en/`.
+
+---
+
 ## The moving parts (and who owns each)
 
 | Piece                                                                                                                                   | Where                                                           | Purpose                                                                                                                            |
