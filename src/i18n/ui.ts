@@ -232,3 +232,7 @@ export const ui = {
 } as const satisfies Record<Locale, Record<string, string>>;
 
 export type UIKey = keyof (typeof ui)['en'];
+
+export function isUIKey(value: string): value is UIKey {
+	return Object.hasOwn(ui.en, value);
+}

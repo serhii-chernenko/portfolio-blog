@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { locales, localeLabels, htmlLangAttribute } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
@@ -12,7 +13,7 @@ export interface Props {
 
 const { locale, currentPath, translatedUrls } = Astro.props;
 
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 
 function hrefFor(target: Locale): string {
 	// If we have explicit translated URLs (e.g. from a post page), use them.
@@ -43,7 +44,7 @@ function hrefFor(target: Locale): string {
 	<button
 		tabindex="0"
 		class="btn btn-ghost btn-sm gap-1"
-		aria-label={t('lang.switch')}
+		aria-label={stegaClean(t('lang.switch'))}
 		aria-haspopup="true"
 	>
 		<span>{localeLabels[locale]}</span>

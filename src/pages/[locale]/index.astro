@@ -18,7 +18,7 @@ const TAGS_LIMIT = 14;
 const rawLocale = Astro.params.locale ?? '';
 if (!isLocale(rawLocale)) return new Response(null, { status: 404 });
 const locale: Locale = rawLocale;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const sanity = getSanityContext(Astro.locals);
 
 const [{ settings, aboutPath }, allPosts, allTags] = await Promise.all([

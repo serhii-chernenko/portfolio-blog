@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
@@ -14,7 +15,7 @@ export interface Props {
 }
 
 const { headings, locale } = Astro.props;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 
 // Only include h2 and h3
 const filtered = headings.filter((h) => h.depth === 2 || h.depth === 3);
@@ -26,7 +27,7 @@ if (filtered.length < 3) return;
 <nav
 	id="toc"
 	class="toc sticky top-24 text-sm max-h-[calc(100vh-8rem)] overflow-y-auto"
-	aria-label={t('post.toc')}
+	aria-label={stegaClean(t('post.toc'))}
 >
 	<p class="font-semibold text-base-content mb-3 text-xs uppercase tracking-wide">
 		{t('post.toc')}

@@ -12,9 +12,16 @@ export function getLocaleFromUrl(url: URL): Locale {
 	return defaultLocale;
 }
 
-export function useTranslations(locale: Locale) {
+export type UiOverrides = Partial<Record<Locale, Partial<Record<UIKey, string>>>>;
+
+/**
+ * Returns a synchronous translator for `locale`. Sanity `uiStrings` overrides win over
+ * `ui.ts`; in draft mode they carry stega markers, so clean them before using in attributes.
+ */
+export function useTranslations(locale: Locale, overrides?: UiOverrides) {
+	const localeOverrides = overrides?.[locale];
 	return function t(key: UIKey, vars?: Record<string, string | number>): string {
-		let value: string = ui[locale][key] ?? ui[defaultLocale][key];
+		let value: string = localeOverrides?.[key] ?? ui[locale][key] ?? ui[defaultLocale][key];
 		if (vars) {
 			for (const [k, v] of Object.entries(vars)) {
 				value = value.replaceAll(`{${k}}`, String(v));

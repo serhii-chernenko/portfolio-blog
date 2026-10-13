@@ -9,5 +9,6 @@ type Runtime = import('@astrojs/cloudflare').Runtime;
 declare namespace App {
 	interface Locals extends Runtime {
 		sanity: import('./lib/sanity/request').SanityContext;
+		uiOverrides?: import('./i18n/utils').UiOverrides;
 	}
 }

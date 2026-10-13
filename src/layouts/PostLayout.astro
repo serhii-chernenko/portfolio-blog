@@ -25,7 +25,7 @@ const HERO_SIZES = '(min-width: 1024px) 1024px, 100vw';
 
 const { post, headings, readingTime } = Astro.props;
 const locale: Locale = post.language;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const translatedUrls = getTranslatedPostUrls(post);
 const tags = post.tags;
 const heroImage = post.heroImage;
@@ -160,7 +160,7 @@ const ogImage = heroImage
 				{tags.length > 0 && (
 					<div class="mt-10 pt-8 border-t border-base-300">
 						<p class="text-sm font-medium text-base-content/60 mb-3">{t('post.tags')}</p>
-						<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
+						<div class="flex flex-wrap gap-2" aria-label={stegaClean(t('post.tags'))}>
 							{tags.map((tag) => (
 								<a
 									href={localeHref(locale, `tags/${tagSlug(tag)}`)}
@@ -231,7 +231,7 @@ const ogImage = heroImage
 				document.addEventListener('astro:after-swap', enhanceCodeBlocks);
 			</script>
 			<!-- Sidebar: Table of Contents (lg+) -->
-			<aside class="hidden lg:block" aria-label={t('post.toc')}>
+			<aside class="hidden lg:block" aria-label={stegaClean(t('post.toc'))}>
 				<TableOfContents headings={headings} locale={locale} />
 			</aside>
 		</div>

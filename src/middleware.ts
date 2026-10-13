@@ -20,6 +20,7 @@ import {
 	shouldEmitHttpEvent,
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
+import { loadUiOverrides } from './lib/ui-overrides';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -113,6 +114,10 @@ function needsTrailingSlash(request: Request, pathname: string): boolean {
 		!pathname.includes(INTERNAL_SEGMENT_PREFIX) &&
 		!hasAssetExtension(pathname)
 	);
+}
+
+function isPageRoute(pathname: string): boolean {
+	return !pathname.startsWith(API_PATH_PREFIX) && !hasAssetExtension(pathname);
 }
 
 function isPreviewPageRequest(request: Request, url: URL): boolean {
@@ -242,6 +247,9 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 	context.locals.sanity = createRequestContext(draftMode);
 
 	const apexEndpoint = apexEndpointFor(request, url.pathname);
+	if (!apexEndpoint && isPageRoute(url.pathname)) {
+		context.locals.uiOverrides = await loadUiOverrides(context.locals.sanity);
+	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
 	if (draftMode) return disableCaching(context, response);
 	applyCachePolicy(context, response);

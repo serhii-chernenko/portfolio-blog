@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
@@ -8,7 +9,7 @@ export interface Props {
 }
 
 const { locale, source = 'inline' } = Astro.props;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 ---
 
 <div class="subscribe-form-wrapper">
@@ -18,13 +19,13 @@ const t = useTranslations(locale);
 		novalidate
 		data-locale={locale}
 		data-source={source}
-		data-message-submitting={t('subscribe.submitting')}
-		data-message-submit={t('subscribe.submit')}
-		data-message-success={t('subscribe.success')}
-		data-message-invalid={t('subscribe.invalid')}
-		data-message-rate-limited={t('subscribe.rateLimited')}
-		data-message-error={t('subscribe.error')}
-		aria-label={t('subscribe.title')}
+		data-message-submitting={stegaClean(t('subscribe.submitting'))}
+		data-message-submit={stegaClean(t('subscribe.submit'))}
+		data-message-success={stegaClean(t('subscribe.success'))}
+		data-message-invalid={stegaClean(t('subscribe.invalid'))}
+		data-message-rate-limited={stegaClean(t('subscribe.rateLimited'))}
+		data-message-error={stegaClean(t('subscribe.error'))}
+		aria-label={stegaClean(t('subscribe.title'))}
 	>
 		<label for="subscribe-email" class="sr-only">
 			{t('subscribe.email')}
@@ -34,7 +35,7 @@ const t = useTranslations(locale);
 			type="email"
 			name="email"
 			class="input input-bordered flex-1 min-w-0"
-			placeholder={t('subscribe.email')}
+			placeholder={stegaClean(t('subscribe.email'))}
 			autocomplete="email"
 			required
 			aria-required="true"

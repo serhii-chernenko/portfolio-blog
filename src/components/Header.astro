@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
 import type { LayoutData, NavLink } from '../lib/site';
@@ -13,7 +14,7 @@ export interface Props {
 }
 
 const { locale, currentPath, translatedUrls, layout } = Astro.props;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 
 const navLinks = layout.header;
 const siteName = layout.settings.siteName;
@@ -50,7 +51,7 @@ function linkTarget(link: NavLink) {
 				<label
 					for="nav-drawer"
 					class="btn btn-ghost btn-square lg:hidden"
-					aria-label={t('nav.menu')}
+					aria-label={stegaClean(t('nav.menu'))}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -97,8 +98,8 @@ function linkTarget(link: NavLink) {
 				<button
 					class="btn btn-ghost btn-square"
 					data-search-open
-					aria-label={t('nav.search')}
-					title={t('nav.search')}
+					aria-label={stegaClean(t('nav.search'))}
+					title={stegaClean(t('nav.search'))}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"

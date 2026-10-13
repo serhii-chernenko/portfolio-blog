@@ -58,7 +58,7 @@ const {
 	layout,
 } = Astro.props;
 
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const title = stegaClean(rawTitle);
 const description = stegaClean(rawDescription);
 const tags = rawTags?.map((tag) => stegaClean(tag));
@@ -112,7 +112,7 @@ if (isArticle) {
 			site,
 			crumbs: [
 				{ name: siteName, path: homePath },
-				{ name: t('nav.posts'), path: localeHref(locale, 'posts/') },
+				{ name: stegaClean(t('nav.posts')), path: localeHref(locale, 'posts/') },
 				{ name: title, path: Astro.url.pathname },
 			],
 		}),
