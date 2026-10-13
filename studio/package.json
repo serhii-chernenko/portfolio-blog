@@ -19,7 +19,7 @@
 		"@sanity/code-input": "^7.3.11",
 		"@sanity/document-internationalization": "^6.2.41",
 		"@sanity/icons": "^5.2.3",
-		"@sanity/ui": "^4.4.4",
+		"@sanity/ui": "4.4.3",
 		"@sanity/vision": "^6.18.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
