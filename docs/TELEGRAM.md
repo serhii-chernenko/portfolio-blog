@@ -1,6 +1,6 @@
 # Telegram notifications
 
-This blog uses a Telegram bot to send you private notifications about events you care about — new subscribers, deploys, preview URLs, etc.
+This blog uses a Telegram bot to send you private notifications about events you care about — new subscribers, subscription changes, and newly published posts.
 
 There is no public bot for visitors. This is a one-bot-one-user setup: the bot sends messages to **your** Telegram chat ID, and that's it.
 
@@ -8,21 +8,22 @@ There is no public bot for visitors. This is a one-bot-one-user setup: the bot s
 
 ## Events you get notified about
 
-| Event                       | Trigger                                  | Source                               |
-| --------------------------- | ---------------------------------------- | ------------------------------------ |
-| 📬 New pending subscriber   | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`         |
-| ✅ Subscriber confirmed     | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`           |
-| 🔔 Preferences changed      | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`       |
-| 📝 Preview deployed         | PR opened or pushed to                   | `.github/workflows/preview.yml`      |
-| 📝 New post published       | First publish of a post in Sanity        | `src/pages/api/sanity/revalidate.ts` |
-| ✅ Production deployed      | Push to `main` succeeded                 | `.github/workflows/deploy.yml`       |
-| ❌ Production deploy failed | Push to `main` failed                    | `.github/workflows/deploy.yml`       |
+| Event                     | Trigger                                  | Source                               |
+| ------------------------- | ---------------------------------------- | ------------------------------------ |
+| 📬 New pending subscriber | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`         |
+| ✅ Subscriber confirmed   | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`           |
+| 🔔 Preferences changed    | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`       |
+| 📝 New post published     | First publish of a post in Sanity        | `src/pages/api/sanity/revalidate.ts` |
 
 Telegram is best-effort: HTTP failures and fetch/network exceptions are swallowed, so committed
 subscription state is never reported as a 500 because Telegram is down. Warnings are structured
 and contain only a failure class/status—never notification text, addresses, URLs, or credentials.
 Worker subscription notifications contain only event type, locale, and an allowlisted action; no
 subscriber address or bearer is sent to Telegram.
+
+Every notification comes from the Worker. Deploys and PR previews run through Cloudflare Workers
+Builds, and no GitHub Actions workflow (`.github/workflows/ci.yml`, `indexnow.yml`) sends Telegram
+messages, so there are no deploy or preview notifications and no Telegram secrets in GitHub.
 
 ---
 
@@ -33,11 +34,11 @@ subscriber address or bearer is sent to Telegram.
 Open Telegram. Search for **[@BotFather](https://t.me/BotFather)**. Send `/newbot`. Follow the prompts:
 
 - **Name** — anything human-readable. Mine is "Blog Notifier".
-- **Username** — must end in `bot`. Doesn't matter what — only you and your CI ever use it.
+- **Username** — must end in `bot`. Doesn't matter what — only you and the Worker ever use it.
 
 BotFather returns a token that looks like `8123456789:AAH...`. **Save this** — it's the only time you'll see it. This is `TELEGRAM_BOT_TOKEN`.
 
-If you ever leak it: `/revoke` in BotFather, then `/token` to get a new one. Update wrangler secrets and GitHub secrets.
+If you ever leak it: `/revoke` in BotFather, then `/token` to get a new one. Update the Wrangler secret.
 
 ### 2. Get your chat ID
 
@@ -92,23 +93,6 @@ For `pnpm dev` (plain Astro): the runtime has no Cloudflare bindings, so the not
 
 ---
 
-## Setup (GitHub Actions — for deploy + preview workflows)
-
-The workflows use these as **repository secrets**:
-
-| Secret name          | Purpose                      |
-| -------------------- | ---------------------------- |
-| `TELEGRAM_BOT_TOKEN` | Same as the Wrangler secret. |
-| `TELEGRAM_CHAT_ID`   | Same as the Wrangler secret. |
-
-To set them:
-
-1. GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
-2. Name it `TELEGRAM_BOT_TOKEN`, paste the value.
-3. Repeat for `TELEGRAM_CHAT_ID`.
-
----
-
 ## Customization
 
 ### Send to a group instead of yourself
@@ -132,8 +116,6 @@ import { notify } from '@/lib/telegram';
 
 await notify('📊 Aggregate maintenance event completed');
 ```
-
-For GitHub Actions, hit the API directly with `curl` — see the existing workflow examples.
 
 ### Silence notifications temporarily
 
@@ -169,9 +151,6 @@ You blocked your own bot. Unblock it in Telegram.
 
 **"Bad Request: chat not found"**
 Chat ID is wrong, or the chat was deleted, or the bot isn't a member of that group.
-
-**GitHub Actions notify works but Worker doesn't (or vice-versa).**
-Different secret stores. GitHub Actions reads from repo Secrets; the Worker reads from Wrangler secrets. They have to be set independently.
 
 **Local dev (`pnpm dev`) doesn't notify.**
 Expected. There's no Cloudflare runtime in plain `astro dev`. Use `pnpm wrangler:dev` after building, with `.dev.vars` populated.

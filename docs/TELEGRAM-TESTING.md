@@ -15,25 +15,24 @@ something noteworthy happens, so you don't have to watch dashboards or inboxes.
 It is deliberately **best-effort**: `notify()` in `src/lib/telegram.ts` no-ops when
 the token/chat-id are unset and swallows API errors (logs `console.warn`, never
 throws). A Telegram outage can never turn a subscribe request into a 500 or fail a
-deploy. That's by design — notifications are a convenience, not a dependency.
+webhook delivery. That's by design — notifications are a convenience, not a dependency.
 
 ---
 
-## The seven events
+## The four events
 
-Two sources fire notifications: the **Worker** (runtime API routes) and **GitHub
-Actions** (CI). They read from _separate_ credential stores (Worker secrets vs.
-repo Actions secrets) — both must be configured.
+Every notification is fired by the **Worker** and reads the Worker secrets
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Deploys and PR previews run through
+Cloudflare Workers Builds, and neither GitHub Actions workflow
+(`.github/workflows/ci.yml`, `indexnow.yml`) sends Telegram messages, so there are
+no deploy or preview notifications.
 
-| #   | Message (prefix)                      | When                                                 | Fired by       | Source                               |
-| --- | ------------------------------------- | ---------------------------------------------------- | -------------- | ------------------------------------ |
-| 1   | `📬 New pending subscriber`           | Pending row is stored and confirmation email is sent | Worker         | `src/pages/api/subscribe.ts`         |
-| 2   | `✅ Subscriber confirmed`             | Confirmation enables both content languages          | Worker         | `src/pages/api/confirm.ts`           |
-| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | Worker         | `src/pages/api/unsubscribe.ts`       |
-| 4   | `📝 Preview deployed for PR #<n>`     | PR opened/synchronized, preview Worker deployed      | GitHub Actions | `.github/workflows/preview.yml`      |
-| 5   | `📝 New post published`               | A post is published in Sanity for the first time     | Worker         | `src/pages/api/sanity/revalidate.ts` |
-| 6   | `✅ Production deployed`              | Push to `main` deploy succeeds                       | GitHub Actions | `.github/workflows/deploy.yml`       |
-| 7   | `❌ Production deploy failed`         | Push to `main` deploy fails                          | GitHub Actions | `.github/workflows/deploy.yml`       |
+| #   | Message (prefix)                      | When                                                 | Source                               |
+| --- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------ |
+| 1   | `📬 New pending subscription`         | Pending row is stored and confirmation email is sent | `src/pages/api/subscribe.ts`         |
+| 2   | `✅ Subscription confirmed`           | Confirmation enables both content languages          | `src/pages/api/confirm.ts`           |
+| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | `src/pages/api/unsubscribe.ts`       |
+| 4   | `📝 New post published`               | A post is published in Sanity for the first time     | `src/pages/api/sanity/revalidate.ts` |
 
 Events 1–3 deliberately omit the subscriber address. They carry only event type, locale, and for a
 preference change the allowlisted action.
@@ -57,7 +56,7 @@ or you never messaged the bot first).
 
 ---
 
-## Layer 1 — Worker events (1, 2, 3, 5)
+## Layer 1 — Worker events
 
 These only fire in a **Cloudflare runtime** (workerd), never under plain `pnpm dev`.
 
@@ -113,7 +112,7 @@ Repeating the same POST remains successful but sends no duplicate notification.
 A GET to the same endpoint only redirects to the preference center and never
 changes state or sends a notification.
 
-**Event 5 — new post published:** publish a brand-new post in the Studio (the
+**Event 4 — new post published:** publish a brand-new post in the Studio (the
 Sanity webhook must point at the Worker, see `docs/SANITY.md`). The webhook
 projection carries `"operation": delta::operation()`; a first publish arrives as
 `operation: "create"` and, after the cache purge succeeds, sends
@@ -135,26 +134,8 @@ the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 
 ---
 
-## Layer 2 — GitHub Actions events (4, 6, 7)
-
-These need the repo Actions secrets set (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
-plus the Cloudflare/`CF_*` secrets the deploy steps use). See `GO-LIVE.md` step 8.
-
-| Event                | How to trigger                                                                              | Expected                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 4 — Preview deployed | Open a PR (or push a commit to an open PR)                                                  | `📝 Preview deployed for PR #<n>` + a PR comment with the preview URL |
-| 6 — Prod deploy OK   | Merge to `main` (or run the deploy workflow manually)                                       | `✅ Production deployed: <commit msg>`                                |
-| 7 — Prod deploy fail | Hard to force safely; temporarily break the build on a throwaway branch→main in a test repo | `❌ Production deploy failed on commit <sha>`                         |
-
-Debug a CI notification in the Actions run log — the `curl` step prints its own
-output, and Telegram's API returns a JSON body describing any rejection.
-
----
-
 ## Common gotchas
 
-- **Works in CI but not the Worker (or vice-versa).** Different secret stores.
-  Set both: `wrangler secret put …` _and_ repo Actions secrets.
 - **Nothing arrives, no error.** `notify()` is silent on success-with-no-delivery
   only if creds are empty (it early-returns). Confirm `wrangler secret list`
   shows both names and they're non-empty.
@@ -168,9 +149,8 @@ output, and Telegram's API returns a JSON body describing any rejection.
 
 ## How to know it's "actually working"
 
-You're done when, in one pass, you've personally seen all seven message types
+You're done when, in one pass, you've personally seen all four message types
 land in your chat: the three newsletter events from a real subscribe→confirm→
-unsubscribe cycle against the deployed Worker, the first-publish event from a new
-post in the Studio, and the three CI events from one real PR that you open, get
-previewed, and merge. Until you've seen
-a given message at least once end-to-end, treat that event as unverified.
+unsubscribe cycle against the deployed Worker, and the first-publish event from a
+new post in the Studio. Until you've seen a given message at least once
+end-to-end, treat that event as unverified.

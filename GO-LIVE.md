@@ -22,8 +22,9 @@ Legend: 🔴 = blocks production deploy · 🟡 = blocks a specific feature · �
 
 ## 1. 🔴 Cloudflare D1 database
 
-The subscribers table lives in D1. `wrangler.jsonc` currently has
-`"database_id": "REPLACE_WITH_REAL_ID"`.
+The subscribers table lives in D1. `wrangler.jsonc` → `d1_databases[0].database_id`
+already holds the production database ID; repeat this step only when recreating the
+database.
 
 ```bash
 wrangler d1 create portfolio-blog
@@ -90,9 +91,13 @@ full picture.
    cd studio && pnpm install && pnpm schema:deploy && pnpm deploy
    ```
    The Studio is served at <https://serhiichernenko-blog.sanity.studio>.
-   Redeploy the Studio after the apex cutover: its preview origin changed to
-   `https://serhiichernenko.com` (`SITE_ORIGIN` in `studio/src/project.ts`), and
-   the hosted Studio only picks that up on its next `pnpm deploy`.
+   `pnpm deploy` runs `sanity deploy`, which updates that existing deployment
+   because its `appId` is pinned in `studio/sanity.cli.ts` (`STUDIO_APP_ID` in
+   `studio/src/project.ts`). Run `cd studio && pnpm deploy` again after the apex
+   cutover: the preview origin changed to `https://serhiichernenko.com`
+   (`SITE_ORIGIN` in `studio/src/project.ts`) and is compiled into the Studio
+   build. `deployment.autoUpdates` only updates the Sanity Studio version, not
+   this config.
 2. [ ] **Viewer token** — <https://www.sanity.io/manage> → project `8xspnp7h` →
        **API** → **Tokens** → add a token with the **Viewer** role, then:
    ```bash
@@ -187,8 +192,9 @@ to configure here.
 
 Deployment (production **and** PR previews) is handled by **Cloudflare Workers
 Builds** — the dashboard Git integration — not GitHub Actions, so **no Cloudflare
-API token lives in the repo**. The only workflows now are `ci.yml`
-(format/lint/typecheck/build — needs no secrets). New-post Telegram
+API token lives in the repo**. The only workflows are `ci.yml`
+(format/lint/typecheck/build) and `indexnow.yml` (IndexNow submission after a
+`main` deploy, see step 9a); neither needs secrets. New-post Telegram
 notifications come from the Sanity revalidate webhook on the Worker, not from
 Actions.
 
@@ -198,18 +204,13 @@ Secrets (**Settings → Secrets and variables → Actions**):
 
 Variables (the `vars.*` context):
 
-- [ ] The optional `PUBLIC_GISCUS_*` / `PUBLIC_CF_ANALYTICS_TOKEN` — inlined by the `ci.yml` build step so CI builds
+- [ ] The optional `PUBLIC_GISCUS_*` — inlined by the `ci.yml` build step so CI builds
       match production shape. Not load-bearing for the gate.
 
 > Cloudflare credentials (`CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`)
 > are **no longer GitHub secrets** — Workers Builds authenticates through the
 > dashboard Git integration. Configure deploys/previews at Cloudflare → Workers &
 > Pages → **portfolio-blog → Settings → Build**.
-
-Repo labels (optional):
-
-- [ ] Create the `dev` label from `.github/labels.yml` — manually in the repo's
-      Labels UI, or via a labels-sync action.
 
 ---
 
@@ -276,8 +277,8 @@ sitemap URL once:
 gh workflow run indexnow.yml -f mode=all
 ```
 
-From then on, the deploy workflow submits sitemap changes and the Sanity webhook
-submits each publish. See `docs/SEO.md` and `docs/SANITY.md#indexnow-on-publish`.
+From then on, `indexnow.yml` submits sitemap changes after each Workers Builds
+deploy of `main`, and the Sanity webhook submits each publish. See `docs/SEO.md` and `docs/SANITY.md#indexnow-on-publish`.
 
 - **Verify:** the workflow run succeeds, and
   `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` returns the key.
@@ -304,13 +305,14 @@ auto-posts a PR comment with the preview URL — no GitHub Action involved.
 
 - [ ] **If no preview URL appears:** preview URLs are on by default when
       `workers.dev` is enabled (Wrangler ≥ 3.91; this repo is on 4.x). Otherwise
-      enable them at **Settings → Domains & Routes → Preview URLs**. No
+      enable them in the Worker's **Domains** tab (Workers & Pages →
+      portfolio-blog → **Domains** → Preview URLs). No
       `wrangler.jsonc` change is required.
 - [ ] **Content on previews.** Content is read from the live Sanity dataset, so a
       preview version shows the same published content as production — there is no
       per-branch content. Drafts are reachable only through the Studio's
       Presentation tool (it needs `SANITY_API_READ_TOKEN` on the Worker, and
-      `https://*.workers.dev` is an allowed preview origin in `studio/sanity.config.ts`).
+      `https://*.chernenko.workers.dev` is an allowed preview origin in `studio/sanity.config.ts`).
 
 ---
 
@@ -335,11 +337,9 @@ Acceptance criteria that can only be checked against the live site
 
 ## Quick reference — placeholders to replace
 
-| Placeholder                                    | File             | Step |
-| ---------------------------------------------- | ---------------- | ---- |
-| `REPLACE_WITH_REAL_ID` (D1)                    | `wrangler.jsonc` | 1    |
-| `REPLACE_WITH_REAL_ID` (KV)                    | `wrangler.jsonc` | 2    |
-| `SANITY_API_READ_TOKEN` (Viewer token)         | Worker secret    | 4    |
-| `SANITY_WEBHOOK_SECRET` (webhook secret)       | Worker secret    | 4    |
-| `DRAFT_MODE_COOKIE_SECRET` (session HMAC key)  | Worker secret    | 4    |
-| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars      | 6    |
+| Placeholder                                    | File          | Step |
+| ---------------------------------------------- | ------------- | ---- |
+| `SANITY_API_READ_TOKEN` (Viewer token)         | Worker secret | 4    |
+| `SANITY_WEBHOOK_SECRET` (webhook secret)       | Worker secret | 4    |
+| `DRAFT_MODE_COOKIE_SECRET` (session HMAC key)  | Worker secret | 4    |
+| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars   | 6    |

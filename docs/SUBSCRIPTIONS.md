@@ -35,7 +35,9 @@ granular controls when they are useful, keeps the initial task easy without weak
 ## Editions are not translations
 
 `en` and `uk` identify **content audiences**, not translation variants. A post belongs to exactly
-one edition for campaign purposes. Its tags, slug, or `translationKey` do not change that.
+one edition for campaign purposes. Its tags, its slug, or a link to a translation in another
+language (the Sanity `translation.metadata` document, from which `src/lib/posts.ts` derives
+`translationKey`) do not change that.
 
 - Publishing an English post targets the enabled English preference.
 - Publishing a Ukrainian post targets the enabled Ukrainian preference.

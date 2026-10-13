@@ -13,14 +13,16 @@ production events to New Relic EU through evlog's OTLP drain, the same way the `
 
 ## Why a client beacon
 
-Content pages (`home`, posts, tags, static pages) are rendered on demand from Sanity and served
-from Workers Cache, so a server-side request log is not a reliable record of visits or engagement. Page
-activity is therefore reported by a small script in `BaseLayout.astro` that posts to the SSR endpoint
-`/blog/api/events`. Running JavaScript is also the first bot filter; the endpoint drops requests whose
-User-Agent looks like a crawler.
+Content pages (`home`, posts, tags, static pages) are rendered on demand from Sanity and cached in
+Workers Cache (see [`SANITY.md`](./SANITY.md#caching)). A cache hit is answered before the Worker
+runs, so middleware only sees cache misses and a server-side request log is not a record of visits.
+Page activity is therefore reported by a small script in `src/components/Telemetry.astro`, rendered by
+`BaseLayout.astro`, that posts to the SSR endpoint `/blog/api/events`. Running JavaScript is also the
+first bot filter; the endpoint drops requests whose User-Agent looks like a crawler.
 
-`run_worker_first` was rejected: it would put every asset request through the Worker, count bots and
-asset fetches as visits, and still give no engagement data.
+Counting on the server instead would mean giving up the route cache so every page view reaches the
+Worker, would count crawlers as visits, and would still give no engagement data (active time,
+scroll depth).
 
 ## Shipping rules
 
