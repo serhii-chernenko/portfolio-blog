@@ -162,9 +162,8 @@ These are intentionally left as placeholders — none of them have safe defaults
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
    - `NEW_RELIC_LICENSE_KEY` — optional; without it, telemetry events are not forwarded to New Relic. See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
    - `SANITY_API_READ_TOKEN`, `DRAFT_MODE_COOKIE_SECRET`, `SANITY_WEBHOOK_SECRET` — optional; Sanity Viewer token and draft-session signing key (draft preview needs both), and the secret that signs the cache-purge webhook. Read on demand through `src/lib/server-secrets.ts`, so an invalid secret never breaks content routes. See [`docs/SANITY.md`](./docs/SANITY.md#secrets).
-7. **`.github/labels.yml`** — optional: create the `dev` label manually in repo settings, or wire `crazy-max/ghaction-github-labeler` to do it.
-8. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
-9. **`public/og-default.png`** — replace the 1×1 placeholder with a real 1200×630 PNG. Phase 2 per the plan generates per-post OGs via satori.
+7. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
+8. **`public/og-default.png`** — replace the 1×1 placeholder with a real 1200×630 PNG. Phase 2 per the plan generates per-post OGs via satori.
 
 ---
 

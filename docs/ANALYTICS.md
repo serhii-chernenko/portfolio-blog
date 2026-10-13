@@ -25,7 +25,7 @@ These two systems are complementary, not substitutes. Web Analytics (auto-inject
 | Dataset name | `portfolio_blog_events` |
 | Retention    | ~3 months               |
 
-The dataset is **auto-created on first write** — no separate provisioning step is needed (unlike D1 or KV, which require `REPLACE_WITH_REAL_ID` values).
+The dataset is **auto-created on first write** — no separate provisioning step is needed (unlike D1, which needs `wrangler d1 create` and its ID in `wrangler.jsonc`).
 
 After modifying `wrangler.jsonc`, regenerate types:
 
