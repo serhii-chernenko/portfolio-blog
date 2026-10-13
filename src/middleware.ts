@@ -2,7 +2,12 @@ import type { APIContext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
 import { perspectiveCookieName } from '@sanity/preview-url-secret/constants';
 import { getDraftModeSecrets } from './lib/server-secrets';
-import { PREVIEW_SEARCH_PARAM, SANITY_CACHE_TAG, studioUrl } from './lib/sanity/config';
+import {
+	PREVIEW_SEARCH_PARAM,
+	SANITY_CACHE_TAG,
+	sanityDashboardOrigin,
+	studioUrl,
+} from './lib/sanity/config';
 import { DRAFT_SESSION_COOKIE_NAME, isValidDraftSession } from './lib/sanity/draft-mode';
 import { createRequestContext, parseDraftPerspective } from './lib/sanity/request';
 
@@ -60,6 +65,7 @@ const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
 const FRAME_ANCESTORS = [
 	"'self'",
 	studioUrl,
+	sanityDashboardOrigin,
 	...(import.meta.env.DEV ? [LOCAL_STUDIO_ORIGIN] : []),
 ];
 const HTML_SECURITY_HEADERS: Record<string, string> = {
