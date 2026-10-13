@@ -108,7 +108,7 @@ pnpm schema:deploy             # publishes the schema to the Content Lake
 pnpm deploy                    # builds and uploads the Studio to serhiichernenko-blog.sanity.studio
 ```
 
-Redeploy both whenever `studio/src/` changes (new fields, validation, structure). The Studio hostname comes from `STUDIO_HOST` in `studio/src/project.ts`; `deployment.autoUpdates` is on, so the hosted Studio tracks Sanity's latest Studio version.
+Redeploy both whenever `studio/src/` changes (new fields, validation, structure). `deployment.appId` in `studio/sanity.cli.ts` (`STUDIO_APP_ID` in `studio/src/project.ts`) pins the existing deployment, so `pnpm deploy` updates `serhiichernenko-blog.sanity.studio` without asking for a hostname. `deployment.autoUpdates` is on, so the hosted Studio tracks Sanity's latest Studio version; config such as `SITE_ORIGIN` is compiled into the build and only changes on the next `pnpm deploy`.
 
 ---
 
@@ -155,7 +155,7 @@ Publishing in the Studio fires a webhook to `POST /blog/api/sanity/revalidate`. 
 5. When the payload is a `post` with `operation == "create"` (the first publish of that document), sends a Telegram notification, `📝 New post published: <title> (<LANG>) <absolute post URL>`, through `src/lib/telegram.ts` in the background (`waitUntil`). It is sent only after a successful purge, so a 503 retry does not notify twice.
 6. Submits the changed URLs to IndexNow in the background, after the purge (see [IndexNow on publish](#indexnow-on-publish)).
 
-Scheduled (future `publishedAt`) posts do not trigger a webhook when their time arrives, so they appear once the cached pages expire, about an hour (`maxAge`) after the scheduled time. To publish immediately, set `publishedAt` to now, or edit any document to fire the webhook. For the same reason neither a cache purge nor an IndexNow submission happens when a scheduled post goes live; the deploy-time IndexNow workflow or a manual run covers it (see [`SEO.md`](./SEO.md#indexnow)).
+Scheduled (future `publishedAt`) posts do not trigger a webhook when their time arrives, so they appear once the cached pages expire, about an hour (`maxAge`) after the scheduled time. To publish immediately, set `publishedAt` to now, or edit any document to fire the webhook. For the same reason neither a cache purge nor an IndexNow submission happens when a scheduled post goes live; the post-deploy IndexNow workflow or a manual run covers it (see [`SEO.md`](./SEO.md#indexnow)).
 
 If the webhook is misconfigured, the site keeps working and pages refresh when their TTL expires (`maxAge` 1h, then `swr` serves stale up to 1 day while revalidating).
 
@@ -170,7 +170,7 @@ After a successful cache purge, `src/pages/api/sanity/revalidate.ts` submits the
 - **Key:** `aa97432c46c58c839540be4d044ece78`, with the key file at `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt`. Submissions go to `https://api.indexnow.org/indexnow`.
 - **Failures:** a rejected or failed submission is logged and never fails the webhook, so Sanity does not retry the delivery because of IndexNow.
 
-The other IndexNow path, the GitHub Actions deploy workflow, is described in [`SEO.md`](./SEO.md#indexnow).
+The other IndexNow path, the GitHub Actions workflow that runs after each deploy (`indexnow.yml`), is described in [`SEO.md`](./SEO.md#indexnow).
 
 ### Webhook setup
 
@@ -242,5 +242,5 @@ Keystatic is no longer used. Remove its leftover infrastructure once the Sanity 
   pnpm exec wrangler secret delete KEYSTATIC_GITHUB_CLIENT_ID
   pnpm exec wrangler secret delete KEYSTATIC_GITHUB_CLIENT_SECRET
   ```
-- [ ] After the next deploy, confirm in the Cloudflare dashboard (Workers & Pages → portfolio-blog → Settings → Domains & Routes) that the old `serhiichernenko.com/keystatic*` and `serhiichernenko.com/api/keystatic*` Worker routes are gone. Remove them manually if they remain.
+- [ ] After the next deploy, confirm in the Cloudflare dashboard (Workers & Pages → portfolio-blog → **Domains** tab, or the zone's **Workers Routes** page) that the old `serhiichernenko.com/keystatic`, `/keystatic/*`, `/api/keystatic` and `/api/keystatic/*` Worker routes are gone. `wrangler deploy` replaces the Worker's route set with the routes in `wrangler.jsonc`, but it only adds routes when it falls back to per-zone route creation, so remove any that remain by hand.
 - [x] The `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` var is already removed from `wrangler.jsonc`.
