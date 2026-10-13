@@ -12,6 +12,7 @@ export const youtube = defineType({
 			type: 'string',
 			title: 'Video ID',
 			description: 'The part after v= in the YouTube URL',
+			options: { aiAssist: { exclude: true } },
 			validation: (rule) => rule.required(),
 		}),
 		defineField({

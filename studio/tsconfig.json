@@ -14,6 +14,6 @@
 		"noEmit": true,
 		"types": ["node"]
 	},
-	"include": ["sanity.config.ts", "sanity.cli.ts", "src/**/*"],
+	"include": ["sanity.config.ts", "sanity.cli.ts", "src/**/*", "scripts/**/*"],
 	"exclude": ["node_modules", "dist", ".sanity"]
 }

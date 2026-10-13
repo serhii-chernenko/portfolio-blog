@@ -3,6 +3,7 @@ import {
 	defineLocations,
 	type PresentationPluginOptions,
 } from 'sanity/presentation';
+import { LANGUAGES } from '../languages';
 import { BLOG_BASE_PATH } from '../project';
 
 interface LocalizedDocumentValue {
@@ -12,6 +13,10 @@ interface LocalizedDocumentValue {
 }
 
 const homeHref = (language: string) => `${BLOG_BASE_PATH}/${language}/`;
+
+const layoutLocations = defineLocations({
+	locations: LANGUAGES.map(({ id, title }) => ({ title: `Home (${title})`, href: homeHref(id) })),
+});
 
 export const resolve: PresentationPluginOptions['resolve'] = {
 	mainDocuments: defineDocuments([
@@ -63,23 +68,8 @@ export const resolve: PresentationPluginOptions['resolve'] = {
 				};
 			},
 		}),
-		navigation: defineLocations({
-			select: { language: 'language' },
-			resolve: (value: LocalizedDocumentValue | null) => {
-				if (!value?.language) {
-					return null;
-				}
-				return { locations: [{ title: 'Home', href: homeHref(value.language) }] };
-			},
-		}),
-		siteSettings: defineLocations({
-			select: { language: 'language' },
-			resolve: (value: LocalizedDocumentValue | null) => {
-				if (!value?.language) {
-					return null;
-				}
-				return { locations: [{ title: 'Home', href: homeHref(value.language) }] };
-			},
-		}),
+		navigation: layoutLocations,
+		siteSettings: layoutLocations,
+		uiStrings: layoutLocations,
 	},
 };
