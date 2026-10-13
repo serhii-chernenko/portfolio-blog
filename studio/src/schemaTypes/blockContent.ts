@@ -65,6 +65,7 @@ export const blockContent = defineType({
 				language: 'typescript',
 				languageAlternatives: CODE_LANGUAGES,
 				withFilename: true,
+				aiAssist: { exclude: true },
 			},
 		}),
 		defineArrayMember({ type: 'callout' }),

@@ -14,6 +14,7 @@ export const post = defineType({
 			title: 'Language',
 			readOnly: true,
 			hidden: true,
+			options: { aiAssist: { exclude: true } },
 		}),
 		defineField({
 			name: 'title',
@@ -25,7 +26,12 @@ export const post = defineType({
 			name: 'slug',
 			type: 'slug',
 			title: 'Slug',
-			options: { source: 'title', maxLength: 96, isUnique: isSlugUniqueInLanguage },
+			options: {
+				source: 'title',
+				maxLength: 96,
+				isUnique: isSlugUniqueInLanguage,
+				aiAssist: { exclude: true },
+			},
 			validation: (rule) =>
 				rule.required().custom((slug) => {
 					const current = slug?.current;
@@ -43,12 +49,14 @@ export const post = defineType({
 			name: 'publishedAt',
 			type: 'datetime',
 			title: 'Published at',
+			options: { aiAssist: { exclude: true } },
 			validation: (rule) => rule.required(),
 		}),
 		defineField({
 			name: 'updatedAt',
 			type: 'datetime',
 			title: 'Updated at',
+			options: { aiAssist: { exclude: true } },
 		}),
 		defineField({
 			name: 'tags',

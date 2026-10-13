@@ -8,6 +8,6 @@ export default defineCliConfig({
 	},
 	deployment: {
 		appId: STUDIO_APP_ID,
-		autoUpdates: true,
+		autoUpdates: false,
 	},
 });

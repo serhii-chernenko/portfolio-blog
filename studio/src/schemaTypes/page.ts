@@ -26,12 +26,14 @@ export const page = defineType({
 			title: 'Language',
 			readOnly: true,
 			hidden: true,
+			options: { aiAssist: { exclude: true } },
 		}),
 		defineField({
 			name: 'key',
 			type: 'string',
 			title: 'Key',
 			description: 'Stable identifier shared by all translations of this page, for example about',
+			options: { aiAssist: { exclude: true } },
 			validation: (rule) =>
 				rule
 					.required()
@@ -65,7 +67,12 @@ export const page = defineType({
 			name: 'slug',
 			type: 'slug',
 			title: 'Slug',
-			options: { source: 'title', maxLength: 96, isUnique: isSlugUniqueInLanguage },
+			options: {
+				source: 'title',
+				maxLength: 96,
+				isUnique: isSlugUniqueInLanguage,
+				aiAssist: { exclude: true },
+			},
 			validation: (rule) =>
 				rule.required().custom((slug) => {
 					const current = slug?.current;
@@ -96,6 +103,7 @@ export const page = defineType({
 			name: 'updatedAt',
 			type: 'datetime',
 			title: 'Updated at',
+			options: { aiAssist: { exclude: true } },
 		}),
 		defineField({
 			name: 'body',
