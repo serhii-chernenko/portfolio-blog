@@ -1,5 +1,6 @@
 import { ImageIcon } from '@sanity/icons/Image';
 import { defineArrayMember, defineField, defineType } from 'sanity';
+import { BodyEditorInput } from '../components/BodyEditorInput';
 import { linkAnnotation } from './linkAnnotation';
 
 const CODE_LANGUAGES = [
@@ -17,6 +18,7 @@ export const blockContent = defineType({
 	name: 'blockContent',
 	title: 'Block content',
 	type: 'array',
+	components: { input: BodyEditorInput },
 	of: [
 		defineArrayMember({
 			type: 'block',
