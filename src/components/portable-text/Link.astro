@@ -17,5 +17,7 @@ const opensNewTab = isExternal && node.markDef.openInNewTab === true;
 <a
 	href={href}
 	target={opensNewTab ? '_blank' : undefined}
-	rel={isExternal ? 'noopener noreferrer' : undefined}><slot /></a
+	rel={isExternal ? 'noopener noreferrer' : undefined}
 >
+	<slot />
+</a>

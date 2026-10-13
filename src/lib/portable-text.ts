@@ -93,6 +93,34 @@ function blockToPlainText(block: PlainTextBlock): string {
 	return `${listPrefix ?? BLOCK_PREFIXES[block.style ?? ''] ?? ''}${text}`;
 }
 
+interface ImageNode extends TypedObject {
+	alt?: string;
+}
+
+interface YouTubeNode extends TypedObject {
+	videoId?: string;
+	title?: string;
+}
+
+const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
+const DEFAULT_VIDEO_LINK_TEXT = 'Video';
+
+function inlineText(text: string): string {
+	return stegaClean(text).replace(/\s+/g, ' ').trim();
+}
+
+function imageToPlainText(node: ImageNode): string {
+	const alt = inlineText(node.alt ?? '');
+	return alt ? `[Image: ${alt}]` : '';
+}
+
+function youtubeToPlainText(node: YouTubeNode): string {
+	const videoId = stegaClean(node.videoId ?? '');
+	if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) return '';
+	const title = inlineText(node.title ?? '').replace(/[[\]]/g, '') || DEFAULT_VIDEO_LINK_TEXT;
+	return `[${title}](https://www.youtube.com/watch?v=${videoId})`;
+}
+
 function codeToPlainText(node: CodeNode): string {
 	const code = node.code ?? '';
 	if (!code) return '';
@@ -101,14 +129,17 @@ function codeToPlainText(node: CodeNode): string {
 }
 
 /**
- * Flattens Portable Text into Markdown-flavoured plain text: prose blocks, callout bodies and
- * fenced code blocks, so text consumers see everything a reader sees.
+ * Flattens Portable Text into Markdown-flavoured plain text: prose blocks, callout bodies,
+ * fenced code blocks, image alt text and YouTube links, so text consumers see everything a
+ * reader sees.
  */
 export function portableTextToPlainText(body: TypedObject[] | undefined): string {
 	const parts = (body ?? []).map((node) => {
 		if (node._type === 'block') return blockToPlainText(node as PlainTextBlock);
 		if (node._type === 'code') return codeToPlainText(node as CodeNode);
 		if (node._type === 'callout') return portableTextToPlainText((node as CalloutNode).body);
+		if (node._type === 'image') return imageToPlainText(node as ImageNode);
+		if (node._type === 'youtube') return youtubeToPlainText(node as YouTubeNode);
 		return '';
 	});
 	return parts.filter(Boolean).join('\n\n');

@@ -63,9 +63,7 @@ const t = useTranslations(locale);
 						class="size-5"
 						aria-hidden="true"
 					>
-						<path
-							d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-						></path>
+						<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"></path>
 					</svg>
 				</button>
 			</form>
@@ -78,8 +76,7 @@ const t = useTranslations(locale);
 			class="menu w-full gap-1 p-0"
 			role="listbox"
 			aria-label={t('search.results')}
-		>
-		</ul>
+		></ul>
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button tabindex="-1">{t('search.close')}</button>
@@ -99,6 +96,7 @@ const t = useTranslations(locale);
 	const MIN_QUERY_LENGTH = 2;
 	const MAX_QUERY_LENGTH = 100;
 	const DEBOUNCE_MS = 200;
+	const RESULTS_REPORT_DELAY_MS = 1500;
 	const ACTIVE_CLASS = 'menu-active';
 
 	const modal = document.getElementById('search-modal') as HTMLDialogElement | null;
@@ -112,6 +110,16 @@ const t = useTranslations(locale);
 		let activeIndex = -1;
 		let debounceTimer: number | undefined;
 		let inFlight: AbortController | undefined;
+		let reportTimer: number | undefined;
+		let lastReportedQuery = '';
+
+		const reportSearchUsed = (query: string, resultsCount: number) => {
+			if (query === lastReportedQuery) return;
+			lastReportedQuery = query;
+			document.dispatchEvent(
+				new CustomEvent('blog:telemetry', { detail: { type: 'search_used', resultsCount } }),
+			);
+		};
 
 		const setStatus = (message: string) => {
 			status.textContent = message;
@@ -174,6 +182,7 @@ const t = useTranslations(locale);
 		};
 
 		const search = async (query: string) => {
+			window.clearTimeout(reportTimer);
 			inFlight?.abort();
 			const controller = new AbortController();
 			inFlight = controller;
@@ -188,6 +197,11 @@ const t = useTranslations(locale);
 				results = payload.results;
 				renderResults();
 				setStatus(results.length === 0 ? (strings.empty ?? '').replaceAll('{query}', query) : '');
+				const resultsCount = results.length;
+				reportTimer = window.setTimeout(
+					() => reportSearchUsed(query, resultsCount),
+					RESULTS_REPORT_DELAY_MS,
+				);
 			} catch (error) {
 				if (controller.signal.aborted) return;
 				results = [];
@@ -201,6 +215,8 @@ const t = useTranslations(locale);
 			window.clearTimeout(debounceTimer);
 			const query = input.value.trim().slice(0, MAX_QUERY_LENGTH);
 			if (query.length < MIN_QUERY_LENGTH) {
+				window.clearTimeout(reportTimer);
+				lastReportedQuery = '';
 				inFlight?.abort();
 				results = [];
 				renderResults();

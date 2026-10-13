@@ -77,20 +77,18 @@ function linkTarget(link: NavLink) {
 			<!-- Center: desktop nav links -->
 			<nav class="navbar-center hidden lg:flex" aria-label="Main navigation">
 				<ul class="menu menu-horizontal gap-1 p-0">
-					{
-						navLinks.map((link) => (
-							<li>
-								<a
-									href={link.href}
-									class={isActive(link) ? 'active font-medium' : 'font-medium'}
-									aria-current={isActive(link) ? 'page' : undefined}
-									{...linkTarget(link)}
-								>
-									{link.label}
-								</a>
-							</li>
-						))
-					}
+					{navLinks.map((link) => (
+						<li>
+							<a
+								href={link.href}
+								class={isActive(link) ? 'active font-medium' : 'font-medium'}
+								aria-current={isActive(link) ? 'page' : undefined}
+								{...linkTarget(link)}
+							>
+								{link.label}
+							</a>
+						</li>
+					))}
 				</ul>
 			</nav>
 
@@ -142,20 +140,18 @@ function linkTarget(link: NavLink) {
 				{siteName}
 			</a>
 			<ul class="menu w-full">
-				{
-					navLinks.map((link) => (
-						<li>
-							<a
-								href={link.href}
-								class={isActive(link) ? 'active' : ''}
-								aria-current={isActive(link) ? 'page' : undefined}
-								{...linkTarget(link)}
-							>
-								{link.label}
-							</a>
-						</li>
-					))
-				}
+				{navLinks.map((link) => (
+					<li>
+						<a
+							href={link.href}
+							class={isActive(link) ? 'active' : ''}
+							aria-current={isActive(link) ? 'page' : undefined}
+							{...linkTarget(link)}
+						>
+							{link.label}
+						</a>
+					</li>
+				))}
 			</ul>
 		</nav>
 	</div>

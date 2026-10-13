@@ -1,5 +1,6 @@
 import { ui, type UIKey } from './ui';
 import { defaultLocale, isLocale, type Locale } from './config';
+import { withTrailingSlash } from '../lib/trailing-slash';
 
 export function getLocaleFromUrl(url: URL): Locale {
 	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
@@ -33,15 +34,16 @@ export function withBase(path: string): string {
 	return clean ? `${base}/${clean}` : `${base}/`;
 }
 
-const FILE_EXTENSION_PATTERN = /\.[^./]+$/;
+export function withPageBase(path: string): string {
+	const clean = path.replace(/^\/+/, '');
+	return withBase(withTrailingSlash(clean));
+}
 
-/**
- * Builds a base-prefixed page path in the canonical trailing-slash form; file-like paths such
- * as `rss.xml` keep their extension untouched.
- */
 export function localeHref(locale: Locale, path = ''): string {
-	const clean = path.replace(/^\/+/, '').replace(/\/+$/, '');
-	if (!clean) return withBase(`${locale}/`);
-	const suffix = FILE_EXTENSION_PATTERN.test(clean) ? '' : '/';
-	return withBase(`${locale}/${clean}${suffix}`);
+	const clean = path.replace(/^\/+/, '');
+	return withPageBase(clean ? `${locale}/${clean}` : `${locale}/`);
+}
+
+export function mirroredLocaleHrefs(path = ''): Record<Locale, string> {
+	return { en: localeHref('en', path), uk: localeHref('uk', path) };
 }

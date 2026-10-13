@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SubscribeForm from '../../components/SubscribeForm.astro';
-import { useTranslations } from '../../i18n/utils';
+import { useTranslations, mirroredLocaleHrefs } from '../../i18n/utils';
 import { isLocale } from '../../i18n/config';
 
 export const prerender = false;
@@ -11,7 +11,13 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const t = useTranslations(locale);
 ---
 
-<BaseLayout title={t('subscribe.title')} description={t('subscribe.description')} locale={locale}>
+<BaseLayout
+	title={t('subscribe.title')}
+	description={t('subscribe.description')}
+	locale={locale}
+	alternates={mirroredLocaleHrefs('subscribe/')}
+	pageType="subscribe"
+>
 	<!-- Header -->
 	<section class="bg-base-200">
 		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-14">
@@ -27,7 +33,7 @@ const t = useTranslations(locale);
 	</section>
 
 	<!-- Form -->
-	<main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
 		<div class="max-w-lg">
 			<div id="subscribe-confirmed-banner" hidden class="alert alert-success mb-8">
 				<span>{t('subscribe.confirm.body')}</span>
@@ -35,7 +41,7 @@ const t = useTranslations(locale);
 
 			<SubscribeForm locale={locale} source="subscribe-page" />
 		</div>
-	</main>
+	</div>
 </BaseLayout>
 
 <script>

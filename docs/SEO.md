@@ -1,0 +1,81 @@
+# SEO and search engine setup
+
+Canonical site: `https://serhiichernenko.com/blog/` (the bare apex; the legacy `www` host redirects to it with a `308` before Workers run). DNS and Worker route details live in [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+
+## Search consoles
+
+| Service               | Property                              | Verification                                                                       | Sitemap                                              |
+| --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Google Search Console | Domain property `serhiichernenko.com` | DNS TXT `google-site-verification=...`, added 2026-10-12                           | `https://serhiichernenko.com/blog/sitemap-index.xml` |
+| Bing Webmaster Tools  | Site `https://serhiichernenko.com/`   | DNS CNAME `9dfe1cb01f17e8a86b528b2ddc8eac06` to `verify.bing.com` (DNS-only proxy) | `https://serhiichernenko.com/blog/sitemap-index.xml` |
+
+Keep both verification DNS records in place; removing them un-verifies the property. They are dashboard-managed in Cloudflare DNS (the wrangler token cannot write DNS).
+
+### www → apex migration
+
+- **Google**: the domain property already covers the apex and every subdomain. Submit the apex sitemap above and remove the old `www` one.
+- **Bing**: add `https://serhiichernenko.com/` as a site, then use **Site Move** (www → apex) from the old `www` site.
+- **IndexNow**: the Redirect Rule flip is done (2026-10-12) and the live sitemap lists apex URLs only, so seed with `gh workflow run indexnow.yml -f mode=all`. The script refuses any child sitemap outside the apex origin.
+
+## IndexNow
+
+IndexNow tells Bing, Yandex and other participating engines about new, updated and removed URLs without waiting for a crawl. Google does not use it.
+
+There are two submission paths:
+
+- **Publish webhook:** the Sanity revalidate webhook submits the changed post or page right after the cache purge, on the production host only. See [IndexNow on publish](./SANITY.md#indexnow-on-publish).
+- **Deploy workflow:** the GitHub Actions workflow below diffs the sitemap around a deploy and submits what changed. It covers code and template changes, and content the webhook cannot see, such as scheduled posts that go live without a webhook.
+
+- **Key**: `aa97432c46c58c839540be4d044ece78` (public by design).
+- **Key file**: `public/aa97432c46c58c839540be4d044ece78.txt`, served at `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` and containing exactly the key with no trailing newline. It is a static asset, so it is not in the sitemap, and `robots.txt` does not block it.
+- **Scope**: the key file lives under `/blog/`, so only URLs starting with `https://serhiichernenko.com/blog/` may be submitted. The script refuses anything else.
+- **Script**: `scripts/indexnow.mjs` (Node, no dependencies). Modes: `snapshot <file>`, `diff-submit <beforeFile>`, `submit-all`, plus `--dry-run` to print the payload without POSTing. Tests: `pnpm test:indexnow`. The script appends a unique `?indexnow=<timestamp>-<n>` query to every sitemap fetch, so the Workers Cache can never serve a stale snapshot of the sitemap.
+
+### Workflow
+
+`.github/workflows/indexnow.yml` runs on pushes to `main` that touch `src/**`, `public/**`, `astro.config.mts` or `package.json`.
+
+1. Snapshots the live sitemap (every URL and its `lastmod`) at the start of the run, before the deploy finishes.
+2. Polls the `Workers Builds: portfolio-blog` check run on the pushed commit every 20 seconds, for up to 20 minutes. Deploys run through Cloudflare Workers Builds, not GitHub Actions. A failed deploy ends the run with a notice and submits nothing; a timeout fails the run.
+3. Waits 30 seconds for edge propagation, re-fetches the sitemap and submits only URLs that are new, have a changed `lastmod`, or were removed (removed URLs now return 404, which IndexNow accepts as a signal).
+
+Runs are serialized (`concurrency: indexnow`, no cancellation). A change that does not alter the sitemap, such as a style tweak, submits nothing.
+
+### Manual seeding
+
+Submit every sitemap URL, for example after first setup or after a bulk change:
+
+```bash
+gh workflow run indexnow.yml -f mode=all
+```
+
+`mode=changed` has no pre-deploy snapshot on a manual run, so it is treated as `all`. To preview the payload locally without sending anything:
+
+```bash
+node scripts/indexnow.mjs submit-all --dry-run
+```
+
+## Where the SEO files live
+
+| File                                     | Source                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sitemap-index.xml`, `sitemap-0.xml`     | SSR routes `src/pages/sitemap-index.xml.ts` and `src/pages/sitemap-0.xml.ts`. Data comes from Sanity's published perspective and the rendering lives in `src/lib/sitemap.ts`. Cached in Workers Cache under the tag `sanity` (`maxAge` 1 hour, `swr` 1 day) and purged on every publish. |
+| `robots.txt`                             | `public/robots.txt`                                                                                                                                                                                                                                                                      |
+| `llms.txt`, `llms-full.txt`              | SSR routes `src/pages/llms.txt.ts` and `src/pages/llms-full.txt.ts`, built from Sanity. `llms-full.txt` flattens Portable Text into plain text: fenced code blocks, callout text, `[Image: alt]` for images and links for YouTube embeds.                                                |
+| Favicons, web manifest, default OG image | `public/` (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest`, `og-default.png`), regenerated by `scripts/generate-brand-assets.mjs`                                                                                               |
+
+`/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` are also bound at the host root through exact-path Worker routes; see [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+
+### Sitemap rules
+
+- **hreflang:** `<xhtml:link>` alternates are identical to the ones in the page `<head>` (self, every alternate and `x-default`) and are emitted only when a URL has more than one locale version.
+- **Tag pages:** listed only when the tag has at least 2 posts (`MIN_POSTS_FOR_TAG_INDEXING` in `src/lib/tag-slug.ts`). They carry no hreflang alternates, and their `lastmod` is the newest `updatedAt` or `publishedAt` of their posts.
+- **`lastmod`:** the locale home and the posts index use the newest post in that locale; a post uses `updatedAt ?? publishedAt`; a page uses `updatedAt`. The tags index, the subscribe page and pagination pages have no `lastmod`.
+
+## Host root redirect
+
+Until the portfolio Worker owns `/`, the host root `https://serhiichernenko.com/` should answer with a
+temporary 302 to `/blog/en/` from a Cloudflare Redirect Rule (live since 2026-10-12, rule
+`6e234d678cdd4cec838189114c83331a`) in the zone's `http_request_dynamic_redirect` ruleset, next to the
+www → apex rule. It is a zone rule, not Worker code, so it never ships with a deploy.
+Delete it when the portfolio Worker goes live.

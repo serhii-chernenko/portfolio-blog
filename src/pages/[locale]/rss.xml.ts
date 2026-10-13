@@ -4,12 +4,13 @@ import type { APIContext } from 'astro';
 import { getPublishedPosts, postUrl } from '../../lib/posts';
 import { createPublishedContext } from '../../lib/sanity/request';
 import { getLayoutData } from '../../lib/site';
-import { isLocale } from '../../i18n/config';
+import { localeHref } from '../../i18n/utils';
+import { htmlLangAttribute, isLocale } from '../../i18n/config';
 
 export const prerender = false;
 
 const FEED_TITLE_SUFFIX = { en: 'Posts', uk: 'Дописи' } as const;
-const FEED_LANGUAGE = { en: 'en-US', uk: 'uk-UA' } as const;
+const FALLBACK_SITE = 'https://serhiichernenko.com';
 
 export async function GET(context: APIContext) {
 	const locale = context.params.locale ?? '';
@@ -20,20 +21,23 @@ export async function GET(context: APIContext) {
 		getLayoutData(locale, sanity),
 		getPublishedPosts(locale, sanity),
 	]);
-	const siteUrl = context.site?.toString() ?? context.url.origin;
-	const langCode = FEED_LANGUAGE[locale];
+	const site = context.site ?? new URL(FALLBACK_SITE);
+	const channelUrl = new URL(localeHref(locale), site);
+	const feedUrl = new URL(localeHref(locale, 'rss.xml'), site);
+	const langCode = htmlLangAttribute[locale];
 
 	return rss({
 		title: `${stegaClean(settings.siteName)} — ${FEED_TITLE_SUFFIX[locale]}`,
 		description: stegaClean(settings.description),
-		site: siteUrl,
+		site: channelUrl,
+		xmlns: { atom: 'http://www.w3.org/2005/Atom' },
 		items: posts.map((post) => ({
 			title: post.title,
 			description: post.description,
 			pubDate: post.publishedAt,
 			link: postUrl(post),
-			customData: `<language>${langCode}</language>`,
+			categories: post.tags,
 		})),
-		customData: `<language>${langCode}</language>`,
+		customData: `<language>${langCode}</language><atom:link href="${feedUrl.toString()}" rel="self" type="application/rss+xml" />`,
 	});
 }

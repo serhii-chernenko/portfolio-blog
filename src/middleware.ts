@@ -1,6 +1,8 @@
-import type { APIContext } from 'astro';
+import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
 import { perspectiveCookieName } from '@sanity/preview-url-secret/constants';
+import { GET as getLlmsTxt } from './pages/llms.txt';
+import { GET as getLlmsFullTxt } from './pages/llms-full.txt';
 import { getDraftModeSecrets } from './lib/server-secrets';
 import {
 	PREVIEW_SEARCH_PARAM,
@@ -10,6 +12,14 @@ import {
 } from './lib/sanity/config';
 import { DRAFT_SESSION_COOKIE_NAME, isValidDraftSession } from './lib/sanity/draft-mode';
 import { createRequestContext, parseDraftPerspective } from './lib/sanity/request';
+import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
+import {
+	httpOutcome,
+	isUntrackedRoute,
+	normalizeRoute,
+	shouldEmitHttpEvent,
+} from './lib/telemetry-schema';
+import { hasAssetExtension } from './lib/trailing-slash';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -59,7 +69,6 @@ const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
 const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: [SANITY_CACHE_TAG] };
 const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: [SANITY_CACHE_TAG] };
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
-const FILE_EXTENSION_PATTERN = /\.[^./]+$/;
 const INTERNAL_SEGMENT_PREFIX = '/_';
 const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
 const FRAME_ANCESTORS = [
@@ -102,7 +111,7 @@ function needsTrailingSlash(request: Request, pathname: string): boolean {
 		pathname.startsWith(`${RUNTIME_BASE}/`) &&
 		!pathname.startsWith(API_PATH_PREFIX) &&
 		!pathname.includes(INTERNAL_SEGMENT_PREFIX) &&
-		!FILE_EXTENSION_PATTERN.test(pathname)
+		!hasAssetExtension(pathname)
 	);
 }
 
@@ -118,6 +127,32 @@ function redirect(location: string, status: 307 | 308): Response {
 	return new Response(null, {
 		status,
 		headers: { location, 'cache-control': 'no-store' },
+	});
+}
+
+const APEX_ENDPOINTS: Record<string, (context: APIContext) => Promise<Response>> = {
+	'/llms.txt': getLlmsTxt,
+	'/llms-full.txt': getLlmsFullTxt,
+};
+const SITEMAP_ALIAS_PATHS = new Set(['/sitemap.xml', `${RUNTIME_BASE}/sitemap.xml`]);
+const SITEMAP_INDEX_PATH = `${RUNTIME_BASE}/sitemap-index.xml`;
+const SITEMAP_REDIRECT_CACHE_CONTROL = 'public, max-age=3600';
+
+function apexEndpointFor(request: Request, pathname: string) {
+	if (RUNTIME_BASE === '' || !['GET', 'HEAD'].includes(request.method)) return undefined;
+	return APEX_ENDPOINTS[pathname];
+}
+
+function redirectSitemapAlias(request: Request, url: URL): Response | null {
+	if (!SAFE_METHODS.includes(request.method) || !SITEMAP_ALIAS_PATHS.has(url.pathname)) {
+		return null;
+	}
+	return new Response(null, {
+		status: 301,
+		headers: {
+			location: new URL(SITEMAP_INDEX_PATH, url.origin).toString(),
+			'cache-control': SITEMAP_REDIRECT_CACHE_CONTROL,
+		},
 	});
 }
 
@@ -168,7 +203,7 @@ function applyCachePolicy(context: APIContext, response: Response): void {
 	}
 }
 
-export const onRequest = defineMiddleware(async (context, next) => {
+async function handleRequest(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
 		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
@@ -190,6 +225,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 	if (isPrerendered) return next();
 
+	const sitemapRedirect = redirectSitemapAlias(request, url);
+	if (sitemapRedirect) return sitemapRedirect;
+
 	if (needsTrailingSlash(request, url.pathname)) {
 		return redirect(`${url.pathname}/${url.search}`, 308);
 	}
@@ -203,8 +241,42 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 	context.locals.sanity = createRequestContext(draftMode);
 
-	const response = applySecurityHeaders(await next());
+	const apexEndpoint = apexEndpointFor(request, url.pathname);
+	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
 	if (draftMode) return disableCaching(context, response);
 	applyCachePolicy(context, response);
 	return response;
+}
+
+export const onRequest = defineMiddleware(async (context, next) => {
+	const { request, url, isPrerendered } = context;
+	if (isPrerendered || isUntrackedRoute(url.pathname, RUNTIME_BASE)) {
+		return handleRequest(context, next);
+	}
+
+	const route = normalizeRoute(url.pathname, RUNTIME_BASE);
+	const telemetry = startTelemetryEvent(telemetryInputFromContext(context), {
+		method: request.method,
+		path: route,
+	});
+	const report = (status: number, thrownErrorType?: string) => {
+		if (!shouldEmitHttpEvent(route, status)) return;
+		telemetry.emit({
+			eventName: 'http_request_completed',
+			outcome: httpOutcome(status),
+			method: request.method,
+			route,
+			status,
+			errorType: thrownErrorType,
+		});
+	};
+
+	try {
+		const response = await handleRequest(context, next);
+		report(response.status);
+		return response;
+	} catch (error) {
+		report(500, errorType(error));
+		throw error;
+	}
 });

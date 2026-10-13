@@ -38,6 +38,15 @@
 //    pnpm wrangler secret put SANITY_WEBHOOK_SECRET
 //    pnpm wrangler secret put DRAFT_MODE_COOKIE_SECRET
 //
+//  ── Optional secret (observability) ──
+//    NEW_RELIC_LICENSE_KEY                 New Relic ingest license key. Forwards
+//                                          visitor and newsletter telemetry
+//                                          events to New Relic; without it,
+//                                          events are only written to Workers
+//                                          logs (docs/OBSERVABILITY.md).
+//
+//    pnpm wrangler secret put NEW_RELIC_LICENSE_KEY
+//
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from
 //                 `wrangler d1 create portfolio-blog`.
@@ -98,6 +107,16 @@
 	"cache": {
 		"enabled": true,
 	},
+	"ratelimits": [
+		{
+			"name": "EVENTS_RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 60,
+				"period": 60,
+			},
+		},
+	],
 	"observability": {
 		"enabled": true,
 		// Bearer capabilities are carried in query strings for email-client
@@ -108,30 +127,29 @@
 		},
 	},
 	// `wrangler dev` defaults its simulated host to the first entry in `routes`
-	// (production), which makes `request.url` resolve to www.serhiichernenko.com
+	// (production), which makes `request.url` resolve to serhiichernenko.com
 	// even when serving from localhost. Forcing the dev host to localhost makes
 	// request.url match where the browser actually is — so things like
 	// self-referential confirm links work without any env-var indirection.
 	"dev": {
 		"host": "localhost:8787",
 	},
-	// Route topology — canonical host is www.serhiichernenko.com.
+	// Route topology — canonical host is the bare apex serhiichernenko.com.
+	// www.serhiichernenko.com is not bound: a Cloudflare Redirect Rule 308s it to
+	// the apex before Workers run (docs/DNS-ROUTING.md).
 	//
-	//   www…/blog          → blog landing
-	//   www…/blog/*        → all blog routes
+	//   …/blog             → blog landing
+	//   …/blog/*           → all blog routes
 	//
-	// `zone_name` stays the apex (serhiichernenko.com) — that is the Cloudflare
-	// zone the www hostname lives in; the route *pattern* is what binds to www.
+	// `zone_name` is the apex (serhiichernenko.com) — the Cloudflare zone; the
+	// route *pattern* is what selects the host.
 	//
-	// The bare apex serhiichernenko.com is NOT bound to this Worker. A Cloudflare
-	// Redirect Rule (dashboard → Rules → Redirect Rules) 301s the apex → www, so
-	// visitors who type the bare domain land on the canonical www host. The
-	// host root `/` (on either host) is intentionally unbound — it falls through
-	// to the 100:: placeholder and errors for now. This domain uses path-based
+	// The apex host root `/` is intentionally unbound — a Redirect Rule 302s it
+	// to /blog/en/ until the portfolio Worker exists. This domain uses path-based
 	// routing across MULTIPLE Workers (one per app, separate repos): a future
 	// portfolio Worker — its own repo, a from-scratch rewrite of the old
 	// chernenko.digital — will claim the root `/`. It can bind a catch-all
-	// `www.serhiichernenko.com/*`; these `/blog*` routes are
+	// `serhiichernenko.com/*`; these `/blog*` routes are
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	//
@@ -142,18 +160,34 @@
 	// moves to that Worker (and this route is deleted) once it exists. Once bound,
 	// the file is served by Cloudflare's static assets directly — NOT by an Astro
 	// route or middleware rewrite (`context.rewrite()` can't target a static file;
-	// see scripts/post-build.mjs). See docs/DNS-ROUTING.md.
+	// see src/middleware.ts and scripts/post-build.mjs). See docs/DNS-ROUTING.md.
 	"routes": [
 		{
-			"pattern": "www.serhiichernenko.com/blog",
+			"pattern": "serhiichernenko.com/blog",
 			"zone_name": "serhiichernenko.com",
 		},
 		{
-			"pattern": "www.serhiichernenko.com/blog/*",
+			"pattern": "serhiichernenko.com/blog/*",
 			"zone_name": "serhiichernenko.com",
 		},
 		{
-			"pattern": "www.serhiichernenko.com/robots.txt",
+			"pattern": "serhiichernenko.com/robots.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/favicon.ico",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/llms.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/llms-full.txt",
+			"zone_name": "serhiichernenko.com",
+		},
+		{
+			"pattern": "serhiichernenko.com/sitemap.xml",
 			"zone_name": "serhiichernenko.com",
 		},
 	],

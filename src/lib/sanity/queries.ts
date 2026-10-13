@@ -51,9 +51,19 @@ export const POST_BY_SLUG_QUERY = `*[${PUBLISHED_POST_FILTER} && language == $lo
 	${BODY_PROJECTION}
 }`;
 
+const PLAIN_TEXT_BODY_PROJECTION = `"body": body[_type in ["block", "code", "callout", "image", "youtube"]]{
+		...,
+		_type == "image" => { _type, alt, caption }
+	}`;
+
 export const POST_PLAIN_TEXT_QUERY = `*[${PUBLISHED_POST_FILTER} && language == $locale && slug.current == $slug][0]{
 	${POST_SUMMARY_FIELDS},
-	"body": body[_type in ["block", "code", "callout"]]
+	${PLAIN_TEXT_BODY_PROJECTION}
+}`;
+
+export const POSTS_WITH_PLAIN_TEXT_BODY_QUERY = `*[${PUBLISHED_POST_FILTER} && language == $locale] | order(publishedAt desc) {
+	${POST_SUMMARY_FIELDS},
+	${PLAIN_TEXT_BODY_PROJECTION}
 }`;
 
 const PAGE_SUMMARY_FIELDS = `

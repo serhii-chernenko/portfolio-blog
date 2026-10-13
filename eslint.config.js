@@ -1,12 +1,22 @@
 // @ts-check
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import eslintPluginAstro from 'eslint-plugin-astro';
 import prettierConfig from 'eslint-config-prettier';
 
-export default tseslint.config(
+export default defineConfig(
 	// Global ignores
 	{
-		ignores: ['dist/', '.astro/', '.wrangler/', 'node_modules/', 'patches/', 'scripts/', 'studio/'],
+		ignores: [
+			'dist/',
+			'.astro/',
+			'.wrangler/',
+			'node_modules/',
+			'patches/',
+			'scripts/',
+			'studio/',
+			'worker-configuration.d.ts',
+		],
 	},
 
 	// TypeScript files

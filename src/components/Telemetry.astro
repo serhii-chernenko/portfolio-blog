@@ -1,0 +1,234 @@
+---
+import type { Locale } from '../i18n/config';
+import type { PageType } from '../lib/telemetry-schema';
+
+export interface Props {
+	locale: Locale;
+	pageType: PageType;
+	contentKey?: string;
+}
+
+const { locale, pageType, contentKey } = Astro.props;
+const endpoint = `${(import.meta.env.BASE_URL || '/').replace(/\/+$/, '')}/api/events`;
+---
+
+<div
+	id="telemetry-context"
+	hidden
+	data-endpoint={endpoint}
+	data-locale={locale}
+	data-page-type={pageType}
+	data-content-key={contentKey}
+></div>
+
+<script>
+	const SESSION_ID_KEY = 'blog.sid';
+	const PAGE_INDEX_KEY = 'blog.pi';
+	const MAX_PAGE_INDEX = 500;
+	const MAX_ACTIVE_SECONDS = 3600;
+	const MAX_UTM_SOURCE_LENGTH = 64;
+	const LOCALES = ['en', 'uk'];
+
+	type EventDetail =
+		| { type: 'page_view'; [key: string]: unknown }
+		| { type: 'page_engaged'; activeSeconds: number; scrollDepth: number }
+		| { type: 'language_switched'; targetLocale: string }
+		| { type: 'search_used'; resultsCount: number }
+		| { type: 'outbound_clicked'; targetHost: string };
+
+	interface PageContext {
+		endpoint: string;
+		locale: string;
+		pageType: string;
+		contentKey?: string;
+	}
+
+	function readContext(): PageContext | null {
+		const dataset = document.getElementById('telemetry-context')?.dataset;
+		if (!dataset?.endpoint || !dataset.locale || !dataset.pageType) return null;
+		return {
+			endpoint: dataset.endpoint,
+			locale: dataset.locale,
+			pageType: dataset.pageType,
+			contentKey: dataset.contentKey || undefined,
+		};
+	}
+
+	function createId(): string | null {
+		try {
+			return crypto.randomUUID();
+		} catch {
+			return null;
+		}
+	}
+
+	function readSession(): { id: string; storage: Storage } | null {
+		try {
+			const storage = window.sessionStorage;
+			const stored = storage.getItem(SESSION_ID_KEY);
+			if (stored) return { id: stored, storage };
+			const id = createId();
+			if (!id) return null;
+			storage.setItem(SESSION_ID_KEY, id);
+			return { id, storage };
+		} catch {
+			return null;
+		}
+	}
+
+	function nextPageIndex(storage: Storage): number | null {
+		try {
+			const previous = Number.parseInt(storage.getItem(PAGE_INDEX_KEY) ?? '0', 10);
+			const next = Math.min((Number.isFinite(previous) ? previous : 0) + 1, MAX_PAGE_INDEX);
+			storage.setItem(PAGE_INDEX_KEY, String(next));
+			return next;
+		} catch {
+			return null;
+		}
+	}
+
+	function hostnameOf(url: string): string | undefined {
+		try {
+			return new URL(url).hostname || undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	function currentTheme(): 'light' | 'dark' {
+		return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+	}
+
+	function browserLanguage(): string | undefined {
+		return navigator.language?.split('-')[0]?.toLowerCase() || undefined;
+	}
+
+	function utmSource(): string | undefined {
+		const source = new URLSearchParams(location.search).get('utm_source');
+		return source ? source.slice(0, MAX_UTM_SOURCE_LENGTH) : undefined;
+	}
+
+	function scrollDepthPercent(): number {
+		const viewportBottom = window.scrollY + window.innerHeight;
+		const pageHeight = document.documentElement.scrollHeight;
+		if (pageHeight <= window.innerHeight + 1) return 100;
+		return Math.min(100, Math.max(0, Math.round((viewportBottom / pageHeight) * 100)));
+	}
+
+	function initTelemetry() {
+		const context = readContext();
+		if (!context || navigator.webdriver) return;
+
+		const session = readSession();
+		if (!session) return;
+		const initialPageIndex = nextPageIndex(session.storage);
+		if (initialPageIndex === null) return;
+		const sessionId = session.id;
+		const { endpoint, locale, pageType, contentKey } = context;
+
+		let activeMs = 0;
+		let visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
+		let maxScrollDepth = 0;
+		let engagementSent = false;
+
+		function send(detail: EventDetail) {
+			const payload = { ...detail, sessionId, locale, pageType, contentKey };
+			Promise.resolve()
+				.then(() =>
+					fetch(endpoint, {
+						method: 'POST',
+						keepalive: true,
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify(payload),
+						credentials: 'same-origin',
+						referrerPolicy: 'no-referrer',
+					}),
+				)
+				.catch(() => {});
+		}
+
+		function pauseVisibleTimer() {
+			if (visibleSince === null) return;
+			activeMs += performance.now() - visibleSince;
+			visibleSince = null;
+		}
+
+		function trackScroll() {
+			maxScrollDepth = Math.max(maxScrollDepth, scrollDepthPercent());
+		}
+
+		function sendPageView(pageIndex: number) {
+			send({
+				type: 'page_view',
+				referrerHost: hostnameOf(document.referrer),
+				utmSource: utmSource(),
+				browserLanguage: browserLanguage(),
+				theme: currentTheme(),
+				pageIndex,
+			});
+		}
+
+		function sendEngagementOnce() {
+			if (engagementSent) return;
+			engagementSent = true;
+			pauseVisibleTimer();
+			trackScroll();
+			send({
+				type: 'page_engaged',
+				activeSeconds: Math.min(Math.round(activeMs / 1000), MAX_ACTIVE_SECONDS),
+				scrollDepth: maxScrollDepth,
+			});
+		}
+
+		function resetEngagement() {
+			activeMs = 0;
+			maxScrollDepth = 0;
+			engagementSent = false;
+			visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
+			trackScroll();
+		}
+
+		function handleLinkClick(event: MouseEvent) {
+			const link = (event.target as Element | null)?.closest?.('a');
+			if (!link) return;
+
+			const targetLocale = link.dataset.telemetryLocale;
+			if (targetLocale && LOCALES.includes(targetLocale) && targetLocale !== locale) {
+				send({ type: 'language_switched', targetLocale });
+				return;
+			}
+
+			if (!/^https?:$/.test(link.protocol)) return;
+			if (link.hostname === location.hostname) return;
+			send({ type: 'outbound_clicked', targetHost: link.hostname });
+		}
+
+		function handleCustomEvent(event: Event) {
+			const detail = (event as CustomEvent<EventDetail>).detail;
+			if (detail?.type === 'search_used') send(detail);
+		}
+
+		sendPageView(initialPageIndex);
+		trackScroll();
+
+		window.addEventListener('scroll', trackScroll, { passive: true });
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'hidden') {
+				sendEngagementOnce();
+			} else if (visibleSince === null) {
+				visibleSince = performance.now();
+			}
+		});
+		window.addEventListener('pagehide', sendEngagementOnce);
+		window.addEventListener('pageshow', (event) => {
+			if (!event.persisted) return;
+			resetEngagement();
+			const pageIndex = nextPageIndex(session.storage);
+			if (pageIndex !== null) sendPageView(pageIndex);
+		});
+		document.addEventListener('click', handleLinkClick);
+		document.addEventListener('blog:telemetry', handleCustomEvent);
+	}
+
+	initTelemetry();
+</script>

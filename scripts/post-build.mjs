@@ -55,3 +55,13 @@ if (existsSync(BUILT_ROBOTS_TXT)) {
 } else {
 	console.warn('post-build: dist/client/blog/robots.txt not found — skipping host-root copy');
 }
+
+const BUILT_FAVICON_ICO = new URL('blog/favicon.ico', DIST);
+if (existsSync(BUILT_FAVICON_ICO)) {
+	await copyFile(BUILT_FAVICON_ICO, new URL('favicon.ico', DIST));
+	console.log(
+		'post-build: copied dist/client/blog/favicon.ico to dist/client/favicon.ico (host-root)',
+	);
+} else {
+	console.warn('post-build: dist/client/blog/favicon.ico not found — skipping host-root copy');
+}

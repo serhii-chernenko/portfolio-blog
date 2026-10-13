@@ -6,7 +6,7 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 
 **Adapter versions:** `@astrojs/cloudflare` 14 · `@astrojs/node` 11 · `wrangler` 4.
 
-**Served at `www.serhiichernenko.com/blog/*`** — the host root and other paths belong to a separate portfolio app. See [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md).
+**Mounted at `/blog/*`** on `serhiichernenko.com` (the canonical host; the legacy `www.serhiichernenko.com` redirects to it with a `308` before Workers run) — the host root and other paths are served by a separate portfolio app. See [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md).
 
 **Content:** posts, pages, menus and site copy live in [Sanity](https://www.sanity.io) (project `8xspnp7h`, dataset `production`) and are edited in the hosted Studio at <https://serhiichernenko-blog.sanity.studio>. The Studio source is in [`studio/`](./studio). Pages render on demand and are cached on Workers Cache; a signed Sanity webhook purges the cache on publish.
 
@@ -15,6 +15,8 @@ A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build
 - [`docs/SANITY.md`](./docs/SANITY.md) — CMS architecture, Studio deploys, Visual Editing, caching, webhook and secrets
 - [`docs/CONTENT.md`](./docs/CONTENT.md) — author flow: write, translate, schedule and preview posts in the Studio
 - [`docs/EMAIL.md`](./docs/EMAIL.md) — Cloudflare Email Workers setup + newsletter constraints
+- [`docs/SEO.md`](./docs/SEO.md) — search consoles, IndexNow submissions, sitemap/robots/llms/favicon locations
+- [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md) — New Relic telemetry: server logs, client events, dashboard
 - [`docs/TELEGRAM.md`](./docs/TELEGRAM.md) — Telegram bot setup + events
 - [`docs/DNS-ROUTING.md`](./docs/DNS-ROUTING.md) — hostnames, Worker routes and apex redirect
 - [`GO-LIVE.md`](./GO-LIVE.md) — manual production checklist
@@ -158,6 +160,7 @@ These are intentionally left as placeholders — none of them have safe defaults
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
    - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used to derive opaque tokens and keyed abuse hashes. Accessed via `astro:env/server` (required, validated at runtime).
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
+   - `NEW_RELIC_LICENSE_KEY` — optional; without it, telemetry events are not forwarded to New Relic. See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
    - `SANITY_API_READ_TOKEN`, `DRAFT_MODE_COOKIE_SECRET`, `SANITY_WEBHOOK_SECRET` — optional; Sanity Viewer token and draft-session signing key (draft preview needs both), and the secret that signs the cache-purge webhook. Read on demand through `src/lib/server-secrets.ts`, so an invalid secret never breaks content routes. See [`docs/SANITY.md`](./docs/SANITY.md#secrets).
 7. **`.github/labels.yml`** — optional: create the `dev` label manually in repo settings, or wire `crazy-max/ghaction-github-labeler` to do it.
 8. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
@@ -169,11 +172,11 @@ These are intentionally left as placeholders — none of them have safe defaults
 
 There are three distinct sources for runtime values — use the right one for each variable:
 
-| Source               | What it covers                                                                                                                                                                              | How to access in code                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `astro:env/server`   | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required); `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SANITY_API_READ_TOKEN`, `SANITY_WEBHOOK_SECRET`, `DRAFT_MODE_COOKIE_SECRET` (optional) | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
-| `astro:env/client`   | Public build-time vars: `PUBLIC_GISCUS_*`                                                                                                                                                   | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`          |
-| `cloudflare:workers` | Bindings (DB, SEND_EMAIL, ASSETS) and wrangler.jsonc `vars` (MAIL_FROM)                                                                                                                     | `import { env } from 'cloudflare:workers'`                       |
+| Source               | What it covers                                                                                                                                                                                                                                    | How to access in code                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `astro:env/server`   | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required); `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SANITY_API_READ_TOKEN`, `SANITY_WEBHOOK_SECRET`, `DRAFT_MODE_COOKIE_SECRET`, `NEW_RELIC_LICENSE_KEY` (optional)                              | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
+| `astro:env/client`   | Public build-time vars: `PUBLIC_GISCUS_*`, optional `PUBLIC_GOOGLE_SITE_VERIFICATION` / `PUBLIC_BING_SITE_VERIFICATION` (render search-engine verification meta tags; DNS verification is the primary method, see [`docs/SEO.md`](./docs/SEO.md)) | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`          |
+| `cloudflare:workers` | Bindings (DB, SEND_EMAIL, ASSETS, EVENTS_RATE_LIMITER) and wrangler.jsonc `vars` (MAIL_FROM)                                                                                                                                                      | `import { env } from 'cloudflare:workers'`                       |
 
 > `Astro.locals.runtime.env` no longer exists (removed in `@astrojs/cloudflare` v13). All binding access goes through `cloudflare:workers`.
 

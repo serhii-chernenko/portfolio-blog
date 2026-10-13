@@ -9,46 +9,51 @@
 // per request instead of once at build time.
 export const prerender = false;
 import type { APIContext } from 'astro';
-import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl } from '../lib/posts';
+import { getPublishedPosts, getTagsForLocale, postUrl } from '../lib/posts';
 import { getPages, pageUrl } from '../lib/pages';
 import { createPublishedContext } from '../lib/sanity/request';
+import { MIN_POSTS_FOR_TAG_INDEXING } from '../lib/tag-slug';
+import {
+	LLMS_CONTENT_TYPE,
+	LLMS_SITE_SUMMARY,
+	LLMS_SITE_TITLE,
+	absoluteUrl,
+	collapseWhitespace,
+	escapeLinkText,
+} from '../lib/llms';
 import { locales, localeLabels } from '../i18n/config';
 import { localeHref, withBase } from '../i18n/utils';
-
-function collapseWhitespace(text: string): string {
-	return text.replace(/\s+/g, ' ').trim();
-}
-
-function escapeLinkText(text: string): string {
-	return collapseWhitespace(text).replace(/[[\]]/g, '');
-}
-
-function absoluteUrl(site: URL | undefined, path: string): string {
-	// `new URL()` doesn't percent-encode `(`/`)` in the pathname, but every
-	// caller here embeds the result as markdown `(url)` link syntax — an
-	// unescaped `)` would prematurely close the link and truncate the rendered line.
-	return new URL(path, site).toString().replace(/\(/g, '%28').replace(/\)/g, '%29');
-}
 
 export async function GET(context: APIContext) {
 	const site = context.site;
 	const sanity = createPublishedContext();
+	const [postsByLocale, pagesByLocale, tagsByLocale] = await Promise.all([
+		Promise.all(locales.map((locale) => getPublishedPosts(locale, sanity))),
+		Promise.all(locales.map((locale) => getPages(locale, sanity))),
+		Promise.all(locales.map((locale) => getTagsForLocale(locale, sanity))),
+	]);
 	const lines: string[] = [];
 
-	lines.push('# Serhii Chernenko — Blog');
+	lines.push(`# ${LLMS_SITE_TITLE}`);
 	lines.push('');
-	lines.push(
-		'> Bilingual (English / Ukrainian) personal blog on Astro, Cloudflare Workers, web performance, and Ukrainian volunteering.',
-	);
+	lines.push(`> ${LLMS_SITE_SUMMARY}`);
 	lines.push('');
 	lines.push(
 		`Content usage preference: search=yes, ai-input=yes, ai-train=no (see ${absoluteUrl(site, '/robots.txt')}).`,
 	);
-	lines.push(`Base URL: ${absoluteUrl(site, withBase(''))}`);
+	lines.push(
+		`The full text of every post is available as a single Markdown file: ${absoluteUrl(site, withBase('llms-full.txt'))}`,
+	);
 
+	lines.push('');
+	lines.push('## Blog');
 	for (const locale of locales) {
-		const posts = await getPublishedPosts(locale, sanity);
-		if (posts.length === 0) continue;
+		lines.push(`- [Home (${localeLabels[locale]})](${absoluteUrl(site, localeHref(locale))})`);
+	}
+
+	locales.forEach((locale, index) => {
+		const posts = postsByLocale[index];
+		if (posts.length === 0) return;
 		lines.push('');
 		lines.push(`## Posts (${localeLabels[locale]})`);
 		for (const post of posts) {
@@ -57,46 +62,41 @@ export async function GET(context: APIContext) {
 				`- [${escapeLinkText(post.title)}](${url}): ${collapseWhitespace(post.description)}`,
 			);
 		}
-	}
+	});
 
-	for (const locale of locales) {
-		const tags = await getTagsForLocale(locale, sanity);
-		if (tags.length === 0) continue;
+	locales.forEach((locale, index) => {
+		const pages = pagesByLocale[index];
+		if (pages.length === 0) return;
 		lines.push('');
-		lines.push(`## Tags (${localeLabels[locale]})`);
-		for (const { tag, count } of tags) {
-			const url = absoluteUrl(site, localeHref(locale, `tags/${tagSlug(tag)}`));
-			lines.push(`- [${escapeLinkText(tag)}](${url}): ${count} post${count === 1 ? '' : 's'}`);
-		}
-	}
-
-	const pageLines: string[] = [];
-	for (const locale of locales) {
-		const pages = await getPages(locale, sanity);
+		lines.push(`## Pages (${localeLabels[locale]})`);
 		for (const page of pages) {
 			const url = absoluteUrl(site, pageUrl(page));
-			pageLines.push(
+			lines.push(
 				`- [${escapeLinkText(page.title)}](${url}): ${collapseWhitespace(page.description)}`,
 			);
 		}
-	}
-	if (pageLines.length > 0) {
-		lines.push('');
-		lines.push('## Pages');
-		lines.push(...pageLines);
-	}
+	});
 
 	lines.push('');
 	lines.push('## Optional');
+	locales.forEach((locale, index) => {
+		const tags = tagsByLocale[index].filter(({ count }) => count >= MIN_POSTS_FOR_TAG_INDEXING);
+		for (const { tag, slug, count } of tags) {
+			const url = absoluteUrl(site, localeHref(locale, `tags/${slug}`));
+			lines.push(
+				`- [${escapeLinkText(tag)} (${localeLabels[locale]})](${url}): ${count} posts tagged "${escapeLinkText(tag)}"`,
+			);
+		}
+	});
 	for (const locale of locales) {
 		lines.push(
-			`- [RSS (${localeLabels[locale]})](${absoluteUrl(site, withBase(`${locale}/rss.xml`))})`,
+			`- [RSS (${localeLabels[locale]})](${absoluteUrl(site, localeHref(locale, 'rss.xml'))})`,
 		);
 	}
 	lines.push(`- [Sitemap](${absoluteUrl(site, withBase('sitemap-index.xml'))})`);
 	lines.push('');
 
 	return new Response(lines.join('\n'), {
-		headers: { 'content-type': 'text/plain; charset=utf-8' },
+		headers: { 'content-type': LLMS_CONTENT_TYPE },
 	});
 }

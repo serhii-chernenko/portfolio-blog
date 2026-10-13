@@ -27,21 +27,19 @@ const alt = image.alt ?? '';
 const caption = image.caption;
 ---
 
-{
-	image.asset && (
-		<figure>
-			<img
-				src={imageUrl(image, { width })}
-				srcset={imageSrcSet(image, SRCSET_WIDTHS)}
-				sizes={SIZES}
-				alt={alt}
-				width={width}
-				height={height}
-				loading="lazy"
-				decoding="async"
-				class="rounded-box"
-			/>
-			{caption && stegaClean(caption) && <figcaption>{caption}</figcaption>}
-		</figure>
-	)
-}
+{image.asset && (
+	<figure>
+		<img
+			src={imageUrl(image, { width })}
+			srcset={imageSrcSet(image, SRCSET_WIDTHS)}
+			sizes={SIZES}
+			alt={alt}
+			width={width}
+			height={height}
+			loading="lazy"
+			decoding="async"
+			class="rounded-box"
+		/>
+		{caption && stegaClean(caption) && <figcaption>{caption}</figcaption>}
+	</figure>
+)}

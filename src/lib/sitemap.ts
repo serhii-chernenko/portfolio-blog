@@ -1,14 +1,14 @@
 import type { APIContext } from 'astro';
 import type { Locale } from '../i18n/config';
-import { buildCanonical } from './seo';
+import { buildCanonical, buildHreflang, type LocaleAlternates } from './hreflang';
 
 export interface SitemapEntry {
+	locale: Locale;
 	path: string;
-	alternates?: Partial<Record<Locale, string | null>>;
+	alternates?: LocaleAlternates;
 	lastModified?: Date;
 }
 
-const SITEMAP_HREFLANG: Record<Locale, string> = { en: 'en-US', uk: 'uk-UA' };
 const XML_ESCAPES: Record<string, string> = {
 	'&': '&amp;',
 	'<': '&lt;',
@@ -21,19 +21,21 @@ function escapeXml(value: string): string {
 	return value.replace(/[&<>"']/g, (character) => XML_ESCAPES[character]);
 }
 
+function siteOf(context: APIContext): URL | string {
+	return context.site ?? context.url.origin;
+}
+
 export function absoluteUrl(context: APIContext, path: string): string {
-	return escapeXml(buildCanonical(context.site ?? context.url.origin, path));
+	return escapeXml(buildCanonical(siteOf(context), path));
 }
 
 function renderAlternates(context: APIContext, entry: SitemapEntry): string {
-	const alternates = Object.entries(entry.alternates ?? {}).filter(
-		(alternate): alternate is [Locale, string] => typeof alternate[1] === 'string',
-	);
-	if (alternates.length < 2) return '';
-	return alternates
+	const alternateCount = Object.values(entry.alternates ?? {}).filter(Boolean).length;
+	if (alternateCount < 2) return '';
+	return buildHreflang(siteOf(context), entry.locale, entry.path, entry.alternates)
 		.map(
-			([locale, path]) =>
-				`<xhtml:link rel="alternate" hreflang="${SITEMAP_HREFLANG[locale]}" href="${absoluteUrl(context, path)}"/>`,
+			({ hreflang, href }) =>
+				`<xhtml:link rel="alternate" hreflang="${hreflang}" href="${escapeXml(href)}"/>`,
 		)
 		.join('');
 }

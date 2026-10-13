@@ -32,19 +32,17 @@ if (filtered.length < 3) return;
 		{t('post.toc')}
 	</p>
 	<ol class="space-y-1">
-		{
-			filtered.map((heading) => (
-				<li class={heading.depth === 3 ? 'pl-4' : ''}>
-					<a
-						href={`#${heading.slug}`}
-						class="toc-link block py-0.5 text-base-content/60 hover:text-primary transition-colors focus-visible:outline-2 focus-visible:outline-primary rounded"
-						data-toc-slug={heading.slug}
-					>
-						{heading.text}
-					</a>
-				</li>
-			))
-		}
+		{filtered.map((heading) => (
+			<li class={heading.depth === 3 ? 'pl-4' : ''}>
+				<a
+					href={`#${heading.slug}`}
+					class="toc-link block py-0.5 text-base-content/60 hover:text-primary transition-colors focus-visible:outline-2 focus-visible:outline-primary rounded"
+					data-toc-slug={heading.slug}
+				>
+					{heading.text}
+				</a>
+			</li>
+		))}
 	</ol>
 </nav>
 

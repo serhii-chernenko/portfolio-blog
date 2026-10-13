@@ -1,9 +1,11 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import type { Post } from '../lib/posts';
 import { getTranslatedPostUrls, tagSlug } from '../lib/posts';
 import type { TocHeading } from '../lib/portable-text';
 import { imageSrcSet, imageUrl } from '../lib/sanity/image';
+import { DEFAULT_OG_IMAGE_HEIGHT, DEFAULT_OG_IMAGE_WIDTH } from '../lib/og';
 import { useTranslations, localeHref } from '../i18n/utils';
 import BaseLayout from './BaseLayout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
@@ -20,8 +22,6 @@ const HERO_WIDTH = 1200;
 const HERO_HEIGHT = Math.round(HERO_WIDTH / HERO_ASPECT_RATIO);
 const HERO_SRCSET_WIDTHS = [640, 960, 1200, 1600, 2000];
 const HERO_SIZES = '(min-width: 1024px) 1024px, 100vw';
-const OG_IMAGE_WIDTH = 1200;
-const OG_IMAGE_HEIGHT = 630;
 
 const { post, headings, readingTime } = Astro.props;
 const locale: Locale = post.language;
@@ -30,7 +30,11 @@ const translatedUrls = getTranslatedPostUrls(post);
 const tags = post.tags;
 const heroImage = post.heroImage;
 const ogImage = heroImage
-	? imageUrl(heroImage, { width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, format: 'jpg' })
+	? imageUrl(heroImage, {
+			width: DEFAULT_OG_IMAGE_WIDTH,
+			height: DEFAULT_OG_IMAGE_HEIGHT,
+			format: 'jpg',
+		})
 	: undefined;
 ---
 
@@ -39,18 +43,21 @@ const ogImage = heroImage
 	description={post.description}
 	locale={locale}
 	image={ogImage}
+	imageWidth={ogImage ? DEFAULT_OG_IMAGE_WIDTH : undefined}
+	imageHeight={ogImage ? DEFAULT_OG_IMAGE_HEIGHT : undefined}
+	imageAlt={stegaClean(heroImage?.alt) || post.title}
 	type="article"
 	publishedAt={post.publishedAt}
 	updatedAt={post.updatedAt}
 	tags={tags}
 	alternates={translatedUrls}
 	translatedUrls={translatedUrls}
+	pageType="post"
+	contentKey={post.translationKey}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">
-		<div
-			class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col gap-8 py-8 sm:py-10 lg:py-14"
-		>
+		<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex flex-col gap-8 py-8 sm:py-10 lg:py-14">
 			<!-- Back button -->
 			<a
 				href={localeHref(locale, 'posts/')}
@@ -67,7 +74,8 @@ const ogImage = heroImage
 					class="cta-icon-left"
 					aria-hidden="true"
 				>
-					<path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path>
+					<path d="M19 12H5"></path>
+					<path d="m12 19-7-7 7-7"></path>
 				</svg>
 				{t('nav.posts')}
 			</a>
@@ -77,18 +85,14 @@ const ogImage = heroImage
 				{post.isDraft && <span class="badge badge-warning">{t('post.draft')}</span>}
 
 				<div class="space-y-4">
-					<h1
-						class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl"
-					>
+					<h1 class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl">
 						{post.title}
 					</h1>
-					{
-						post.description && (
-							<p class="max-w-3xl text-lg sm:text-xl leading-8 text-base-content/70">
-								{post.description}
-							</p>
-						)
-					}
+					{post.description && (
+						<p class="max-w-3xl text-lg sm:text-xl leading-8 text-base-content/70">
+							{post.description}
+						</p>
+					)}
 				</div>
 
 				<!-- Meta badges -->
@@ -97,54 +101,46 @@ const ogImage = heroImage
 						datetime={post.publishedAt.toISOString()}
 						class="badge badge-primary badge-outline badge-sm rounded-full"
 					>
-						{
-							post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric',
-							})
-						}
+						{post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric',
+						})}
 					</time>
-					{
-						readingTime != null && (
-							<span class="badge badge-primary badge-outline badge-sm rounded-full">
-								{t('post.readingTime', { minutes: readingTime })}
-							</span>
-						)
-					}
-					{
-						tags.map((tag) => (
-							<a
-								href={localeHref(locale, `tags/${tagSlug(tag)}`)}
-								class="badge badge-primary badge-outline badge-sm rounded-full hover:badge-primary hover:text-primary-content transition-colors"
-							>
-								{tag}
-							</a>
-						))
-					}
+					{readingTime != null && (
+						<span class="badge badge-primary badge-outline badge-sm rounded-full">
+							{t('post.readingTime', { minutes: readingTime })}
+						</span>
+					)}
+					{tags.map((tag) => (
+						<a
+							href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+							class="badge badge-primary badge-outline badge-sm rounded-full hover:badge-primary hover:text-primary-content transition-colors"
+						>
+							{tag}
+						</a>
+					))}
 				</div>
 			</div>
 
 			<!-- Hero image -->
-			{
-				heroImage && (
-					<div class="overflow-hidden rounded-box bg-base-300 shadow-sm">
-						<div class="relative aspect-video w-full">
-							<img
-								src={imageUrl(heroImage, { width: HERO_WIDTH, height: HERO_HEIGHT })}
-								srcset={imageSrcSet(heroImage, HERO_SRCSET_WIDTHS, HERO_ASPECT_RATIO)}
-								sizes={HERO_SIZES}
-								alt={heroImage.alt ?? post.title}
-								width={HERO_WIDTH}
-								height={HERO_HEIGHT}
-								class="w-full h-full object-cover object-center"
-								loading="eager"
-								decoding="async"
-							/>
-						</div>
+			{heroImage && (
+				<div class="overflow-hidden rounded-box bg-base-300 shadow-sm">
+					<div class="relative aspect-video w-full">
+						<img
+							src={imageUrl(heroImage, { width: HERO_WIDTH, height: HERO_HEIGHT })}
+							srcset={imageSrcSet(heroImage, HERO_SRCSET_WIDTHS, HERO_ASPECT_RATIO)}
+							sizes={HERO_SIZES}
+							alt={heroImage.alt ?? post.title}
+							width={HERO_WIDTH}
+							height={HERO_HEIGHT}
+							class="w-full h-full object-cover object-center"
+							loading="eager"
+							decoding="async"
+						/>
 					</div>
-				)
-			}
+				</div>
+			)}
 		</div>
 	</section>
 
@@ -161,23 +157,21 @@ const ogImage = heroImage
 				</article>
 
 				<!-- Tags at bottom -->
-				{
-					tags.length > 0 && (
-						<div class="mt-10 pt-8 border-t border-base-300">
-							<p class="text-sm font-medium text-base-content/60 mb-3">{t('post.tags')}</p>
-							<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
-								{tags.map((tag) => (
-									<a
-										href={localeHref(locale, `tags/${tagSlug(tag)}`)}
-										class="badge badge-outline hover:badge-primary transition-colors"
-									>
-										{tag}
-									</a>
-								))}
-							</div>
+				{tags.length > 0 && (
+					<div class="mt-10 pt-8 border-t border-base-300">
+						<p class="text-sm font-medium text-base-content/60 mb-3">{t('post.tags')}</p>
+						<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
+							{tags.map((tag) => (
+								<a
+									href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+									class="badge badge-outline hover:badge-primary transition-colors"
+								>
+									{tag}
+								</a>
+							))}
 						</div>
-					)
-				}
+					</div>
+				)}
 
 				<!-- Comments -->
 				<Giscus locale={locale} />
@@ -224,14 +218,7 @@ const ogImage = heroImage
 							try {
 								await navigator.clipboard.writeText(text);
 							} catch {
-								const ta = document.createElement('textarea');
-								ta.value = text;
-								ta.style.position = 'fixed';
-								ta.style.opacity = '0';
-								document.body.appendChild(ta);
-								ta.select();
-								document.execCommand('copy');
-								document.body.removeChild(ta);
+								return;
 							}
 							btn.setAttribute('aria-label', 'Copied!');
 							setTimeout(() => btn.setAttribute('aria-label', 'Copy code'), 1500);
@@ -243,7 +230,6 @@ const ogImage = heroImage
 				enhanceCodeBlocks();
 				document.addEventListener('astro:after-swap', enhanceCodeBlocks);
 			</script>
-
 			<!-- Sidebar: Table of Contents (lg+) -->
 			<aside class="hidden lg:block" aria-label={t('post.toc')}>
 				<TableOfContents headings={headings} locale={locale} />

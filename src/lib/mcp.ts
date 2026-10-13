@@ -176,12 +176,12 @@ export function buildMcpServer(): McpServer {
 			const perLocale = await Promise.all(
 				targets.map(async (l) => {
 					const tags = await getTagsForLocale(l, sanity);
-					return tags.map(({ tag, count }) => ({
+					return tags.map(({ tag, slug, count }) => ({
 						tag,
-						slug: tagSlug(tag),
+						slug,
 						count,
 						locale: l,
-						url: localeHref(l, `tags/${tagSlug(tag)}`),
+						url: localeHref(l, `tags/${slug}`),
 					}));
 				}),
 			);

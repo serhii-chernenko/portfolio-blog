@@ -2,9 +2,11 @@ import type { APIContext, APIRoute } from 'astro';
 import { decodeSignatureHeader, isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
 import { isLocale } from '../../../i18n/config';
 import { localeHref } from '../../../i18n/utils';
+import { changedContentUrls, submitToIndexNow } from '../../../lib/indexnow';
 import { SANITY_CACHE_TAG } from '../../../lib/sanity/config';
 import { getSanityWebhookSecret } from '../../../lib/server-secrets';
 import { notify } from '../../../lib/telegram';
+import { environmentFromHost } from '../../../lib/telemetry-schema';
 
 export const prerender = false;
 
@@ -19,6 +21,8 @@ interface WebhookPayload {
 	title?: unknown;
 	language?: unknown;
 	slug?: unknown;
+	previousSlug?: unknown;
+	publishedAt?: unknown;
 }
 
 class PayloadTooLargeError extends Error {}
@@ -99,11 +103,16 @@ function newPostMessage(payload: WebhookPayload, context: APIContext): string | 
 	return `📝 New post published: ${escapeHtml(postTitle)} (${language.toUpperCase()}) ${url}`;
 }
 
-async function deliverNotification(context: APIContext, message: string): Promise<void> {
-	const pending = notify(message);
+async function runAfterResponse(context: APIContext, pending: Promise<void>): Promise<void> {
 	const cfContext = (context.locals as Partial<App.Locals>).cfContext;
 	if (!cfContext) return pending;
 	cfContext.waitUntil(pending);
+}
+
+function indexNowSubmission(payload: WebhookPayload, context: APIContext): Promise<void> | null {
+	if (!context.site || environmentFromHost(context.url.host) !== 'production') return null;
+	const urls = changedContentUrls(payload, context.site);
+	return urls.length > 0 ? submitToIndexNow(context.site, urls) : null;
 }
 
 export const POST: APIRoute = async (context) => {
@@ -147,6 +156,8 @@ export const POST: APIRoute = async (context) => {
 		}
 	}
 
-	if (message) await deliverNotification(context, message);
+	const indexNow = payload ? indexNowSubmission(payload, context) : null;
+	if (indexNow) await runAfterResponse(context, indexNow);
+	if (message) await runAfterResponse(context, notify(message));
 	return json({ purged: context.cache.enabled }, 200);
 };

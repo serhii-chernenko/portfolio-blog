@@ -3,7 +3,7 @@
 Everything the code can't do for itself. The app builds, typechecks, and lints
 clean — but it ships with placeholder IDs and empty secrets. This is the
 ordered list of manual steps to take it from "builds locally" to "live in
-production at `www.serhiichernenko.com/blog`".
+production at `serhiichernenko.com/blog`".
 
 Work top to bottom — later steps depend on earlier ones. Each item says **what**,
 **where**, the **command/action**, and **how to verify** it worked.
@@ -65,8 +65,14 @@ validation happens at runtime when the Worker receives its first request.
   `astro:env` schema (min length: 1).
 - [x] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
 - [x] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
+- [ ] `NEW_RELIC_LICENSE_KEY` — optional; ingest key for the telemetry forwarder (see `docs/OBSERVABILITY.md`). Without it, events are not forwarded to New Relic. `wrangler secret put NEW_RELIC_LICENSE_KEY`.
 - [ ] `SANITY_API_READ_TOKEN`, `DRAFT_MODE_COOKIE_SECRET` and `SANITY_WEBHOOK_SECRET` — optional, set in step 4.
-- **Verify:** `wrangler secret list` shows every secret you set (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, plus the three Sanity secrets after step 4).
+- **Verify:** `wrangler secret list` shows every secret you set (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEW_RELIC_LICENSE_KEY`, plus the three Sanity secrets after step 4).
+
+The telemetry endpoint (`/blog/api/events`) is rate limited by the
+`EVENTS_RATE_LIMITER` binding, declared in `wrangler.jsonc` under `ratelimits`
+(`namespace_id` `1001`, 60 requests per 60 seconds). It ships with the deploy;
+there is nothing to create by hand.
 
 ---
 
@@ -84,6 +90,9 @@ full picture.
    cd studio && pnpm install && pnpm schema:deploy && pnpm deploy
    ```
    The Studio is served at <https://serhiichernenko-blog.sanity.studio>.
+   Redeploy the Studio after the apex cutover: its preview origin changed to
+   `https://serhiichernenko.com` (`SITE_ORIGIN` in `studio/src/project.ts`), and
+   the hosted Studio only picks that up on its next `pnpm deploy`.
 2. [ ] **Viewer token** — <https://www.sanity.io/manage> → project `8xspnp7h` →
        **API** → **Tokens** → add a token with the **Viewer** role, then:
    ```bash
@@ -101,13 +110,16 @@ full picture.
    pnpm exec wrangler secret put SANITY_WEBHOOK_SECRET
    ```
    Webhook settings (manage → **API** → **Webhooks**): URL
-   `https://www.serhiichernenko.com/blog/api/sanity/revalidate`, dataset
+   `https://serhiichernenko.com/blog/api/sanity/revalidate`, dataset
    `production`, triggers create/update/delete, filter
    `_type in ["post","page","navigation","siteSettings","translation.metadata"]`,
    projection
-   `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current}`,
+   `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current, publishedAt, "previousSlug": before().slug.current}`,
    method `POST`, include drafts **off**, and the same secret. The extra fields
-   drive the "📝 New post published" Telegram notification on a post's first publish. Without it pages still refresh, but only when the cache TTL (1h) expires.
+   drive the "📝 New post published" Telegram notification on a post's first
+   publish and the IndexNow submission (`publishedAt`, `previousSlug`; see
+   `docs/SANITY.md`). Without the webhook pages still refresh, but only when the
+   cache TTL (1h) expires.
 4. [ ] Re-deploy the site if you changed any config in this step (secrets don't need a rebuild).
 
 - **Verify:** publish a throwaway edit in the Studio → the webhook delivery log
@@ -218,33 +230,57 @@ Or just push to `main` — **Cloudflare Workers Builds** runs `pnpm build` + dep
 automatically (dashboard Git integration). Non-`main` branches / PRs get a preview
 version with an auto-posted preview URL (see _Preview deployments_ below).
 
-The canonical host is **`www.serhiichernenko.com`**; the bare apex
-301-redirects to it. Three things outside the deploy make routing work — see
-**`docs/DNS-ROUTING.md`** for the full runbook. **Routes do not create DNS**, and
-the wrangler OAuth token and the Workers Builds deploy credential have zone
-_read_ only, so the DNS records and the redirect rule are **dashboard/API
-actions** (not `wrangler`/CI):
+The canonical host is **`serhiichernenko.com`** (the bare apex); `www`
+308-redirects to it before Workers run. Three things outside the deploy make routing work — see
+**`docs/DNS-ROUTING.md`** for the full runbook, including the phased
+**www → apex migration**. **Routes do not create DNS**, and the wrangler OAuth
+token and the Workers Builds deploy credential have zone _read_ only, so the DNS
+records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
 
 - [ ] **DNS — two Proxied (orange-cloud) records** (Cloudflare → `serhiichernenko.com`
-      → **DNS → Records**): `CNAME www → serhiichernenko.com` (so `www` resolves to
-      the edge where the Worker routes fire) **and** `AAAA @ → 100::` (so the bare
-      apex resolves to the edge where the redirect rule runs). Both must be Proxied.
-- [ ] **Redirect rule — apex → www** (**Rules → Redirect Rules**): when hostname
-      equals `serhiichernenko.com`, 301 to `https://www.serhiichernenko.com` preserving
-      path/query. Scope to the apex only (don't match `www`, or it loops).
-- [ ] **Routes deploy to www.** `wrangler.jsonc` declares
-      `www.serhiichernenko.com/blog`, `/blog/*`, and `/robots.txt` (`zone_name`
-      stays the apex). A route change only takes effect after `pnpm wrangler:deploy`
-      (the build regenerates the deployed config — a bare `wrangler deploy` reuses the
-      old routes). Confirm with `pnpm exec wrangler deploy --dry-run | grep serhii`.
+      → **DNS → Records**): `AAAA @ → 100::` (so the apex resolves to the edge where
+      the Worker routes fire) **and** `CNAME www → serhiichernenko.com` (so `www`
+      resolves to the edge where the redirect rule runs). Both must be Proxied.
+- [x] **Redirect rules** (**Rules → Redirect Rules**, live 2026-10-12): when
+      hostname equals `www.serhiichernenko.com`, **308** to
+      `https://serhiichernenko.com` preserving path/query (scoped to `www` only,
+      or the apex would loop; 308 keeps RFC 8058 one-click unsubscribe POSTs from
+      old emails working), plus a `302` from the apex host root `/` to
+      `/blog/en/` (delete it when the portfolio Worker takes `/`). Rule IDs are in
+      `docs/DNS-ROUTING.md`.
+- [ ] **Routes deploy to the apex only.** `wrangler.jsonc` declares
+      `serhiichernenko.com/blog`, `/blog/*` and the host-root files `/robots.txt`,
+      `/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` (`zone_name`
+      is the apex); `www` is not bound. A route change only takes effect
+      after `pnpm wrangler:deploy` (the build regenerates the deployed config — a
+      bare `wrangler deploy` reuses the old routes). Confirm with
+      `pnpm exec wrangler deploy --dry-run | grep serhii`.
 - [ ] Decide what serves the host root `/` (intentionally **not** bound to this
       Worker — open decision #8 in `blog-build-plan.md`; until then `/` returns a CF edge error).
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
-  checks `www` resolves to a proxied edge IP, `www/blog/en/` returns 2xx, and the
-  apex `/blog` 301-redirects to `www`. Then manually confirm
-  a post page and `www.serhiichernenko.com/blog/api/draft-mode/enable` (401 without
+  checks the apex resolves to a proxied edge IP, `serhiichernenko.com/blog/en/`
+  returns 2xx, and `www/blog` 308-redirects to the apex. Then manually confirm
+  a post page and `serhiichernenko.com/blog/api/draft-mode/enable` (401 without
   a valid secret). HTTPS may need up
   to 24h for Universal SSL — test `http://` first.
+
+---
+
+## 9a. 🟡 IndexNow seeding
+
+IndexNow tells Bing, Yandex and other participating engines about URLs without
+waiting for a crawl. After the first production deploy on the apex, submit every
+sitemap URL once:
+
+```bash
+gh workflow run indexnow.yml -f mode=all
+```
+
+From then on, the deploy workflow submits sitemap changes and the Sanity webhook
+submits each publish. See `docs/SEO.md` and `docs/SANITY.md#indexnow-on-publish`.
+
+- **Verify:** the workflow run succeeds, and
+  `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` returns the key.
 
 ---
 

@@ -8,6 +8,8 @@ import { trackEvent } from '../../lib/analytics';
 import { isLocale, type Locale } from '../../i18n/config';
 import { ui } from '../../i18n/ui';
 import { resolvePageSlug } from '../../lib/pages';
+import { emitTelemetryEvent, telemetryInputFromContext } from '../../lib/telemetry';
+import { newsletterOutcome, type NewsletterResult } from '../../lib/telemetry-schema';
 
 export const prerender = false;
 
@@ -63,6 +65,16 @@ function tokenRedirect(context: Parameters<APIRoute>[0], location: string): Resp
 }
 
 export const GET: APIRoute = async (context) => {
+	const telemetryInput = telemetryInputFromContext(context);
+	const reportResult = (result: NewsletterResult, communicationLocale?: Locale) =>
+		emitTelemetryEvent(telemetryInput, {
+			eventName: 'newsletter_confirmed',
+			outcome: newsletterOutcome(result),
+			method: 'GET',
+			path: '/api/confirm',
+			result,
+			communicationLocale,
+		});
 	const url = new URL(context.request.url);
 	const token = url.searchParams.get('token') ?? '';
 	const rawLocale = url.searchParams.get('locale') ?? 'en';
@@ -70,6 +82,7 @@ export const GET: APIRoute = async (context) => {
 
 	// Defense-in-depth: astro:env validates undefined but not empty string.
 	if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
+		reportResult('unavailable');
 		return htmlPage(
 			ui[locale]['subscribe.confirm.error'],
 			ui[locale]['subscribe.confirm.error'],
@@ -81,6 +94,7 @@ export const GET: APIRoute = async (context) => {
 	const result = await verifyToken(SUBSCRIBE_RATE_LIMIT_SECRET, token, { purpose: 'confirm' });
 
 	if (!result) {
+		reportResult('invalid_token');
 		return htmlPage(
 			ui[locale]['subscribe.confirm.invalid'],
 			ui[locale]['subscribe.confirm.invalid'],
@@ -97,6 +111,7 @@ export const GET: APIRoute = async (context) => {
 		await cleanupExpiredPendingIntents(db);
 	} catch {
 		console.error(JSON.stringify({ message: 'Failed to clean expired confirmation intent' }));
+		reportResult('unavailable');
 		return htmlPage(
 			ui[locale]['subscribe.confirm.error'],
 			ui[locale]['subscribe.confirm.error'],
@@ -110,6 +125,7 @@ export const GET: APIRoute = async (context) => {
 		confirmation = await confirmSubscriberAndEnableAll(db, email, confirmationTokenHash);
 	} catch {
 		console.error(JSON.stringify({ message: 'Failed to confirm subscriber' }));
+		reportResult('unavailable');
 		return htmlPage(
 			ui[locale]['subscribe.confirm.error'],
 			ui[locale]['subscribe.confirm.error'],
@@ -119,6 +135,7 @@ export const GET: APIRoute = async (context) => {
 	}
 
 	if (!confirmation) {
+		reportResult('invalid_token');
 		return htmlPage(
 			ui[locale]['subscribe.confirm.invalid'],
 			ui[locale]['subscribe.confirm.invalid'],
@@ -165,6 +182,8 @@ export const GET: APIRoute = async (context) => {
 			status: 'confirmed_all_languages',
 		});
 	}
+
+	reportResult(confirmation.changed ? 'confirmed' : 'already_confirmed', communicationLocale);
 
 	// Redirect to subscribe page with confirmed flag
 	return tokenRedirect(context, `${homeHrefFor(communicationLocale)}subscribe/?confirmed=1`);

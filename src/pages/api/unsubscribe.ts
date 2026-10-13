@@ -10,6 +10,13 @@ import { type OneClickAction, verifyManageToken, verifyToken } from '../../lib/t
 import { notify } from '../../lib/telegram';
 import { trackEvent } from '../../lib/analytics';
 import { defaultLocale, isLocale, type Locale } from '../../i18n/config';
+import { emitTelemetryEvent, telemetryInputFromContext } from '../../lib/telemetry';
+import {
+	enabledLanguages,
+	newsletterOutcome,
+	type EnabledLanguages,
+	type NewsletterResult,
+} from '../../lib/telemetry-schema';
 
 export const prerender = false;
 
@@ -177,11 +184,32 @@ async function readPostFields(
 
 export const POST: APIRoute = async (context) => {
 	const url = new URL(context.request.url);
+	const telemetryInput = telemetryInputFromContext(context);
+	let channel: 'ui' | 'oneclick' = 'ui';
+	const reported: { action?: PreferenceAction; pageLocale?: Locale } = {};
+	const reportPreferences = (
+		result: NewsletterResult,
+		subscriber?: { communicationLocale: Locale; enabledLanguages: EnabledLanguages },
+	) =>
+		emitTelemetryEvent(telemetryInput, {
+			eventName: 'newsletter_preferences_changed',
+			outcome: newsletterOutcome(result),
+			method: 'POST',
+			path: '/api/unsubscribe',
+			action: reported.action,
+			channel,
+			result,
+			pageLocale: reported.pageLocale,
+			communicationLocale: subscriber?.communicationLocale,
+			enabledLanguages: subscriber?.enabledLanguages,
+		});
+
 	let fields: Record<string, string>;
 	let bodyEntryCount: number;
 	try {
 		({ fields, entryCount: bodyEntryCount } = await readPostFields(context.request));
 	} catch (error) {
+		reportPreferences('invalid_request');
 		return apiResponse(
 			error instanceof RangeError ? 'Request too large' : 'Invalid request body',
 			400,
@@ -199,26 +227,33 @@ export const POST: APIRoute = async (context) => {
 			oneClickFields[0][0] === 'List-Unsubscribe' &&
 			oneClickFields[0][1] === 'One-Click';
 		if (!isValidOneClickBody) {
+			reportPreferences('invalid_request');
 			return apiResponse('Invalid one-click unsubscribe request', 400);
 		}
+		channel = 'oneclick';
 	}
 
 	const token = fields.token ?? url.searchParams.get('token') ?? '';
 	const rawAction = fields.action ?? url.searchParams.get('action') ?? '';
 	const isUiForm = fields.ui === '1';
 	const formLocale = requestedLocale(fields.locale ?? url.searchParams.get('locale'));
+	reported.pageLocale = isUiForm ? formLocale : undefined;
+	reported.action = isPreferenceAction(rawAction) ? rawAction : undefined;
 
 	if (!SUBSCRIBE_RATE_LIMIT_SECRET) {
+		reportPreferences('unavailable');
 		return isUiForm
 			? internalRedirect(context, formLocale, token, 'error')
 			: apiResponse('Service unavailable', 503);
 	}
 
 	if (!isPreferenceAction(rawAction)) {
+		reportPreferences('invalid_request');
 		return apiResponse('Invalid preference action', 400);
 	}
 
 	if (isOneClick && !isOneClickAction(rawAction)) {
+		reportPreferences('invalid_request');
 		return apiResponse('Invalid one-click unsubscribe action', 400);
 	}
 	const verified = isOneClick
@@ -228,6 +263,7 @@ export const POST: APIRoute = async (context) => {
 			})
 		: await verifyManageToken(SUBSCRIBE_RATE_LIMIT_SECRET, token);
 	if (!verified) {
+		reportPreferences('invalid_token');
 		return isUiForm
 			? internalRedirect(context, formLocale, token, 'invalid')
 			: apiResponse('Invalid or expired token', 400);
@@ -236,9 +272,11 @@ export const POST: APIRoute = async (context) => {
 	let locale = formLocale;
 	let changed = false;
 	let becameGloballyUnsubscribed = false;
+	let subscriberAfter: { communicationLocale: Locale; enabledLanguages: EnabledLanguages };
 	try {
 		const transition = await applySubscriberPreferenceAction(getDB(), verified.email, rawAction);
 		if (!transition) {
+			reportPreferences('invalid_token');
 			return isUiForm
 				? internalRedirect(context, locale, token, 'invalid')
 				: apiResponse('Subscriber not found', 404);
@@ -255,6 +293,10 @@ export const POST: APIRoute = async (context) => {
 			before.subscriber.status !== after.subscriber.status;
 		becameGloballyUnsubscribed =
 			before.subscriber.status !== 'unsubscribed' && after.subscriber.status === 'unsubscribed';
+		subscriberAfter = {
+			communicationLocale: after.subscriber.communication_locale,
+			enabledLanguages: enabledLanguages(after.languages),
+		};
 	} catch {
 		console.error(
 			JSON.stringify({
@@ -262,9 +304,23 @@ export const POST: APIRoute = async (context) => {
 				action: rawAction,
 			}),
 		);
+		reportPreferences('unavailable');
 		return isUiForm
 			? internalRedirect(context, locale, token, 'error')
 			: apiResponse('Service unavailable', 503);
+	}
+
+	reportPreferences(changed ? 'changed' : 'unchanged', subscriberAfter);
+	if (changed && subscriberAfter.enabledLanguages === 'none') {
+		emitTelemetryEvent(telemetryInput, {
+			eventName: 'newsletter_unsubscribed',
+			outcome: 'success',
+			method: 'POST',
+			path: '/api/unsubscribe',
+			action: rawAction,
+			channel,
+			communicationLocale: subscriberAfter.communicationLocale,
+		});
 	}
 
 	if (changed) {

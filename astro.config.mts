@@ -7,10 +7,7 @@ import node from '@astrojs/node';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
-// Canonical production URL — used at build time for sitemap.xml and RSS
-// absolute links. Runtime URLs are derived from the incoming request, so
-// preview Workers and local `wrangler dev` produce self-referential links.
-const SITE = 'https://www.serhiichernenko.com';
+const SITE = 'https://serhiichernenko.com';
 
 const USE_NODE_DEV_ADAPTER = process.env.ASTRO_NODE_DEV === 'true';
 
@@ -82,12 +79,6 @@ export default defineConfig({
 		defaultLocale: 'en',
 		routing: {
 			prefixDefaultLocale: true,
-			// src/pages/index.astro already implements this redirect as a prerendered
-			// static page. redirectToDefaultLocale: true makes Astro generate its own
-			// competing redirect at the same route — since Astro 7 changed route-priority
-			// resolution, that generated route now wins over the custom page instead of
-			// losing to it as it did on Astro 6, serving a slower SSR redirect with an
-			// added noindex tag instead of the custom page's instant one.
 			redirectToDefaultLocale: false,
 		},
 	},
@@ -146,6 +137,16 @@ export default defineConfig({
 				optional: true,
 			}),
 			PUBLIC_GISCUS_CATEGORY_ID: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_GOOGLE_SITE_VERIFICATION: envField.string({
+				context: 'client',
+				access: 'public',
+				optional: true,
+			}),
+			PUBLIC_BING_SITE_VERIFICATION: envField.string({
 				context: 'client',
 				access: 'public',
 				optional: true,

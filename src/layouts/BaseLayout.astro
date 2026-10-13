@@ -9,6 +9,8 @@ import Footer from '../components/Footer.astro';
 import SearchModal from '../components/SearchModal.astro';
 import PreviewTools from '../components/PreviewTools.astro';
 import { PREVIEW_ROOT_ATTRIBUTE } from '../lib/preview-links';
+import Telemetry from '../components/Telemetry.astro';
+import type { PageType } from '../lib/telemetry-schema';
 import '../styles/global.css';
 
 export interface Props {
@@ -16,6 +18,9 @@ export interface Props {
 	description: string;
 	locale: Locale;
 	image?: string;
+	imageWidth?: number;
+	imageHeight?: number;
+	imageAlt?: string;
 	type?: 'website' | 'article';
 	publishedAt?: Date;
 	updatedAt?: Date;
@@ -25,6 +30,10 @@ export interface Props {
 	translatedUrls?: Partial<Record<Locale, string | null>>;
 	/** Prevent sensitive or utility pages from appearing in search results. */
 	noIndex?: boolean;
+	noIndexFollow?: boolean;
+	omitCanonical?: boolean;
+	pageType: PageType;
+	contentKey?: string;
 }
 
 const {
@@ -32,6 +41,9 @@ const {
 	description,
 	locale,
 	image,
+	imageWidth,
+	imageHeight,
+	imageAlt,
 	type,
 	publishedAt,
 	updatedAt,
@@ -39,6 +51,10 @@ const {
 	alternates,
 	translatedUrls,
 	noIndex = false,
+	noIndexFollow = false,
+	omitCanonical = false,
+	pageType,
+	contentKey,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -55,12 +71,18 @@ const previewRootAttributes = sanity.preview ? { [PREVIEW_ROOT_ATTRIBUTE]: '' } 
 			description={description}
 			locale={locale}
 			image={image}
+			imageWidth={imageWidth}
+			imageHeight={imageHeight}
+			imageAlt={imageAlt}
 			type={type}
 			publishedAt={publishedAt}
 			updatedAt={updatedAt}
 			tags={tags}
 			alternates={alternates}
 			noIndex={noIndex || sanity.preview}
+			noIndexFollow={noIndexFollow}
+			omitCanonical={omitCanonical}
+			pageType={pageType}
 			layout={layout}
 		/>
 	</head>
@@ -86,5 +108,6 @@ const previewRootAttributes = sanity.preview ? { [PREVIEW_ROOT_ATTRIBUTE]: '' } 
 		<SearchModal locale={locale} />
 
 		{sanity.preview && <PreviewTools locale={locale} />}
+		{!sanity.preview && <Telemetry locale={locale} pageType={pageType} contentKey={contentKey} />}
 	</body>
 </html>

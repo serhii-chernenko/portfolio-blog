@@ -1,0 +1,830 @@
+{
+	"name": "Portfolio Blog — Production Analytics",
+	"description": "Production-only evlog telemetry from the portfolio blog Cloudflare Worker: audience, engagement, newsletter funnel and SSR health.",
+	"permissions": "PUBLIC_READ_WRITE",
+	"pages": [
+		{
+			"name": "Audience",
+			"description": "Page views, sessions, content and traffic sources from the client beacon in the production blog.",
+			"widgets": [
+				{
+					"title": "Page views (last 24 hours)",
+					"layout": {
+						"column": 1,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' SINCE 1 day ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Page views (last 7 days)",
+					"layout": {
+						"column": 5,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Sessions (last 7 days)",
+					"layout": {
+						"column": 9,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT uniqueCount(sessionId) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Views per session (last 7 days)",
+					"layout": {
+						"column": 1,
+						"row": 4,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) / uniqueCount(sessionId) AS 'Views per session' FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Page views by locale",
+					"layout": {
+						"column": 5,
+						"row": 4,
+						"width": 8,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.line"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET locale SINCE 7 days ago TIMESERIES AUTO"
+							}
+						]
+					}
+				},
+				{
+					"title": "Top posts",
+					"layout": {
+						"column": 1,
+						"row": 7,
+						"width": 6,
+						"height": 5
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) AS Views FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' AND pageType = 'post' FACET contentKey, locale SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Entry pages",
+					"layout": {
+						"column": 7,
+						"row": 7,
+						"width": 6,
+						"height": 5
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) AS Entries FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' AND isEntry IS TRUE FACET pageType, contentKey SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Referrer sources",
+					"layout": {
+						"column": 1,
+						"row": 12,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET referrerSource SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Campaign sources (utm_source)",
+					"layout": {
+						"column": 5,
+						"row": 12,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' AND campaignSource IS NOT NULL FACET campaignSource SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Countries",
+					"layout": {
+						"column": 9,
+						"row": 12,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET country SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Device types",
+					"layout": {
+						"column": 1,
+						"row": 16,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET deviceType SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Theme split",
+					"layout": {
+						"column": 5,
+						"row": 16,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET theme SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Browser language vs page locale",
+					"layout": {
+						"column": 9,
+						"row": 16,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) AS Views FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_view' FACET browserLanguage, locale SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Engagement",
+			"description": "Time on page, scroll depth, language switches, search usage and outbound clicks.",
+			"widgets": [
+				{
+					"title": "Engaged time distribution (posts)",
+					"layout": {
+						"column": 1,
+						"row": 1,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_engaged' AND pageType = 'post' FACET engagedBucket SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Scroll depth distribution (posts)",
+					"layout": {
+						"column": 7,
+						"row": 1,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_engaged' AND pageType = 'post' FACET scrollBucket SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Scroll depth by post",
+					"layout": {
+						"column": 1,
+						"row": 5,
+						"width": 12,
+						"height": 5
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_engaged' AND pageType = 'post' FACET contentKey, scrollBucket SINCE 7 days ago LIMIT 40"
+							}
+						]
+					}
+				},
+				{
+					"title": "Read completion by post (% reaching 100%)",
+					"layout": {
+						"column": 1,
+						"row": 10,
+						"width": 6,
+						"height": 5
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT percentage(count(*), WHERE scrollBucket = 'p100') AS 'Read completion %', count(*) AS Sessions FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_engaged' AND pageType = 'post' FACET contentKey SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Average active seconds by post",
+					"layout": {
+						"column": 7,
+						"row": 10,
+						"width": 6,
+						"height": 5
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT average(activeSeconds) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'page_engaged' AND pageType = 'post' FACET contentKey SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Language switches",
+					"layout": {
+						"column": 1,
+						"row": 15,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'language_switched' FACET locale, targetLocale SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Search usage by results",
+					"layout": {
+						"column": 5,
+						"row": 15,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'search_used' FACET resultsBucket SINCE 7 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Outbound clicks by target",
+					"layout": {
+						"column": 9,
+						"row": 15,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'outbound_clicked' FACET targetSource SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Newsletter",
+			"description": "Subscription funnel, confirmation, preference changes and failures from server-side newsletter events.",
+			"widgets": [
+				{
+					"title": "Subscribe requests by result and locale",
+					"layout": {
+						"column": 1,
+						"row": 1,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_subscribe_requested' FACET result, locale SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Pending to confirmed funnel by language",
+					"layout": {
+						"column": 7,
+						"row": 1,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT filter(count(*), WHERE eventName = 'newsletter_subscribe_requested' AND result = 'pending') AS 'Pending', filter(count(*), WHERE eventName = 'newsletter_confirmed' AND result = 'confirmed') AS 'Confirmed', filter(count(*), WHERE eventName = 'newsletter_confirmed' AND result = 'confirmed') * 100 / filter(count(*), WHERE eventName = 'newsletter_subscribe_requested' AND result = 'pending') AS 'Conversion %' FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName IN ('newsletter_subscribe_requested', 'newsletter_confirmed') FACET if(eventName = 'newsletter_subscribe_requested', locale, communicationLocale) AS 'language' SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Pending vs confirmed over time",
+					"layout": {
+						"column": 1,
+						"row": 5,
+						"width": 12,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.line"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT filter(count(*), WHERE eventName = 'newsletter_subscribe_requested' AND result = 'pending') AS 'Pending', filter(count(*), WHERE eventName = 'newsletter_confirmed' AND result = 'confirmed') AS 'Confirmed' FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName IN ('newsletter_subscribe_requested', 'newsletter_confirmed') SINCE 30 days ago TIMESERIES 1 day"
+							}
+						]
+					}
+				},
+				{
+					"title": "Subscribe source split",
+					"layout": {
+						"column": 1,
+						"row": 8,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_subscribe_requested' FACET source SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Confirmations by communication locale",
+					"layout": {
+						"column": 5,
+						"row": 8,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_confirmed' AND result = 'confirmed' FACET communicationLocale SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Enabled languages after change",
+					"layout": {
+						"column": 9,
+						"row": 8,
+						"width": 4,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_preferences_changed' AND result = 'changed' FACET enabledLanguages SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Preference changes by action, channel and result",
+					"layout": {
+						"column": 1,
+						"row": 12,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_preferences_changed' FACET action, channel, result SINCE 30 days ago LIMIT 30"
+							}
+						]
+					}
+				},
+				{
+					"title": "Unsubscribes by locale and channel",
+					"layout": {
+						"column": 7,
+						"row": 12,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'newsletter_unsubscribed' FACET communicationLocale, channel SINCE 30 days ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Newsletter failures",
+					"layout": {
+						"column": 1,
+						"row": 16,
+						"width": 12,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName LIKE 'newsletter_%' AND result NOT IN ('pending', 'confirmed', 'already_confirmed', 'changed', 'unchanged') FACET eventName, result SINCE 30 days ago LIMIT 30"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"description": "SSR request health for non-prerendered routes plus ingest freshness.",
+			"widgets": [
+				{
+					"title": "Ingest: events in last 15 min",
+					"layout": {
+						"column": 1,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' SINCE 15 minutes ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "HTTP 5xx in last hour",
+					"layout": {
+						"column": 5,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'http_request_completed' AND status >= 500 SINCE 1 hour ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Rejected or failed events in last 24 hours",
+					"layout": {
+						"column": 9,
+						"row": 1,
+						"width": 4,
+						"height": 3
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.billboard"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND outcome IN ('rejected', 'error') SINCE 1 day ago"
+							}
+						]
+					}
+				},
+				{
+					"title": "Requests by route and status",
+					"layout": {
+						"column": 1,
+						"row": 4,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'http_request_completed' FACET route, status SINCE 7 days ago LIMIT 30"
+							}
+						]
+					}
+				},
+				{
+					"title": "SSR error rate (%)",
+					"layout": {
+						"column": 7,
+						"row": 4,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.line"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT filter(count(*), WHERE status >= 500) * 100 / count(*) AS 'Error rate %' FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'http_request_completed' SINCE 7 days ago TIMESERIES AUTO"
+							}
+						]
+					}
+				},
+				{
+					"title": "p95 duration by route (ms)",
+					"layout": {
+						"column": 1,
+						"row": 8,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.bar"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT percentile(durationMs, 95) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'http_request_completed' FACET route SINCE 7 days ago LIMIT 20"
+							}
+						]
+					}
+				},
+				{
+					"title": "Request volume",
+					"layout": {
+						"column": 7,
+						"row": 8,
+						"width": 6,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.area"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND eventName = 'http_request_completed' FACET route SINCE 7 days ago TIMESERIES AUTO"
+							}
+						]
+					}
+				},
+				{
+					"title": "Rejected and failed outcomes by event",
+					"layout": {
+						"column": 1,
+						"row": 12,
+						"width": 12,
+						"height": 4
+					},
+					"linkedEntityGuids": null,
+					"visualization": {
+						"id": "viz.table"
+					},
+					"rawConfiguration": {
+						"nrqlQueries": [
+							{
+								"accountIds": [8569908],
+								"query": "SELECT count(*) FROM Log_blog WHERE `service.name` = 'portfolio-blog' AND blogEnvironment = 'production' AND outcome IN ('rejected', 'error') FACET eventName, outcome SINCE 7 days ago LIMIT 30"
+							}
+						]
+					}
+				}
+			]
+		}
+	],
+	"variables": []
+}

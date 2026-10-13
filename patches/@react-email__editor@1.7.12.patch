@@ -1,8 +1,8 @@
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 014df0bec5995cc579bc21363a0ea5d6193141a9..e53e067bae1aa8549256664817d57587c3709fdb 100644
+index 7a7a906b8b9f855ade3fd4fc59192a257d3ff11b..a0a2eadbf105cf7c7726f8d6fcfe92fa2c4319b7 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -156,7 +156,7 @@ function EmailEditorReadyBridge({ onReadyRef }) {
+@@ -184,7 +184,7 @@ function EmailEditorReadyBridge({ onReadyRef }) {
  	}, [editor, onReadyRef]);
  	return null;
  }
@@ -11,7 +11,7 @@ index 014df0bec5995cc579bc21363a0ea5d6193141a9..e53e067bae1aa8549256664817d57587
  	const onUpdateRef = useRef(onUpdate);
  	onUpdateRef.current = onUpdate;
  	const onReadyRef = useRef(onReady);
-@@ -201,7 +201,7 @@ const EmailEditor = forwardRef(({ content, onUpdate, onReady, theme = "basic", e
+@@ -229,7 +229,7 @@ const EmailEditor = forwardRef(({ content, onUpdate, onReady, theme = "basic", e
  				hideWhenActiveNodes: bubbleMenu?.hideWhenActiveNodes ?? ["button", "horizontalRule"],
  				hideWhenActiveMarks: bubbleMenu?.hideWhenActiveMarks ?? ["link"]
  			}),
@@ -20,10 +20,10 @@ index 014df0bec5995cc579bc21363a0ea5d6193141a9..e53e067bae1aa8549256664817d57587
  			/* @__PURE__ */ jsx(BubbleMenu.ButtonDefault, {}),
  			/* @__PURE__ */ jsx(BubbleMenu.ImageDefault, {}),
  			/* @__PURE__ */ jsx(SlashCommandRoot, {}),
-diff --git a/dist/root-DTTCkmjD.mjs b/dist/root-DTTCkmjD.mjs
-index f440d8e9c37806c36b536e3f6c26b591be7967dc..427ae91c051fa5de0c5d624c21f3edff9ab2cad9 100644
---- a/dist/root-DTTCkmjD.mjs
-+++ b/dist/root-DTTCkmjD.mjs
+diff --git a/dist/root-BSpn9_eH.mjs b/dist/root-BSpn9_eH.mjs
+index 3ff45895ee89ea042a7041905127761568e79e09..73bc0c86e3516b9b90d1f8b83cd95a5e05449d78 100644
+--- a/dist/root-BSpn9_eH.mjs
++++ b/dist/root-BSpn9_eH.mjs
 @@ -865,13 +865,13 @@ function setLinkHref(editor, href) {
  	}
  	const { from, to } = editor.state.selection;

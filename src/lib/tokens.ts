@@ -7,9 +7,7 @@ const IV_BYTES = 12;
 export type OneClickAction = 'en' | 'uk' | 'all';
 
 export type TokenCapability =
-	| { purpose: 'confirm' }
-	| { purpose: 'manage' }
-	| { purpose: 'oneclick'; action: OneClickAction };
+	{ purpose: 'confirm' } | { purpose: 'manage' } | { purpose: 'oneclick'; action: OneClickAction };
 
 const EXPIRY_MS: Record<TokenCapability['purpose'], number> = {
 	confirm: CONFIRM_TOKEN_TTL_SECONDS * 1000,

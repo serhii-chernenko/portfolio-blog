@@ -13,7 +13,7 @@ Blog content (posts, pages, menus, site copy) lives in [Sanity](https://www.sani
 
 Authoring steps (create a post, translate, schedule, preview) are in [`CONTENT.md`](./CONTENT.md). This document covers architecture, deploys, preview and caching.
 
-> Migrated from Keystatic/Markdoc in `f84d56e`. Keystatic, Markdoc, Pagefind and `@astrojs/sitemap` are gone; search is a GROQ endpoint and the sitemap is rendered on demand.
+> Migrated from Keystatic/Markdoc in `f84d56e`. Keystatic, Markdoc, Pagefind and `@astrojs/sitemap` are gone; search is a GROQ endpoint and the sitemap is rendered on demand. The Keystatic infrastructure still has to be shut down; see [Keystatic decommission](#keystatic-decommission).
 
 ---
 
@@ -87,7 +87,7 @@ pnpm dev                       # site at http://localhost:4321/blog/
 The site always mounts under `/blog`, also in dev. Published content needs no secrets: the public dataset is read without a token. To use the Studio Presentation tool against your local site:
 
 1. Add `SANITY_API_READ_TOKEN` and `DRAFT_MODE_COOKIE_SECRET` to `.dev.vars` (see [Secrets](#secrets)).
-2. Start the Studio with `SANITY_STUDIO_PREVIEW_ORIGIN=http://localhost:4321 pnpm dev`. Without that variable Presentation points at `https://www.serhiichernenko.com`. `http://localhost:*` is an allowed preview origin in `sanity dev` only; the deployed (production) Studio does not allow it.
+2. Start the Studio with `SANITY_STUDIO_PREVIEW_ORIGIN=http://localhost:4321 pnpm dev`. Without that variable Presentation points at `https://serhiichernenko.com`. `http://localhost:*` is an allowed preview origin in `sanity dev` only; the deployed (production) Studio does not allow it.
 
 Run the site against the real Workers runtime (build + `wrangler dev`, served at <http://localhost:8787/blog/>) with `pnpm wrangler:dev`.
 
@@ -120,7 +120,7 @@ The Studio's Presentation tool opens the live site in an iframe and edits conten
 2. On success it sets two cookies (`Secure`, `SameSite=None`, `Path=/blog`, and `Partitioned` when loaded as a cross-site iframe) and redirects to a same-origin `/blog/...` page with `?preview=1` appended. Redirect targets outside `/blog/` or under `/blog/api/` fall back to `/blog/en/`.
    - `sanity-draft-session` (`HttpOnly`, 12 h): `<expiry>.<nonce>.<signature>`, where the signature is HMAC-SHA256 over `draft-session:v1:<expiry>.<nonce>` keyed with `DRAFT_MODE_COOKIE_SECRET`. This is the only thing that unlocks draft mode.
    - `sanity-preview-perspective`: only selects the perspective of a valid session. Allowed values are `drafts`, `published`, release ids (`r…`), or a comma-separated stack of those; anything else means `drafts`. On its own it does nothing, so setting it by hand cannot reveal drafts.
-3. When the session verifies and has not expired, the middleware serves content from the chosen perspective (drafts and future-dated posts unless the perspective is `published`) through the uncached API with the viewer token, enables stega encoding on that client only, and renders the `VisualEditing` overlay and preview tools.
+3. When the session verifies and has not expired, the middleware serves content from the chosen perspective (drafts and future-dated posts unless the perspective is `published`) through the uncached API with the viewer token, enables stega encoding on that client only, and renders the `VisualEditing` overlay and preview tools. The telemetry element and client events (see [`OBSERVABILITY.md`](./OBSERVABILITY.md)) are not rendered in draft mode or in the Presentation preview, so editing never pollutes analytics.
 4. `/blog/api/draft-mode/disable` expires both cookies (plain and `Partitioned` variants) and redirects back. The overlay shows an "Exit preview" link when the page is opened outside the Studio.
 
 ### Why `?preview=1`
@@ -153,27 +153,41 @@ Publishing in the Studio fires a webhook to `POST /blog/api/sanity/revalidate`. 
 3. Verifies the signature against `SANITY_WEBHOOK_SECRET` (401 on mismatch).
 4. Purges the `sanity` tag. A purge failure returns 503 so Sanity retries. Everything is purged on any relevant change on purpose: menus, lists, tags and translation links make most pages depend on most documents.
 5. When the payload is a `post` with `operation == "create"` (the first publish of that document), sends a Telegram notification, `📝 New post published: <title> (<LANG>) <absolute post URL>`, through `src/lib/telegram.ts` in the background (`waitUntil`). It is sent only after a successful purge, so a 503 retry does not notify twice.
+6. Submits the changed URLs to IndexNow in the background, after the purge (see [IndexNow on publish](#indexnow-on-publish)).
 
-Scheduled (future `publishedAt`) posts do not trigger a webhook when their time arrives, so they appear once the cached pages expire, about an hour (`maxAge`) after the scheduled time. To publish immediately, set `publishedAt` to now, or edit any document to fire the webhook.
+Scheduled (future `publishedAt`) posts do not trigger a webhook when their time arrives, so they appear once the cached pages expire, about an hour (`maxAge`) after the scheduled time. To publish immediately, set `publishedAt` to now, or edit any document to fire the webhook. For the same reason neither a cache purge nor an IndexNow submission happens when a scheduled post goes live; the deploy-time IndexNow workflow or a manual run covers it (see [`SEO.md`](./SEO.md#indexnow)).
 
 If the webhook is misconfigured, the site keeps working and pages refresh when their TTL expires (`maxAge` 1h, then `swr` serves stale up to 1 day while revalidating).
+
+### IndexNow on publish
+
+After a successful cache purge, `src/pages/api/sanity/revalidate.ts` submits the affected URLs to [IndexNow](https://www.indexnow.org) so Bing, Yandex and other participating engines learn about them without waiting for a crawl. The logic lives in `src/lib/indexnow.ts`.
+
+- **Where it runs:** in the background (`waitUntil`), and only on the production host (`serhiichernenko.com`). Preview, workers.dev and local requests never submit.
+- **Which documents:** only `post` and `page` payloads with a valid `language` and `slug`. Navigation, site settings and translation metadata changes submit nothing.
+- **Which URLs:** the document's own URL; its old URL when `previousSlug` differs from `slug` (a slug rename); and, for posts, the locale home and the posts index of that locale.
+- **Scheduled posts:** a post whose `publishedAt` is in the future is skipped.
+- **Key:** `aa97432c46c58c839540be4d044ece78`, with the key file at `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt`. Submissions go to `https://api.indexnow.org/indexnow`.
+- **Failures:** a rejected or failed submission is logged and never fails the webhook, so Sanity does not retry the delivery because of IndexNow.
+
+The other IndexNow path, the GitHub Actions deploy workflow, is described in [`SEO.md`](./SEO.md#indexnow).
 
 ### Webhook setup
 
 Create it once at <https://www.sanity.io/manage> → project `8xspnp7h` → **API** → **Webhooks** → **Create webhook**:
 
-| Setting        | Value                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------- |
-| URL            | `https://www.serhiichernenko.com/blog/api/sanity/revalidate`                           |
-| Dataset        | `production`                                                                           |
-| Trigger on     | Create, Update, Delete                                                                 |
-| Filter (GROQ)  | `_type in ["post","page","navigation","siteSettings","translation.metadata"]`          |
-| Projection     | `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current}` |
-| HTTP method    | `POST`                                                                                 |
-| Include drafts | Off                                                                                    |
-| Secret         | The value you set as `SANITY_WEBHOOK_SECRET`                                           |
+| Setting        | Value                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| URL            | `https://serhiichernenko.com/blog/api/sanity/revalidate`                                                                                   |
+| Dataset        | `production`                                                                                                                               |
+| Trigger on     | Create, Update, Delete                                                                                                                     |
+| Filter (GROQ)  | `_type in ["post","page","navigation","siteSettings","translation.metadata"]`                                                              |
+| Projection     | `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current, publishedAt, "previousSlug": before().slug.current}` |
+| HTTP method    | `POST`                                                                                                                                     |
+| Include drafts | Off                                                                                                                                        |
+| Secret         | The value you set as `SANITY_WEBHOOK_SECRET`                                                                                               |
 
-Keep the projection small: the handler rejects bodies over 256 KB and a full post body can exceed that. `operation`, `title`, `language` and `slug` feed the first-publish Telegram notification; everything else only needs `_id` and `_type`.
+Keep the projection small: the handler rejects bodies over 256 KB and a full post body can exceed that. `operation`, `title`, `language` and `slug` feed the first-publish Telegram notification. `publishedAt` and `previousSlug` feed [IndexNow](#indexnow-on-publish): `publishedAt` lets the handler skip posts scheduled for the future, and `previousSlug` (the slug before this change) lets it also submit the old URL after a slug rename. Everything else only needs `_id` and `_type`.
 
 Verify with an edit-and-publish in the Studio, then check the Worker logs for the request (the route returns `{"purged":true}`) and reload the page.
 
@@ -214,3 +228,19 @@ Redeploy: `cd studio && pnpm schema:deploy && pnpm deploy`.
 
 **`sanity deploy` or `schema deploy` fails to authenticate.**
 Run `npx sanity login` with the account that owns project `8xspnp7h`.
+
+---
+
+## Keystatic decommission
+
+Keystatic is no longer used. Remove its leftover infrastructure once the Sanity cutover is verified:
+
+- [ ] Delete the GitHub App `serhii-chernenko-portfolio-blog` (GitHub → Settings → Developer settings → GitHub Apps).
+- [ ] Delete the three Worker secrets:
+  ```bash
+  pnpm exec wrangler secret delete KEYSTATIC_SECRET
+  pnpm exec wrangler secret delete KEYSTATIC_GITHUB_CLIENT_ID
+  pnpm exec wrangler secret delete KEYSTATIC_GITHUB_CLIENT_SECRET
+  ```
+- [ ] After the next deploy, confirm in the Cloudflare dashboard (Workers & Pages → portfolio-blog → Settings → Domains & Routes) that the old `serhiichernenko.com/keystatic*` and `serhiichernenko.com/api/keystatic*` Worker routes are gone. Remove them manually if they remain.
+- [x] The `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG` var is already removed from `wrangler.jsonc`.

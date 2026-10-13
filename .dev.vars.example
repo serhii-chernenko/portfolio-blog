@@ -32,6 +32,7 @@ SUBSCRIBE_RATE_LIMIT_SECRET=local-dev-only-secret-replace-in-prod
 # Optional locally — leave empty to skip notifications. notify() no-ops gracefully.
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+NEW_RELIC_LICENSE_KEY=
 
 # Optional — Sanity Viewer token. Enables draft mode / Visual Editing via the
 # Studio Presentation tool. Empty → only published content, draft mode disabled.
@@ -52,6 +53,11 @@ PUBLIC_GISCUS_REPO=serhii-chernenko/portfolio-blog
 PUBLIC_GISCUS_REPO_ID=
 PUBLIC_GISCUS_CATEGORY=Comments
 PUBLIC_GISCUS_CATEGORY_ID=
+
+# Search engine site-verification meta tags (fallback to DNS verification).
+# Empty → the tag is not rendered.
+PUBLIC_GOOGLE_SITE_VERIFICATION=
+PUBLIC_BING_SITE_VERIFICATION=
 
 # Cloudflare Web Analytics is auto-injected by Cloudflare's edge (auto-install
 # enabled for the serhiichernenko.com zone) — no token or env var needed here.
