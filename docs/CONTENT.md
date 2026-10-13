@@ -14,7 +14,7 @@ Open the Studio at <https://serhiichernenko-blog.sanity.studio> and sign in with
 4. Write the body. Paste images, add code blocks, callouts, YouTube embeds.
 5. Switch to the **Presentation** tool to preview the draft on the real site.
 6. Click **Publish**. The site refreshes within seconds.
-7. To add a Ukrainian version, use the **language menu** on the English post → create the translation → write it → publish.
+7. To add a Ukrainian version, use the **Translations** button on the English post → create the translation → write it → publish.
 
 ---
 
@@ -73,10 +73,17 @@ Insert a **YouTube** block and paste the video ID (the `v=` value of the YouTube
 
 ## Translations
 
-Every post and page is one document per language. Translations are linked through the **language menu** in the document pane (at the top of the editor):
+Every post and page is one document per language. Translations are linked through the **Translations** button in the document header (at the top of the editor):
 
-1. Open the English post and use the language menu → pick **Українська** → create the translation.
+1. Open the English post, click **Translations** → pick **Українська** → create the translation.
 2. The Studio creates a Ukrainian document linked to the English one. Translate the fields (title, slug, description, tags, body, hero alt text) and publish.
+
+### Seeing and managing translations
+
+- **Переклади panel**: the top of every post and page form lists the linked document in the other language (title, slug, **Відкрити** to open it). _немає перекладу_ means none is linked yet; create or link one with the **Translations** button. A yellow warning means the other language was edited after this one, so check that the translation is still current.
+- **Posts / Pages → З перекладом / Без перекладу**: lists of documents that do or do not have a linked translation. Use **Без перекладу** to find what still needs translating.
+- **Переклади** (root of the desk): every translation pair, shown as `Hello, world ↔ Привіт, світ`. It is read-only; links are created and removed with the **Translations** button.
+- **AI translation**: in a newly created translation, open the AI Assist menu (sparkle icon in the document header) and run the translate action to fill the fields from the source document in this document's language. Slug, language, page key, dates and code blocks are never touched by AI, so set the slug yourself. Review the result before publishing.
 
 The slug is local to a language: `/blog/en/posts/hello-world` and `/blog/uk/posts/hello-world` are different documents that can share a slug, and a translation usually has its own (`astro-on-cloudflare` ↔ `astro-na-cloudflare`).
 
@@ -90,7 +97,7 @@ The slug is local to a language: `/blog/en/posts/hello-world` and `/blog/uk/post
 
 ### Posts that exist in only one language
 
-Fine — the blog is bilingual, not parallel. Create the post from the list of the language you want and simply do not create a translation. The language switcher on that post goes to the other language's home page, only that language's `hreflang` (and `x-default`) is emitted, and the sitemap lists a single entry. If you translate it later, use the language menu on the existing post; both sides cross-link as soon as the translation is published.
+Fine — the blog is bilingual, not parallel. Create the post from the list of the language you want and simply do not create a translation. The language switcher on that post goes to the other language's home page, only that language's `hreflang` (and `x-default`) is emitted, and the sitemap lists a single entry. If you translate it later, use the **Translations** button on the existing post; both sides cross-link as soon as the translation is published.
 
 Write translations whenever you like; publishing one language never waits for the other.
 
@@ -126,17 +133,21 @@ Static pages live under **Pages**. Each has a `key` (`about`, `privacy`, `suppor
 
 ---
 
-## Menus and site settings
+## Menus, site settings and UI strings
 
-**Navigation** has four documents — header and footer, each in English and Ukrainian. Each item has:
+These are single documents with both languages side by side: each translatable field shows an **EN** and a **UK** input. Use **+ EN** / **+ UK** under a field to add a missing language. Edit and publish them like any other document.
 
-- a **label**,
-- a **link type**: _internal_ (pick a post or page in the same language), _route_ (`home`, `posts`, `tags`, `subscribe`, `rss`) or _external_ (a URL),
+**Navigation → Header / Footer.** Each item has:
+
+- a **label** per language (English is required; without a Ukrainian label the Ukrainian menu shows the English one),
+- a **link type**: _Page_ (pick a page key such as `about`; each language links to its own translation of that page), _Site route_ (`home`, `posts`, `tags`, `subscribe`, `rss`) or _External URL_,
 - an optional **icon** (`rss`, `github`, `support`) and **open in new tab**.
 
-Reorder items by dragging them. **Site settings** (per language) holds the site name, tagline, meta description, home hero and about copy, and the default OG image. Empty fields fall back to the defaults in `src/i18n/ui.ts`.
+Reorder items by dragging them. A page item is left out of a language whose translation of that page does not exist yet.
 
-These are single documents that always exist; edit and publish them like any other.
+**Site settings** holds the site name, tagline, meta description, home hero and about copy per language, plus one default OG image for both. Empty fields fall back to the defaults in `src/i18n/ui.ts`.
+
+**UI strings** overrides any other interface text from `src/i18n/ui.ts` (buttons, labels, messages). Add an entry, choose the **key** (for example `nav.search`), and fill the text for the languages you want to change; a language left empty keeps the built-in text. Keep placeholders such as `{year}` or `{query}` exactly as they are. Removing the entry restores the default. New keys appear in the list after a developer adds them to `ui.ts` and redeploys the Studio.
 
 ---
 
@@ -158,7 +169,7 @@ Draft mode needs the `SANITY_API_READ_TOKEN` and `DRAFT_MODE_COOKIE_SECRET` secr
 4. Check the webhook delivery log (see [`SANITY.md`](./SANITY.md#troubleshooting)). Without a successful webhook the site refreshes by cache TTL, up to an hour.
 
 **Language switcher links to the home page instead of the translated post.**
-The translation isn't linked. Create it from the language menu of the original post rather than as a standalone document.
+The translation isn't linked. Create it from the **Translations** button of the original post rather than as a standalone document.
 
 **"Slug already exists" when creating a post.**
 Two posts can't share a slug within the same language. Pick a different one.

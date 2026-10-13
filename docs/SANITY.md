@@ -35,10 +35,14 @@ Cloudflare Worker (Astro, SSR) ── Workers Cache (tag `sanity`)
 
 `studio/` is a separate pnpm root with its own `package.json` and lockfile. It is not part of the Workers Builds install and is excluded from the site's Prettier, ESLint and typecheck runs (`pnpm typecheck` inside `studio/` checks it). `studio/sanity.config.ts` enables:
 
-- `structureTool` with a localized desk (`studio/src/structure.ts`): Posts, Pages (each grouped by language), Navigation, Site settings.
+- `structureTool` with a localized desk (`studio/src/structure.ts`): Posts and Pages (each grouped by language, plus **З перекладом** / **Без перекладу** lists), **Переклади** (every translation pair), Navigation, Site settings, UI strings.
 - `presentationTool` for visual editing against the live site (see [Visual Editing](#visual-editing--draft-mode)).
 - `documentInternationalization` for `post` and `page`.
+- `internationalizedArray` (`sanity-plugin-internationalized-array`) for field-level translations of menus, site settings and UI strings.
+- `assist` (`@sanity/assist`) for AI-assisted document translation of posts and pages.
 - `codeInput` and `visionTool` (GROQ playground).
+
+Every post and page form starts with a **Переклади** panel (`studio/src/components/TranslationsPanel.tsx`) that lists the linked translation per language, warns when the other language was edited later, and opens it.
 
 ### Document types
 
@@ -46,8 +50,9 @@ Cloudflare Worker (Astro, SSR) ── Workers Cache (tag `sanity`)
 | -------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `post`         | per document | `title`, `slug`, `description`, `publishedAt`, `updatedAt`, `tags`, `heroImage` (+ `alt`), `body` (Portable Text). |
 | `page`         | per document | Static pages (about, privacy, support): `key`, `title`, `slug`, `description`, `category`, `updatedAt`, `body`.    |
-| `navigation`   | fixed IDs    | Header and footer menus (`navItem` list: internal reference, built-in route, or external URL; optional icon).      |
-| `siteSettings` | fixed IDs    | Site name, tagline, description, home hero and about copy, default OG image.                                       |
+| `navigation`   | per field    | Header and footer menus (`navItem` list: page key, built-in route, or external URL; optional icon).                |
+| `siteSettings` | per field    | Site name, tagline, description, home hero and about copy; one shared default OG image.                            |
+| `uiStrings`    | per field    | Optional overrides of interface strings from `src/i18n/ui.ts` (`entries[]` of `key` + localized `value`).          |
 
 Body content (`blockContent`) supports headings h2-h4, quotes, lists, bold/italic/code/strike, links, images (alt required, caption optional), code blocks, `callout` (`info`/`tip`/`warn`/`danger`) and `youtube` embeds. The field-level source of truth is `studio/src/schemaTypes/`.
 
@@ -57,14 +62,44 @@ Languages are `en` (default) and `uk`, defined once in `studio/src/languages.ts`
 
 Slugs are unique per type and language (`^[a-z0-9-]+$`), so an English and a Ukrainian document can share a slug.
 
-### Singletons: navigation and site settings
+Menus, site settings and UI strings are single documents translated per field instead. `sanity-plugin-internationalized-array` (v5) stores each translatable field as an array with one item per language:
 
-Menus and site copy are localized singletons with fixed document IDs, created from Studio templates:
+```json
+"heroTitle": [
+  { "_key": "en", "_type": "internationalizedArrayStringValue", "language": "en", "value": "Building things…" },
+  { "_key": "uk", "_type": "internationalizedArrayStringValue", "language": "uk", "value": "Будую речі…" }
+]
+```
 
-- `navigation-header-en`, `navigation-header-uk`, `navigation-footer-en`, `navigation-footer-uk`
-- `siteSettings-en`, `siteSettings-uk`
+The site selects by the `language` field (`heroTitle[language == $locale][0].value`), never by `_key`; keys of items added in the Studio are random. Stega encodes these values in draft mode when the path ends in `value` under a human-copy field (`label`, the site copy fields, or `entries`), so the overlay jumps to the right language input.
 
-They cannot be created, duplicated or deleted from the Studio, only edited. When a field is empty the site falls back to the strings in `src/i18n/ui.ts`.
+### Singletons: navigation, site settings and UI strings
+
+Menus and site copy are singletons with fixed document IDs, created from Studio templates:
+
+- `navigation-header`, `navigation-footer`: `menu`, `title`, `items[]`. Each `navItem` has a localized `label` (English required; a missing Ukrainian label falls back to English), a `linkType` of `page`, `route` or `external`, and `pageKey`, `route` or `url` accordingly, plus an optional `icon` and `openInNewTab`.
+- `siteSettings`: localized `siteName`, `tagline`, `description`, `heroEyebrow`, `heroTitle`, `heroSubtitle`, `aboutTitle`, `aboutBody`, `aboutCta`, and a shared `defaultOgImage`.
+- `uiStrings`: `entries[]` of `{ key, value }`, empty by default.
+
+They cannot be created, duplicated or deleted from the Studio, only edited. Presentation shows all three on both home pages.
+
+**Page links by key.** A menu item of type `page` stores the page `key` (the input lists the distinct keys of existing pages), not a reference. Each locale resolves it to its own translation (`*[_type == "page" && key == ^.pageKey && language == $locale][0].slug.current`), so `about` links to `/blog/en/about/` and `/blog/uk/pro-mene/`. If a page has no translation in a locale, the item is left out of that locale's menu. Posts cannot be linked from menus.
+
+**Fallbacks.** When a document or a field is missing for the requested locale, the site falls back to `src/i18n/ui.ts` (the header and footer fall back to built-in menus when their document is missing).
+
+**UI string overrides.** `src/i18n/ui.ts` stays the typed source of truth; `uiStrings` only overrides it. The middleware loads the entries once per page request (published, or the draft perspective in draft mode) into `Astro.locals.uiOverrides`, and pages and components call `useTranslations(locale, Astro.locals.uiOverrides)`, which stays synchronous and prefers an override over `ui.ts`. Placeholders such as `{year}` still work in overrides; unknown keys and empty values are ignored. API routes, emails and the MCP server keep plain `ui.ts`. Translations used in attributes (`aria-label`, `title`, `placeholder`, `data-*`) are stega-cleaned; text nodes keep stega so overrides are clickable in Presentation.
+
+The `key` field only offers valid keys: `studio/src/uiKeys.ts` is generated from `src/i18n/ui.ts`. After adding or renaming a key in `ui.ts`, run `pnpm ui-keys:sync`; `pnpm test:ui-keys` (also in CI) fails when the two drift, and a Studio deploy is needed for the new key to appear.
+
+**Migration.** These documents replaced the per-locale `navigation-{header,footer}-{en,uk}` and `siteSettings-{en,uk}`. `studio/scripts/migrate-layout-i18n.ts` merged them (labels per item position, internal page references converted to page keys, asserting both locales have the same items) and created the empty `uiStrings`; it never deletes the old documents:
+
+```bash
+cd studio
+pnpm exec sanity exec scripts/migrate-layout-i18n.ts --with-user-token -- --dry-run
+pnpm exec sanity exec scripts/migrate-layout-i18n.ts --with-user-token
+```
+
+Re-running it overwrites the three layout documents with the content of the old ones, so do not run it after editing the new documents. Delete the six legacy documents once nothing reads them.
 
 ### Pages: `key` and reserved slugs
 
@@ -181,7 +216,7 @@ Create it once at <https://www.sanity.io/manage> → project `8xspnp7h` → **AP
 | URL            | `https://serhiichernenko.com/blog/api/sanity/revalidate`                                                                                   |
 | Dataset        | `production`                                                                                                                               |
 | Trigger on     | Create, Update, Delete                                                                                                                     |
-| Filter (GROQ)  | `_type in ["post","page","navigation","siteSettings","translation.metadata"]`                                                              |
+| Filter (GROQ)  | `_type in ["post","page","navigation","siteSettings","uiStrings","translation.metadata"]`                                                  |
 | Projection     | `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current, publishedAt, "previousSlug": before().slug.current}` |
 | HTTP method    | `POST`                                                                                                                                     |
 | Include drafts | Off                                                                                                                                        |
