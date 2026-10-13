@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SubscribeForm from '../../components/SubscribeForm.astro';
 import { useTranslations, mirroredLocaleHrefs } from '../../i18n/utils';
@@ -8,12 +9,12 @@ export const prerender = false;
 
 const locale = Astro.params.locale ?? '';
 if (!isLocale(locale)) return new Response(null, { status: 404 });
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 ---
 
 <BaseLayout
-	title={t('subscribe.title')}
-	description={t('subscribe.description')}
+	title={stegaClean(t('subscribe.title'))}
+	description={stegaClean(t('subscribe.description'))}
 	locale={locale}
 	alternates={mirroredLocaleHrefs('subscribe/')}
 	pageType="subscribe"

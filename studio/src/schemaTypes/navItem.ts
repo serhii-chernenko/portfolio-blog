@@ -1,8 +1,10 @@
 import { LinkIcon } from '@sanity/icons/Link';
 import { defineField, defineType, type CustomValidator } from 'sanity';
+import { PageKeyInput } from '../components/PageKeyInput';
+import { DEFAULT_LANGUAGE } from '../languages';
 
 const LINK_TYPES = [
-	{ title: 'Page or post', value: 'internal' },
+	{ title: 'Page', value: 'page' },
 	{ title: 'Site route', value: 'route' },
 	{ title: 'External URL', value: 'external' },
 ];
@@ -25,6 +27,11 @@ interface NavItemParent {
 	linkType?: string;
 }
 
+interface LocalizedValue {
+	language?: string;
+	value?: string;
+}
+
 const isLinkTypeOtherThan =
 	(linkType: string) =>
 	({ parent }: { parent?: NavItemParent }) =>
@@ -37,6 +44,14 @@ const requiredWhenLinkType =
 		return parent?.linkType === linkType && !value ? message : true;
 	};
 
+const hasDefaultLanguageLabel: CustomValidator<LocalizedValue[] | undefined> = (value) =>
+	value?.some(({ language, value: label }) => language === DEFAULT_LANGUAGE && label?.trim())
+		? true
+		: `Add a label in ${DEFAULT_LANGUAGE.toUpperCase()}`;
+
+const defaultLanguageLabel = (label?: LocalizedValue[]) =>
+	label?.find(({ language }) => language === DEFAULT_LANGUAGE)?.value;
+
 export const navItem = defineType({
 	name: 'navItem',
 	title: 'Navigation item',
@@ -45,37 +60,38 @@ export const navItem = defineType({
 	fields: [
 		defineField({
 			name: 'label',
-			type: 'string',
+			type: 'internationalizedArrayString',
 			title: 'Label',
-			validation: (rule) => rule.required(),
+			validation: (rule) => rule.custom(hasDefaultLanguageLabel),
 		}),
 		defineField({
 			name: 'linkType',
 			type: 'string',
 			title: 'Link type',
-			options: { list: LINK_TYPES, layout: 'radio', direction: 'horizontal' },
-			initialValue: 'internal',
+			options: {
+				list: LINK_TYPES,
+				layout: 'radio',
+				direction: 'horizontal',
+				aiAssist: { exclude: true },
+			},
+			initialValue: 'page',
 			validation: (rule) => rule.required(),
 		}),
 		defineField({
-			name: 'internal',
-			type: 'reference',
-			title: 'Page or post',
-			to: [{ type: 'page' }, { type: 'post' }],
-			options: {
-				filter: ({ document }) => ({
-					filter: 'language == $lang',
-					params: { lang: (document.language as string | undefined) ?? '' },
-				}),
-			},
-			hidden: isLinkTypeOtherThan('internal'),
-			validation: (rule) => rule.custom(requiredWhenLinkType('internal', 'Select a page or post')),
+			name: 'pageKey',
+			type: 'string',
+			title: 'Page',
+			description: 'The page key; each language links to its own translation of that page',
+			components: { input: PageKeyInput },
+			options: { aiAssist: { exclude: true } },
+			hidden: isLinkTypeOtherThan('page'),
+			validation: (rule) => rule.custom(requiredWhenLinkType('page', 'Select a page')),
 		}),
 		defineField({
 			name: 'route',
 			type: 'string',
 			title: 'Site route',
-			options: { list: ROUTES },
+			options: { list: ROUTES, aiAssist: { exclude: true } },
 			hidden: isLinkTypeOtherThan('route'),
 			validation: (rule) => rule.custom(requiredWhenLinkType('route', 'Select a route')),
 		}),
@@ -83,6 +99,7 @@ export const navItem = defineType({
 			name: 'url',
 			type: 'url',
 			title: 'URL',
+			options: { aiAssist: { exclude: true } },
 			hidden: isLinkTypeOtherThan('external'),
 			validation: (rule) =>
 				rule
@@ -93,7 +110,7 @@ export const navItem = defineType({
 			name: 'icon',
 			type: 'string',
 			title: 'Icon',
-			options: { list: ICONS },
+			options: { list: ICONS, aiAssist: { exclude: true } },
 		}),
 		defineField({
 			name: 'openInNewTab',
@@ -103,10 +120,23 @@ export const navItem = defineType({
 		}),
 	],
 	preview: {
-		select: { title: 'label', linkType: 'linkType', route: 'route', url: 'url' },
-		prepare({ title, linkType, route, url }) {
-			const target = linkType === 'route' ? route : linkType === 'external' ? url : 'page or post';
-			return { title, subtitle: `${linkType ?? 'internal'} · ${target ?? ''}` };
+		select: {
+			label: 'label',
+			linkType: 'linkType',
+			pageKey: 'pageKey',
+			route: 'route',
+			url: 'url',
+		},
+		prepare({ label, linkType, pageKey, route, url }) {
+			const targets: Record<string, string | undefined> = {
+				page: pageKey,
+				route,
+				external: url,
+			};
+			return {
+				title: defaultLanguageLabel(label) || 'Untitled link',
+				subtitle: `${linkType ?? 'page'} · ${targets[linkType ?? 'page'] ?? ''}`,
+			};
 		},
 	},
 });

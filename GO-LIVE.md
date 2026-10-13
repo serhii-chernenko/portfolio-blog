@@ -117,7 +117,7 @@ full picture.
    Webhook settings (manage → **API** → **Webhooks**): URL
    `https://serhiichernenko.com/blog/api/sanity/revalidate`, dataset
    `production`, triggers create/update/delete, filter
-   `_type in ["post","page","navigation","siteSettings","translation.metadata"]`,
+   `_type in ["post","page","navigation","siteSettings","uiStrings","translation.metadata"]`,
    projection
    `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current, publishedAt, "previousSlug": before().slug.current}`,
    method `POST`, include drafts **off**, and the same secret. The extra fields

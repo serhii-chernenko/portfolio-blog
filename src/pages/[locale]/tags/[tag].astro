@@ -13,7 +13,7 @@ export const prerender = false;
 const locale = Astro.params.locale ?? '';
 const requestedTagSlug = Astro.params.tag ?? '';
 if (!isLocale(locale)) return new Response(null, { status: 404 });
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const sanity = getSanityContext(Astro.locals);
 const [{ settings }, posts, tagsByLocale] = await Promise.all([
 	getLayoutData(locale, sanity),

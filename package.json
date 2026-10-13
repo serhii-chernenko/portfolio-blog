@@ -23,6 +23,8 @@
 		"test:subscriptions": "node scripts/test-subscription-cleanup.mjs",
 		"test:telemetry": "node scripts/test-telemetry.mjs",
 		"test:indexnow": "node scripts/test-indexnow.mjs",
+		"test:ui-keys": "node scripts/sync-ui-keys.mjs --check",
+		"ui-keys:sync": "node scripts/sync-ui-keys.mjs",
 		"prepare": "husky"
 	},
 	"dependencies": {

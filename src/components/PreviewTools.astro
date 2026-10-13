@@ -9,7 +9,7 @@ export interface Props {
 }
 
 const { locale } = Astro.props;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const basePath = withBase('').replace(/\/+$/, '');
 const exitPreviewHref = `${withBase('api/draft-mode/disable')}?redirect=${encodeURIComponent(Astro.url.pathname)}`;
 ---

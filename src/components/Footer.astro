@@ -16,7 +16,7 @@ const ICON_LINK_CLASS =
 	'link link-hover flex items-center gap-1 light:opacity-80 light:hover:opacity-100';
 
 const { locale, currentPath, translatedUrls, layout } = Astro.props;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const year = new Date().getFullYear();
 
 function footerHref(link: NavLink): string {

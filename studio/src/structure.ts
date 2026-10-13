@@ -7,20 +7,16 @@ import { TranslateIcon } from '@sanity/icons/Translate';
 import type { StructureBuilder, StructureResolver } from 'sanity/structure';
 import { LANGUAGES, type LanguageId } from './languages';
 import {
+	MENU_TITLES,
 	MENUS,
 	navigationDocumentId,
-	siteSettingsDocumentId,
 	SINGLETON_TYPES,
-	type MenuId,
+	SITE_SETTINGS_DOCUMENT_ID,
+	UI_STRINGS_DOCUMENT_ID,
 } from './singletons';
 import { TRANSLATION_METADATA_TYPE } from './translationMetadata';
 
 const HIDDEN_FROM_DEFAULT_LIST = ['post', 'page', TRANSLATION_METADATA_TYPE, ...SINGLETON_TYPES];
-
-const MENU_TITLES: Record<MenuId, string> = {
-	header: 'Header',
-	footer: 'Footer',
-};
 
 const languageTitle = (language: LanguageId) =>
 	LANGUAGES.find(({ id }) => id === language)?.title ?? language;
@@ -136,6 +132,18 @@ const localizedGroup = (
 				]),
 		);
 
+const singletonDocument = (
+	S: StructureBuilder,
+	schemaType: string,
+	documentId: string,
+	title: string,
+) =>
+	S.document()
+		.schemaType(schemaType)
+		.documentId(documentId)
+		.initialValueTemplate(documentId)
+		.title(title);
+
 const navigationGroup = (S: StructureBuilder) =>
 	S.listItem()
 		.id('navigation-group')
@@ -146,49 +154,36 @@ const navigationGroup = (S: StructureBuilder) =>
 				.id('navigation-group-list')
 				.title('Navigation')
 				.items(
-					MENUS.flatMap((menu) =>
-						LANGUAGES.map(({ id, title }) =>
-							S.listItem()
-								.id(navigationDocumentId(menu, id))
-								.title(`${MENU_TITLES[menu]} (${title})`)
-								.icon(MenuIcon)
-								.child(
-									S.document()
-										.schemaType('navigation')
-										.documentId(navigationDocumentId(menu, id))
-										.initialValueTemplate(navigationDocumentId(menu, id))
-										.title(`${MENU_TITLES[menu]} navigation (${title})`),
-								),
-						),
-					),
-				),
-		);
-
-const siteSettingsGroup = (S: StructureBuilder) =>
-	S.listItem()
-		.id('site-settings-group')
-		.title('Site settings')
-		.icon(CogIcon)
-		.child(
-			S.list()
-				.id('site-settings-group-list')
-				.title('Site settings')
-				.items(
-					LANGUAGES.map(({ id, title }) =>
+					MENUS.map((menu) =>
 						S.listItem()
-							.id(siteSettingsDocumentId(id))
-							.title(title)
-							.icon(CogIcon)
+							.id(navigationDocumentId(menu))
+							.title(MENU_TITLES[menu])
+							.icon(MenuIcon)
 							.child(
-								S.document()
-									.schemaType('siteSettings')
-									.documentId(siteSettingsDocumentId(id))
-									.initialValueTemplate(siteSettingsDocumentId(id))
-									.title(`Site settings (${title})`),
+								singletonDocument(
+									S,
+									'navigation',
+									navigationDocumentId(menu),
+									`${MENU_TITLES[menu]} navigation`,
+								),
 							),
 					),
 				),
 		);
+
+const siteSettingsItem = (S: StructureBuilder) =>
+	S.listItem()
+		.id(SITE_SETTINGS_DOCUMENT_ID)
+		.title('Site settings')
+		.icon(CogIcon)
+		.child(singletonDocument(S, 'siteSettings', SITE_SETTINGS_DOCUMENT_ID, 'Site settings'));
+
+const uiStringsItem = (S: StructureBuilder) =>
+	S.listItem()
+		.id(UI_STRINGS_DOCUMENT_ID)
+		.title('UI strings')
+		.icon(TranslateIcon)
+		.child(singletonDocument(S, 'uiStrings', UI_STRINGS_DOCUMENT_ID, 'UI strings'));
 
 export const structure: StructureResolver = (S) =>
 	S.list()
@@ -200,7 +195,8 @@ export const structure: StructureResolver = (S) =>
 			translationsListItem(S),
 			S.divider(),
 			navigationGroup(S),
-			siteSettingsGroup(S),
+			siteSettingsItem(S),
+			uiStringsItem(S),
 			...S.documentTypeListItems().filter(
 				(item) => !HIDDEN_FROM_DEFAULT_LIST.includes(item.getId() ?? ''),
 			),

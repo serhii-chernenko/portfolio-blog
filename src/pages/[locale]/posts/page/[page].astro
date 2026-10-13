@@ -13,7 +13,7 @@ export const prerender = false;
 const locale = Astro.params.locale ?? '';
 const page = parsePageNumber(Astro.params.page);
 if (!isLocale(locale) || page === null || page < 2) return new Response(null, { status: 404 });
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const sanity = getSanityContext(Astro.locals);
 const [{ settings }, posts] = await Promise.all([
 	getLayoutData(locale, sanity),

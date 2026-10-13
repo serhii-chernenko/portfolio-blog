@@ -1,10 +1,11 @@
 import { stegaClean } from '@sanity/client/stega';
-import { isLocale, type Locale } from '../i18n/config';
+import { defaultLocale, type Locale } from '../i18n/config';
 import type { UIKey } from '../i18n/ui';
 import { localeHref, useTranslations } from '../i18n/utils';
 import type { SanityImage } from './sanity/image';
 import { LAYOUT_QUERY } from './sanity/queries';
 import type { SanityContext } from './sanity/request';
+import { loadUiOverrides } from './ui-overrides';
 
 export type NavIcon = 'rss' | 'github' | 'support';
 export type NavRoute = 'home' | 'posts' | 'tags' | 'subscribe' | 'rss';
@@ -43,11 +44,12 @@ interface RawNavItem {
 	_key: string;
 	label: string | null;
 	linkType: string | null;
+	pageKey: string | null;
+	pageSlug: string | null;
 	route: string | null;
 	url: string | null;
 	icon: string | null;
 	openInNewTab: boolean | null;
-	internal: { _type: string; language: string | null; slug: string | null } | null;
 }
 
 interface RawLayout {
@@ -66,6 +68,9 @@ const NAV_ICONS: readonly NavIcon[] = ['rss', 'github', 'support'];
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 const EXTERNAL_URL_PATTERN = /^(https?:\/\/|mailto:)/i;
 const SOURCE_REPOSITORY_URL = 'https://github.com/serhii-chernenko/portfolio-blog';
+const SITE_SETTINGS_ID = 'siteSettings';
+const HEADER_NAVIGATION_ID = 'navigation-header';
+const FOOTER_NAVIGATION_ID = 'navigation-footer';
 
 function isNavRoute(value: string): value is NavRoute {
 	return (NAV_ROUTES as readonly string[]).includes(value);
@@ -90,21 +95,16 @@ export function routeHref(route: NavRoute, locale: Locale): string {
 	}
 }
 
-function internalHref(internal: NonNullable<RawNavItem['internal']>): string | null {
-	const language = stegaClean(internal.language ?? '');
-	const slug = stegaClean(internal.slug ?? '');
-	if (!isLocale(language) || !SLUG_PATTERN.test(slug)) return null;
-	const type = stegaClean(internal._type);
-	if (type === 'post') return localeHref(language, `posts/${slug}`);
-	if (type === 'page') return localeHref(language, slug);
-	return null;
+function pageHref(item: RawNavItem, locale: Locale): string | null {
+	const slug = stegaClean(item.pageSlug ?? '');
+	return SLUG_PATTERN.test(slug) ? localeHref(locale, slug) : null;
 }
 
 function resolveHref(
 	item: RawNavItem,
 	locale: Locale,
 ): Pick<NavLink, 'href' | 'route' | 'isExternal'> | null {
-	const linkType = stegaClean(item.linkType ?? 'internal');
+	const linkType = stegaClean(item.linkType ?? 'page');
 	if (linkType === 'route') {
 		const route = stegaClean(item.route ?? '');
 		return isNavRoute(route) ? { href: routeHref(route, locale), route, isExternal: false } : null;
@@ -113,7 +113,8 @@ function resolveHref(
 		const url = stegaClean(item.url ?? '');
 		return EXTERNAL_URL_PATTERN.test(url) ? { href: url, isExternal: true } : null;
 	}
-	const href = item.internal ? internalHref(item.internal) : null;
+	if (linkType !== 'page') return null;
+	const href = pageHref(item, locale);
 	return href ? { href, isExternal: false } : null;
 }
 
@@ -134,8 +135,9 @@ function toNavLinks(items: RawNavItem[], locale: Locale): NavLink[] {
 	return links;
 }
 
-function fallbackSettings(locale: Locale, raw: RawLayout['settings']): SiteSettings {
-	const t = useTranslations(locale);
+type Translate = ReturnType<typeof useTranslations>;
+
+function fallbackSettings(t: Translate, raw: RawLayout['settings']): SiteSettings {
 	const pick = (value: string | null | undefined, key: UIKey) => value || t(key);
 	return {
 		siteName: pick(raw?.siteName, 'site.name'),
@@ -151,8 +153,7 @@ function fallbackSettings(locale: Locale, raw: RawLayout['settings']): SiteSetti
 	};
 }
 
-function fallbackHeader(locale: Locale, aboutPath: string): NavLink[] {
-	const t = useTranslations(locale);
+function fallbackHeader(t: Translate, locale: Locale, aboutPath: string): NavLink[] {
 	const internalLink = (key: string, label: string, href: string, route?: NavRoute): NavLink => ({
 		key,
 		label,
@@ -168,8 +169,7 @@ function fallbackHeader(locale: Locale, aboutPath: string): NavLink[] {
 	];
 }
 
-function fallbackFooter(locale: Locale): NavLink[] {
-	const t = useTranslations(locale);
+function fallbackFooter(t: Translate, locale: Locale): NavLink[] {
 	return [
 		{
 			key: 'rss',
@@ -192,20 +192,25 @@ function fallbackFooter(locale: Locale): NavLink[] {
 }
 
 export async function getLayoutData(locale: Locale, ctx: SanityContext): Promise<LayoutData> {
-	const raw = await ctx.fetch<RawLayout>(LAYOUT_QUERY, {
-		locale,
-		settingsId: `siteSettings-${locale}`,
-		headerId: `navigation-header-${locale}`,
-		footerId: `navigation-footer-${locale}`,
-	});
+	const [raw, overrides] = await Promise.all([
+		ctx.fetch<RawLayout>(LAYOUT_QUERY, {
+			locale,
+			defaultLocale,
+			settingsId: SITE_SETTINGS_ID,
+			headerId: HEADER_NAVIGATION_ID,
+			footerId: FOOTER_NAVIGATION_ID,
+		}),
+		loadUiOverrides(ctx),
+	]);
+	const t = useTranslations(locale, overrides);
 	const aboutSlug = stegaClean(raw?.aboutSlug ?? '');
 	const aboutPath = SLUG_PATTERN.test(aboutSlug)
 		? localeHref(locale, aboutSlug)
 		: localeHref(locale);
 	return {
-		settings: fallbackSettings(locale, raw?.settings ?? null),
-		header: raw?.header ? toNavLinks(raw.header, locale) : fallbackHeader(locale, aboutPath),
-		footer: raw?.footer ? toNavLinks(raw.footer, locale) : fallbackFooter(locale),
+		settings: fallbackSettings(t, raw?.settings ?? null),
+		header: raw?.header ? toNavLinks(raw.header, locale) : fallbackHeader(t, locale, aboutPath),
+		footer: raw?.footer ? toNavLinks(raw.footer, locale) : fallbackFooter(t, locale),
 		aboutPath,
 	};
 }

@@ -1,11 +1,6 @@
 import { MenuIcon } from '@sanity/icons/Menu';
 import { defineArrayMember, defineField, defineType } from 'sanity';
-import { LANGUAGES } from '../languages';
-
-const MENUS = [
-	{ title: 'Header', value: 'header' },
-	{ title: 'Footer', value: 'footer' },
-];
+import { MENU_TITLES, MENUS } from '../singletons';
 
 export const navigation = defineType({
 	name: 'navigation',
@@ -17,14 +12,10 @@ export const navigation = defineType({
 			name: 'menu',
 			type: 'string',
 			title: 'Menu',
-			options: { list: MENUS },
-			readOnly: true,
-		}),
-		defineField({
-			name: 'language',
-			type: 'string',
-			title: 'Language',
-			options: { list: LANGUAGES.map(({ id, title }) => ({ title, value: id })) },
+			options: {
+				list: MENUS.map((menu) => ({ title: MENU_TITLES[menu], value: menu })),
+				aiAssist: { exclude: true },
+			},
 			readOnly: true,
 		}),
 		defineField({
@@ -40,11 +31,11 @@ export const navigation = defineType({
 		}),
 	],
 	preview: {
-		select: { title: 'title', menu: 'menu', language: 'language' },
-		prepare({ title, menu, language }) {
+		select: { title: 'title', menu: 'menu' },
+		prepare({ title, menu }) {
 			return {
 				title: title || `${menu ?? 'Navigation'}`,
-				subtitle: `${menu ?? ''} · ${(language ?? '').toUpperCase()}`,
+				subtitle: menu ?? '',
 			};
 		},
 	},

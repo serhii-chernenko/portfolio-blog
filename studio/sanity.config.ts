@@ -5,6 +5,7 @@ import { visionTool } from '@sanity/vision';
 import { defineConfig } from 'sanity';
 import { presentationTool } from 'sanity/presentation';
 import { structureTool } from 'sanity/structure';
+import { internationalizedArray } from 'sanity-plugin-internationalized-array';
 import { RootInputWithTranslations } from './src/components/RootInputWithTranslations';
 import { LANGUAGE_FIELD, LANGUAGES, LOCALIZED_DOCUMENT_TYPES } from './src/languages';
 import { resolve } from './src/presentation/resolve';
@@ -57,6 +58,10 @@ export default defineConfig({
 			supportedLanguages: LANGUAGES,
 			schemaTypes: LOCALIZED_DOCUMENT_TYPES,
 			languageField: LANGUAGE_FIELD,
+		}),
+		internationalizedArray({
+			languages: LANGUAGES,
+			fieldTypes: ['string', 'text'],
 		}),
 		assist({
 			translate: {

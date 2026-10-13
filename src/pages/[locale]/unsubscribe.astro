@@ -1,4 +1,5 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 export const prerender = false;
 
 import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server';
@@ -13,7 +14,7 @@ type PageState = 'ready' | 'invalid' | 'error';
 
 const rawLocale = Astro.params.locale ?? '';
 const locale: Locale = isLocale(rawLocale) ? rawLocale : defaultLocale;
-const t = useTranslations(locale);
+const t = useTranslations(locale, Astro.locals.uiOverrides);
 const token = Astro.url.searchParams.get('token') ?? '';
 let state: PageState = 'ready';
 let preferences: SubscriberPreferences | null = null;
@@ -64,8 +65,8 @@ const allEnabled = preferences?.languages.en && preferences?.languages.uk;
 ---
 
 <BaseLayout
-	title={t('subscribe.unsubscribe.title')}
-	description={t('subscribe.unsubscribe.description')}
+	title={stegaClean(t('subscribe.unsubscribe.title'))}
+	description={stegaClean(t('subscribe.unsubscribe.description'))}
 	locale={locale}
 	translatedUrls={translatedUrls}
 	noIndex

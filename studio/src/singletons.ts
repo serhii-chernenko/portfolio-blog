@@ -1,37 +1,46 @@
-import { LANGUAGES, type LanguageId } from './languages';
-
-export const SINGLETON_TYPES = ['navigation', 'siteSettings'];
+export const SINGLETON_TYPES = ['navigation', 'siteSettings', 'uiStrings'];
 
 export const MENUS = ['header', 'footer'] as const;
 
 export type MenuId = (typeof MENUS)[number];
 
-export const navigationDocumentId = (menu: MenuId, language: LanguageId) =>
-	`navigation-${menu}-${language}`;
+export const navigationDocumentId = (menu: MenuId) => `navigation-${menu}`;
 
-export const siteSettingsDocumentId = (language: LanguageId) => `siteSettings-${language}`;
+export const SITE_SETTINGS_DOCUMENT_ID = 'siteSettings';
+
+export const UI_STRINGS_DOCUMENT_ID = 'uiStrings';
+
+export const MENU_TITLES: Record<MenuId, string> = {
+	header: 'Header',
+	footer: 'Footer',
+};
 
 export interface SingletonTemplate {
 	id: string;
 	title: string;
 	schemaType: string;
-	value: Record<string, string>;
+	value: Record<string, unknown>;
 }
 
-const navigationTemplates: SingletonTemplate[] = MENUS.flatMap((menu) =>
-	LANGUAGES.map(({ id, title }) => ({
-		id: navigationDocumentId(menu, id),
-		title: `${menu === 'header' ? 'Header' : 'Footer'} navigation (${title})`,
-		schemaType: 'navigation',
-		value: { menu, language: id },
-	})),
-);
-
-const siteSettingsTemplates: SingletonTemplate[] = LANGUAGES.map(({ id, title }) => ({
-	id: siteSettingsDocumentId(id),
-	title: `Site settings (${title})`,
-	schemaType: 'siteSettings',
-	value: { language: id },
+const navigationTemplates: SingletonTemplate[] = MENUS.map((menu) => ({
+	id: navigationDocumentId(menu),
+	title: `${MENU_TITLES[menu]} navigation`,
+	schemaType: 'navigation',
+	value: { menu, title: MENU_TITLES[menu] },
 }));
 
-export const SINGLETON_TEMPLATES = [...navigationTemplates, ...siteSettingsTemplates];
+export const SINGLETON_TEMPLATES: SingletonTemplate[] = [
+	...navigationTemplates,
+	{
+		id: SITE_SETTINGS_DOCUMENT_ID,
+		title: 'Site settings',
+		schemaType: 'siteSettings',
+		value: {},
+	},
+	{
+		id: UI_STRINGS_DOCUMENT_ID,
+		title: 'UI strings',
+		schemaType: 'uiStrings',
+		value: { entries: [] },
+	},
+];

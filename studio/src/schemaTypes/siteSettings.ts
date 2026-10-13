@@ -1,5 +1,12 @@
 import { CogIcon } from '@sanity/icons/Cog';
 import { defineField, defineType } from 'sanity';
+import { DEFAULT_LANGUAGE } from '../languages';
+
+const localizedString = (name: string, title: string) =>
+	defineField({ name, type: 'internationalizedArrayString', title });
+
+const localizedText = (name: string, title: string) =>
+	defineField({ name, type: 'internationalizedArrayText', title });
 
 export const siteSettings = defineType({
 	name: 'siteSettings',
@@ -7,21 +14,15 @@ export const siteSettings = defineType({
 	type: 'document',
 	icon: CogIcon,
 	fields: [
-		defineField({
-			name: 'language',
-			type: 'string',
-			title: 'Language',
-			readOnly: true,
-		}),
-		defineField({ name: 'siteName', type: 'string', title: 'Site name' }),
-		defineField({ name: 'tagline', type: 'string', title: 'Tagline' }),
-		defineField({ name: 'description', type: 'text', title: 'Description', rows: 3 }),
-		defineField({ name: 'heroEyebrow', type: 'string', title: 'Hero eyebrow' }),
-		defineField({ name: 'heroTitle', type: 'string', title: 'Hero title' }),
-		defineField({ name: 'heroSubtitle', type: 'text', title: 'Hero subtitle', rows: 3 }),
-		defineField({ name: 'aboutTitle', type: 'string', title: 'About title' }),
-		defineField({ name: 'aboutBody', type: 'text', title: 'About body', rows: 4 }),
-		defineField({ name: 'aboutCta', type: 'string', title: 'About call to action' }),
+		localizedString('siteName', 'Site name'),
+		localizedString('tagline', 'Tagline'),
+		localizedText('description', 'Description'),
+		localizedString('heroEyebrow', 'Hero eyebrow'),
+		localizedString('heroTitle', 'Hero title'),
+		localizedText('heroSubtitle', 'Hero subtitle'),
+		localizedString('aboutTitle', 'About title'),
+		localizedText('aboutBody', 'About body'),
+		localizedString('aboutCta', 'About call to action'),
 		defineField({
 			name: 'defaultOgImage',
 			type: 'image',
@@ -30,12 +31,10 @@ export const siteSettings = defineType({
 		}),
 	],
 	preview: {
-		select: { title: 'siteName', language: 'language' },
-		prepare({ title, language }) {
-			return {
-				title: title || 'Site settings',
-				subtitle: (language ?? '').toUpperCase(),
-			};
+		select: { siteName: 'siteName' },
+		prepare({ siteName }: { siteName?: { language?: string; value?: string }[] }) {
+			const title = siteName?.find(({ language }) => language === DEFAULT_LANGUAGE)?.value;
+			return { title: title || 'Site settings' };
 		},
 	},
 });

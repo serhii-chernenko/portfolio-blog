@@ -1,6 +1,7 @@
 import {
 	createClient,
 	type ClientPerspective,
+	type ContentSourceMapParsedPath,
 	type FilterDefault,
 	type SanityClient,
 } from '@sanity/client';
@@ -21,13 +22,39 @@ const STEGA_TOP_LEVEL_FIELDS = new Set([
 
 const STEGA_NESTED_FIELDS = new Set(['label', 'text', 'alt', 'caption']);
 
+const LOCALIZED_VALUE_FIELD = 'value';
+
+const STEGA_LOCALIZED_FIELDS = new Set([
+	'label',
+	'siteName',
+	'tagline',
+	'description',
+	'heroEyebrow',
+	'heroTitle',
+	'heroSubtitle',
+	'aboutTitle',
+	'aboutBody',
+	'aboutCta',
+	'entries',
+]);
+
+function isLocalizedHumanCopy(sourcePath: ContentSourceMapParsedPath): boolean {
+	return (
+		sourcePath.at(-1) === LOCALIZED_VALUE_FIELD &&
+		sourcePath
+			.slice(0, -1)
+			.some((segment) => typeof segment === 'string' && STEGA_LOCALIZED_FIELDS.has(segment))
+	);
+}
+
 const encodeHumanCopyOnly: FilterDefault = (props) => {
 	const fieldName = props.sourcePath.at(-1);
 	if (typeof fieldName !== 'string') return false;
 	const isHumanCopy =
-		props.sourcePath.length === 1
+		isLocalizedHumanCopy(props.sourcePath) ||
+		(props.sourcePath.length === 1
 			? STEGA_TOP_LEVEL_FIELDS.has(fieldName)
-			: STEGA_NESTED_FIELDS.has(fieldName);
+			: STEGA_NESTED_FIELDS.has(fieldName));
 	return isHumanCopy && props.filterDefault(props);
 };
 

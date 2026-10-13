@@ -89,33 +89,48 @@ export const PAGE_BY_SLUG_QUERY = `*[${PAGE_FILTER} && language == $locale && sl
 
 export const PAGE_BY_KEY_QUERY = `*[${PAGE_FILTER} && language == $locale && key == $key][0]{${PAGE_SUMMARY_FIELDS}}`;
 
+const localizedValue = (field: string) => `${field}[language == $locale][0].value`;
+
 const NAV_ITEM_PROJECTION = `{
 	_key,
-	label,
+	"label": coalesce(
+		select(${localizedValue('label')} != "" => ${localizedValue('label')}),
+		label[language == $defaultLocale][0].value
+	),
 	linkType,
+	pageKey,
+	"pageSlug": *[${PAGE_FILTER} && key == ^.pageKey && language == $locale][0].slug.current,
 	route,
 	url,
 	icon,
-	openInNewTab,
-	"internal": internal->{ _type, language, "slug": slug.current }
+	openInNewTab
 }`;
+
+const LOCALIZED_SETTINGS_FIELDS = [
+	'siteName',
+	'tagline',
+	'description',
+	'heroEyebrow',
+	'heroTitle',
+	'heroSubtitle',
+	'aboutTitle',
+	'aboutBody',
+	'aboutCta',
+];
 
 export const LAYOUT_QUERY = `{
 	"settings": *[_id == $settingsId][0]{
-		siteName,
-		tagline,
-		description,
-		heroEyebrow,
-		heroTitle,
-		heroSubtitle,
-		aboutTitle,
-		aboutBody,
-		aboutCta,
+		${LOCALIZED_SETTINGS_FIELDS.map((field) => `"${field}": ${localizedValue(field)},`).join('\n\t\t')}
 		defaultOgImage{ asset, hotspot, crop }
 	},
 	"header": *[_id == $headerId][0].items[]${NAV_ITEM_PROJECTION},
 	"footer": *[_id == $footerId][0].items[]${NAV_ITEM_PROJECTION},
 	"aboutSlug": *[${PAGE_FILTER} && language == $locale && key == "about"][0].slug.current
+}`;
+
+export const UI_STRINGS_QUERY = `*[_id == $uiStringsId][0].entries[defined(key)]{
+	key,
+	"values": value[defined(language) && defined(value)]{ language, value }
 }`;
 
 export const SEARCH_POSTS_QUERY = `*[
