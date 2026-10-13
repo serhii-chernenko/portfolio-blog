@@ -26,9 +26,36 @@ export function toUiOverrides(entries: RawUiStringEntry[] | null): UiOverrides {
 	return overrides;
 }
 
-export async function loadUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
-	const entries = await ctx.fetch<RawUiStringEntry[] | null>(UI_STRINGS_QUERY, {
-		uiStringsId: UI_STRINGS_ID,
-	});
-	return toUiOverrides(entries);
+const overridesByContext = new WeakMap<SanityContext, Promise<UiOverrides>>();
+const failedContexts = new WeakSet<SanityContext>();
+
+async function fetchUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
+	try {
+		const entries = await ctx.fetch<RawUiStringEntry[] | null>(UI_STRINGS_QUERY, {
+			uiStringsId: UI_STRINGS_ID,
+		});
+		return toUiOverrides(entries);
+	} catch (error) {
+		failedContexts.add(ctx);
+		console.error(
+			JSON.stringify({
+				message: 'UI string overrides failed to load',
+				error: error instanceof Error ? error.message : String(error),
+			}),
+		);
+		return {};
+	}
+}
+
+export function loadUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
+	let pending = overridesByContext.get(ctx);
+	if (!pending) {
+		pending = fetchUiOverrides(ctx);
+		overridesByContext.set(ctx, pending);
+	}
+	return pending;
+}
+
+export function uiOverridesFailed(ctx: SanityContext): boolean {
+	return failedContexts.has(ctx);
 }

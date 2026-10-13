@@ -93,7 +93,10 @@ const localizedValue = (field: string) => `${field}[language == $locale][0].valu
 
 const NAV_ITEM_PROJECTION = `{
 	_key,
-	"label": coalesce(${localizedValue('label')}, label[language == $defaultLocale][0].value),
+	"label": coalesce(
+		select(${localizedValue('label')} != "" => ${localizedValue('label')}),
+		label[language == $defaultLocale][0].value
+	),
 	linkType,
 	pageKey,
 	"pageSlug": *[${PAGE_FILTER} && key == ^.pageKey && language == $locale][0].slug.current,

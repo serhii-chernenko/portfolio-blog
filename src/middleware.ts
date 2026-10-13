@@ -20,7 +20,7 @@ import {
 	shouldEmitHttpEvent,
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
-import { loadUiOverrides } from './lib/ui-overrides';
+import { loadUiOverrides, uiOverridesFailed } from './lib/ui-overrides';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -70,6 +70,9 @@ const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
 const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: [SANITY_CACHE_TAG] };
 const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: [SANITY_CACHE_TAG] };
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
+const NO_STORE_CACHE_CONTROL = 'no-store';
+const ADMIN_PATH_PREFIX = `${RUNTIME_BASE}/admin`;
+const REDIRECT_ONLY_PATHS = new Set([RUNTIME_BASE, `${RUNTIME_BASE}/`]);
 const INTERNAL_SEGMENT_PREFIX = '/_';
 const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
 const FRAME_ANCESTORS = [
@@ -90,7 +93,7 @@ interface DraftMode {
 }
 
 function isCacheableRoute(pathname: string): boolean {
-	if (pathname.startsWith(`${RUNTIME_BASE}/admin`)) return false;
+	if (pathname.startsWith(ADMIN_PATH_PREFIX)) return false;
 	if (pathname.startsWith(API_PATH_PREFIX)) return CACHEABLE_API_PATHS.includes(pathname);
 	return true;
 }
@@ -118,6 +121,14 @@ function needsTrailingSlash(request: Request, pathname: string): boolean {
 
 function isPageRoute(pathname: string): boolean {
 	return !pathname.startsWith(API_PATH_PREFIX) && !hasAssetExtension(pathname);
+}
+
+function rendersUi(pathname: string): boolean {
+	return (
+		isPageRoute(pathname) &&
+		!pathname.startsWith(ADMIN_PATH_PREFIX) &&
+		!REDIRECT_ONLY_PATHS.has(pathname)
+	);
 }
 
 function isPreviewPageRequest(request: Request, url: URL): boolean {
@@ -197,6 +208,11 @@ function disableCaching(context: APIContext, response: Response): Response {
 	return response;
 }
 
+function disableCachingForDegradedResponse(context: APIContext, response: Response): void {
+	if (context.cache.enabled) context.cache.set(false);
+	response.headers.set('cache-control', NO_STORE_CACHE_CONTROL);
+}
+
 function applyCachePolicy(context: APIContext, response: Response): void {
 	if (
 		context.cache.enabled &&
@@ -247,11 +263,15 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 	context.locals.sanity = createRequestContext(draftMode);
 
 	const apexEndpoint = apexEndpointFor(request, url.pathname);
-	if (!apexEndpoint && isPageRoute(url.pathname)) {
+	if (!apexEndpoint && rendersUi(url.pathname)) {
 		context.locals.uiOverrides = await loadUiOverrides(context.locals.sanity);
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
 	if (draftMode) return disableCaching(context, response);
+	if (uiOverridesFailed(context.locals.sanity)) {
+		disableCachingForDegradedResponse(context, response);
+		return response;
+	}
 	applyCachePolicy(context, response);
 	return response;
 }
