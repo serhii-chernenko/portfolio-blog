@@ -23,13 +23,13 @@ interface TokenClaims {
 	action?: OneClickAction;
 }
 
-function b64urlEncode(bytes: Uint8Array): string {
+export function b64urlEncode(bytes: Uint8Array): string {
 	let s = '';
 	for (const b of bytes) s += String.fromCharCode(b);
 	return btoa(s).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
-function b64urlDecode(input: string): Uint8Array<ArrayBuffer> {
+export function b64urlDecode(input: string): Uint8Array<ArrayBuffer> {
 	const padded = input.replaceAll('-', '+').replaceAll('_', '/');
 	const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
 	const s = atob(padded + pad);
@@ -38,16 +38,39 @@ function b64urlDecode(input: string): Uint8Array<ArrayBuffer> {
 	return bytes;
 }
 
-async function hmac(secret: string, message: string): Promise<Uint8Array> {
-	const key = await crypto.subtle.importKey(
+function importHmacKey(secret: string, usage: 'sign' | 'verify'): Promise<CryptoKey> {
+	return crypto.subtle.importKey(
 		'raw',
 		new TextEncoder().encode(secret),
 		{ name: 'HMAC', hash: 'SHA-256' },
 		false,
-		['sign'],
+		[usage],
 	);
+}
+
+async function hmac(secret: string, message: string): Promise<Uint8Array> {
+	const key = await importHmacKey(secret, 'sign');
 	const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
 	return new Uint8Array(sig);
+}
+
+export async function signHmac(secret: string, message: string): Promise<string> {
+	return b64urlEncode(await hmac(secret, message));
+}
+
+export async function verifyHmac(
+	secret: string,
+	message: string,
+	signature: string,
+): Promise<boolean> {
+	let signatureBytes: Uint8Array<ArrayBuffer>;
+	try {
+		signatureBytes = b64urlDecode(signature);
+	} catch {
+		return false;
+	}
+	const key = await importHmacKey(secret, 'verify');
+	return crypto.subtle.verify('HMAC', key, signatureBytes, new TextEncoder().encode(message));
 }
 
 async function tokenEncryptionKey(secret: string): Promise<CryptoKey> {

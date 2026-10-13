@@ -37,13 +37,13 @@ Worker.
 
 ## The moving parts (and who owns each)
 
-| Piece                                                                                                                                                                           | Where                                                           | Purpose                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Worker routes** → `serhiichernenko.com/blog`, `/blog/*`, `/api/keystatic[/*]`, `/keystatic[/*]`, `/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt`, `/sitemap.xml` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` is the apex `serhiichernenko.com` (the zone) — the _pattern_ selects the host.  |
-| **apex DNS record**                                                                                                                                                             | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the Worker routes fire. `100::` is the reserved discard address for an originless host. |
-| **`www` DNS record**                                                                                                                                                            | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the redirect rule can run.                                                             |
-| **www → apex redirect**                                                                                                                                                         | Cloudflare → **Rules → Redirect Rules**                         | 308s `www.serhiichernenko.com/*` → `serhiichernenko.com/*` so visitors on the old host land on the canonical one.                  |
-| **Canonical URL**                                                                                                                                                               | `astro.config.mts` → `site: 'https://serhiichernenko.com'`      | Build-time absolute links (sitemap, RSS, canonical, `robots.txt`) use the apex. Runtime links derive from the request host.        |
+| Piece                                                                                                                                   | Where                                                           | Purpose                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Worker routes** → `serhiichernenko.com/blog`, `/blog/*`, `/robots.txt`, `/favicon.ico`, `/llms.txt`, `/llms-full.txt`, `/sitemap.xml` | `wrangler.jsonc` `routes[]` (deployed by `wrangler deploy`)     | Bind the Worker to the canonical host. `zone_name` is the apex `serhiichernenko.com` (the zone) — the _pattern_ selects the host.  |
+| **apex DNS record**                                                                                                                     | Cloudflare DNS → `AAAA @ → 100::`, **Proxied**                  | Makes the bare apex resolve to the edge so the Worker routes fire. `100::` is the reserved discard address for an originless host. |
+| **`www` DNS record**                                                                                                                    | Cloudflare DNS → `CNAME www → serhiichernenko.com`, **Proxied** | Makes `www` resolve to Cloudflare's edge so the redirect rule can run.                                                             |
+| **www → apex redirect**                                                                                                                 | Cloudflare → **Rules → Redirect Rules**                         | 308s `www.serhiichernenko.com/*` → `serhiichernenko.com/*` so visitors on the old host land on the canonical one.                  |
+| **Canonical URL**                                                                                                                       | `astro.config.mts` → `site: 'https://serhiichernenko.com'`      | Build-time absolute links (sitemap, RSS, canonical, `robots.txt`) use the apex. Runtime links derive from the request host.        |
 
 **Routes are not DNS.** `wrangler deploy` only binds the Worker to a route
 pattern — it never creates a DNS record. If the matched hostname has no proxied
@@ -150,8 +150,9 @@ built routes.
 
 ## What happens to `/` (host root)
 
-Only `/blog*`, `/api/keystatic*`, `/keystatic*`, and the exact paths `/robots.txt`,
-`/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` are bound to the Worker. The **host root `/`** itself (on the apex)
+Only `/blog*` and the exact paths `/robots.txt`, `/favicon.ico`, `/llms.txt`,
+`/llms-full.txt` and `/sitemap.xml` are bound to the Worker. The **host root `/`**
+itself (on the apex)
 is unbound — it falls through to the `100::` black hole and returns a
 Cloudflare edge error (`522`/`523`/`1016`) until a separate landing ships (open
 decision #8 in `blog-build-plan.md`); the temporary apex `302` to `/blog/en/`
@@ -174,7 +175,7 @@ and `scripts/post-build.mjs` copies `dist/client/blog/favicon.ico` to
 `/robots.txt` (delete the route and the copy step then).
 
 **How it's actually served**: NOT by an Astro route or a middleware rewrite.
-`context.rewrite()` (used for the Keystatic apex paths above) only resolves to
+`context.rewrite()` only resolves to
 real Astro routes — `public/robots.txt` is a static file with no route-manifest
 entry, and rewriting to it throws at request time ("Unexpectedly unable to find
 a component instance"). Instead, `scripts/post-build.mjs` copies the already-
@@ -200,7 +201,7 @@ Worker serve (or redirect to) `/blog/llms.txt`, `/blog/llms-full.txt` and
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `/llms.txt`      | SSR route `src/pages/llms.txt.ts`. `src/middleware.ts` calls the route's `GET` handler directly for the host-root request. `context.rewrite('/blog/llms.txt')` is not an option: the rewrite matcher resolves it to the prerendered `/[...locale]/[page]` route and throws "Unexpectedly unable to find a component instance". |
 | `/llms-full.txt` | SSR route `src/pages/llms-full.txt.ts`, served by the same direct-handler call.                                                                                                                                                                                                                                                |
-| `/sitemap.xml`   | No file exists (the sitemap integration emits `/blog/sitemap-index.xml`). `src/middleware.ts` answers a `301` to `https://<host>/blog/sitemap-index.xml`; `/blog/sitemap.xml` gets the same `301`.                                                                                                                             |
+| `/sitemap.xml`   | No file or route exists (the sitemap is the SSR route `src/pages/sitemap-index.xml.ts`, served at `/blog/sitemap-index.xml`). `src/middleware.ts` answers a `301` to `https://<host>/blog/sitemap-index.xml`; `/blog/sitemap.xml` gets the same `301`.                                                                         |
 
 Both llms routes stay SSR (not prerendered) so the `Content-Type: text/plain;
 charset=utf-8` header survives; see the note at the top of `src/pages/llms.txt.ts`.
@@ -278,7 +279,7 @@ Confirm the deployed routes target the apex only:
 
 ```bash
 pnpm exec wrangler deploy --dry-run 2>&1 | grep -i serhiichernenko
-#  -> serhiichernenko.com/blog, /blog/*, /api/keystatic[/*]
+#  -> serhiichernenko.com/blog, /blog/*, /robots.txt, /favicon.ico, /llms.txt, /llms-full.txt, /sitemap.xml
 ```
 
 If the apex itself doesn't resolve, check the `AAAA @ → 100::` record exists and

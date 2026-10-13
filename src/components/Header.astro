@@ -1,7 +1,7 @@
 ---
 import type { Locale } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
-import { getPagePath } from '../lib/pages';
+import type { LayoutData, NavLink } from '../lib/site';
 import ThemeToggle from './ThemeToggle.astro';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
@@ -9,20 +9,25 @@ export interface Props {
 	locale: Locale;
 	currentPath?: string;
 	translatedUrls?: Partial<Record<Locale, string | null>>;
+	layout: LayoutData;
 }
 
-const { locale, currentPath, translatedUrls } = Astro.props;
+const { locale, currentPath, translatedUrls, layout } = Astro.props;
 const t = useTranslations(locale);
 
-const aboutHref = await getPagePath('about', locale);
-
-const navLinks = [
-	{ key: 'nav.posts' as const, href: localeHref(locale, 'posts') },
-	{ key: 'nav.tags' as const, href: localeHref(locale, 'tags') },
-	{ key: 'nav.about' as const, href: aboutHref },
-];
-
+const navLinks = layout.header;
+const siteName = layout.settings.siteName;
 const currentPathname = currentPath ?? Astro.url.pathname;
+
+function isActive(link: NavLink): boolean {
+	return !link.isExternal && currentPathname.startsWith(link.href);
+}
+
+function linkTarget(link: NavLink) {
+	return link.openInNewTab
+		? { target: '_blank', rel: link.isExternal ? 'noopener noreferrer' : undefined }
+		: {};
+}
 ---
 
 <!-- Skip-to-content -->
@@ -65,21 +70,22 @@ const currentPathname = currentPath ?? Astro.url.pathname;
 				</label>
 
 				<a href={localeHref(locale)} class="btn btn-ghost text-xl font-bold">
-					{t('site.name')}
+					{siteName}
 				</a>
 			</div>
 
 			<!-- Center: desktop nav links -->
 			<nav class="navbar-center hidden lg:flex" aria-label="Main navigation">
 				<ul class="menu menu-horizontal gap-1 p-0">
-					{navLinks.map(({ key, href }) => (
+					{navLinks.map((link) => (
 						<li>
 							<a
-								href={href}
-								class={currentPathname.startsWith(href) ? 'active font-medium' : 'font-medium'}
-								aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+								href={link.href}
+								class={isActive(link) ? 'active font-medium' : 'font-medium'}
+								aria-current={isActive(link) ? 'page' : undefined}
+								{...linkTarget(link)}
 							>
-								{t(key)}
+								{link.label}
 							</a>
 						</li>
 					))}
@@ -131,17 +137,18 @@ const currentPathname = currentPath ?? Astro.url.pathname;
 			aria-label="Mobile navigation"
 		>
 			<a href={localeHref(locale)} class="text-xl font-bold block mb-6">
-				{t('site.name')}
+				{siteName}
 			</a>
 			<ul class="menu w-full">
-				{navLinks.map(({ key, href }) => (
+				{navLinks.map((link) => (
 					<li>
 						<a
-							href={href}
-							class={currentPathname.startsWith(href) ? 'active' : ''}
-							aria-current={currentPathname.startsWith(href) ? 'page' : undefined}
+							href={link.href}
+							class={isActive(link) ? 'active' : ''}
+							aria-current={isActive(link) ? 'page' : undefined}
+							{...linkTarget(link)}
 						>
-							{t(key)}
+							{link.label}
 						</a>
 					</li>
 				))}

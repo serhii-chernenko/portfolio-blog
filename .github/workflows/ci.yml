@@ -50,12 +50,11 @@ jobs:
         run: pnpm typecheck
 
       # `build:astro` (astro build only), NOT `pnpm build`: catches build/compile
-      # breakage without running pagefind + post-build. Workers Builds runs the
+      # breakage without running post-build. Workers Builds runs the
       # authoritative full `pnpm build` at deploy time. PUBLIC_* vars are inlined
       # at build; passed through for parity but not load-bearing for the gate.
       - name: Build (Astro)
         env:
-          PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: ${{ vars.PUBLIC_KEYSTATIC_GITHUB_APP_SLUG }}
           PUBLIC_GISCUS_REPO: ${{ vars.PUBLIC_GISCUS_REPO }}
           PUBLIC_GISCUS_REPO_ID: ${{ vars.PUBLIC_GISCUS_REPO_ID }}
           PUBLIC_GISCUS_CATEGORY: ${{ vars.PUBLIC_GISCUS_CATEGORY }}

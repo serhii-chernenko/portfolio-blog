@@ -9,21 +9,29 @@
 // per request instead of once at build time.
 export const prerender = false;
 import type { APIContext } from 'astro';
-import { getPublishedPosts, getTagsForLocale, tagSlug, postUrl } from '../lib/posts';
+import { getPublishedPosts, getTagsForLocale, postUrl } from '../lib/posts';
 import { getPages, pageUrl } from '../lib/pages';
+import { createPublishedContext } from '../lib/sanity/request';
 import { MIN_POSTS_FOR_TAG_INDEXING } from '../lib/tag-slug';
 import {
 	LLMS_CONTENT_TYPE,
 	LLMS_SITE_SUMMARY,
 	LLMS_SITE_TITLE,
 	absoluteUrl,
+	collapseWhitespace,
 	escapeLinkText,
 } from '../lib/llms';
 import { locales, localeLabels } from '../i18n/config';
-import { localeHref, withBase, withPageBase } from '../i18n/utils';
+import { localeHref, withBase } from '../i18n/utils';
 
 export async function GET(context: APIContext) {
 	const site = context.site;
+	const sanity = createPublishedContext();
+	const [postsByLocale, pagesByLocale, tagsByLocale] = await Promise.all([
+		Promise.all(locales.map((locale) => getPublishedPosts(locale, sanity))),
+		Promise.all(locales.map((locale) => getPages(locale, sanity))),
+		Promise.all(locales.map((locale) => getTagsForLocale(locale, sanity))),
+	]);
 	const lines: string[] = [];
 
 	lines.push(`# ${LLMS_SITE_TITLE}`);
@@ -43,44 +51,46 @@ export async function GET(context: APIContext) {
 		lines.push(`- [Home (${localeLabels[locale]})](${absoluteUrl(site, localeHref(locale))})`);
 	}
 
-	for (const locale of locales) {
-		const posts = await getPublishedPosts(locale);
-		if (posts.length === 0) continue;
+	locales.forEach((locale, index) => {
+		const posts = postsByLocale[index];
+		if (posts.length === 0) return;
 		lines.push('');
 		lines.push(`## Posts (${localeLabels[locale]})`);
 		for (const post of posts) {
 			const url = absoluteUrl(site, postUrl(post));
-			lines.push(`- [${escapeLinkText(post.data.title)}](${url}): ${post.data.description}`);
+			lines.push(
+				`- [${escapeLinkText(post.title)}](${url}): ${collapseWhitespace(post.description)}`,
+			);
 		}
-	}
+	});
 
-	for (const locale of locales) {
-		const pages = await getPages(locale);
-		if (pages.length === 0) continue;
+	locales.forEach((locale, index) => {
+		const pages = pagesByLocale[index];
+		if (pages.length === 0) return;
 		lines.push('');
 		lines.push(`## Pages (${localeLabels[locale]})`);
 		for (const page of pages) {
 			const url = absoluteUrl(site, pageUrl(page));
-			lines.push(`- [${escapeLinkText(page.data.title)}](${url}): ${page.data.description}`);
+			lines.push(
+				`- [${escapeLinkText(page.title)}](${url}): ${collapseWhitespace(page.description)}`,
+			);
 		}
-	}
+	});
 
 	lines.push('');
 	lines.push('## Optional');
-	for (const locale of locales) {
-		const tags = (await getTagsForLocale(locale)).filter(
-			({ count }) => count >= MIN_POSTS_FOR_TAG_INDEXING,
-		);
-		for (const { tag, count } of tags) {
-			const url = absoluteUrl(site, localeHref(locale, `tags/${tagSlug(tag)}`));
+	locales.forEach((locale, index) => {
+		const tags = tagsByLocale[index].filter(({ count }) => count >= MIN_POSTS_FOR_TAG_INDEXING);
+		for (const { tag, slug, count } of tags) {
+			const url = absoluteUrl(site, localeHref(locale, `tags/${slug}`));
 			lines.push(
 				`- [${escapeLinkText(tag)} (${localeLabels[locale]})](${url}): ${count} posts tagged "${escapeLinkText(tag)}"`,
 			);
 		}
-	}
+	});
 	for (const locale of locales) {
 		lines.push(
-			`- [RSS (${localeLabels[locale]})](${absoluteUrl(site, withPageBase(`${locale}/rss.xml`))})`,
+			`- [RSS (${localeLabels[locale]})](${absoluteUrl(site, localeHref(locale, 'rss.xml'))})`,
 		);
 	}
 	lines.push(`- [Sitemap](${absoluteUrl(site, withBase('sitemap-index.xml'))})`);

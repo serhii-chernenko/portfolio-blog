@@ -1,11 +1,13 @@
 import { ui, type UIKey } from './ui';
 import { defaultLocale, isLocale, type Locale } from './config';
-import { getPostSlug } from '../lib/post-slug';
-import { getPageSlug } from '../lib/page-slug';
 import { withTrailingSlash } from '../lib/trailing-slash';
 
 export function getLocaleFromUrl(url: URL): Locale {
-	const [, maybeLocale] = url.pathname.split('/');
+	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+	const pathname = url.pathname.startsWith(`${base}/`)
+		? url.pathname.slice(base.length)
+		: url.pathname;
+	const [, maybeLocale] = pathname.split('/');
 	if (maybeLocale && isLocale(maybeLocale)) return maybeLocale;
 	return defaultLocale;
 }
@@ -44,47 +46,4 @@ export function localeHref(locale: Locale, path = ''): string {
 
 export function mirroredLocaleHrefs(path = ''): Record<Locale, string> {
 	return { en: localeHref('en', path), uk: localeHref('uk', path) };
-}
-
-/**
- * Returns the URL for the same post in each locale.
- * Returns null for locales where the translation doesn't exist.
- */
-export async function getTranslatedPostUrls(
-	translationKey: string,
-): Promise<Record<Locale, string | null>> {
-	const { getCollection } = await import('astro:content');
-	const all = [...(await getCollection('postsEn')), ...(await getCollection('postsUk'))];
-	const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
-	const now = new Date();
-	const matches = all
-		.filter((p) => showDrafts || (!p.data.draft && p.data.publishedAt <= now))
-		.filter((p) => p.data.translationKey === translationKey);
-	const result: Record<Locale, string | null> = { en: null, uk: null };
-	for (const m of matches) {
-		const locale: Locale = m.collection === 'postsEn' ? 'en' : 'uk';
-		result[locale] = withPageBase(`${locale}/posts/${getPostSlug(m)}`);
-	}
-	return result;
-}
-
-/**
- * Returns the URL for the same page in each locale.
- * Returns null for locales where the translation doesn't exist.
- */
-export async function getTranslatedPageUrls(
-	translationKey: string,
-): Promise<Record<Locale, string | null>> {
-	const { getCollection } = await import('astro:content');
-	const showDrafts = import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true';
-	const all = [...(await getCollection('pagesEn')), ...(await getCollection('pagesUk'))];
-	const matches = all
-		.filter((p) => showDrafts || !p.data.draft)
-		.filter((p) => p.data.translationKey === translationKey);
-	const result: Record<Locale, string | null> = { en: null, uk: null };
-	for (const m of matches) {
-		const locale: Locale = m.collection === 'pagesEn' ? 'en' : 'uk';
-		result[locale] = withPageBase(`${locale}/${getPageSlug(m)}`);
-	}
-	return result;
 }

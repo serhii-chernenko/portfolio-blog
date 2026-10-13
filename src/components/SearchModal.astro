@@ -1,6 +1,6 @@
 ---
 import type { Locale } from '../i18n/config';
-import { useTranslations } from '../i18n/utils';
+import { useTranslations, withBase } from '../i18n/utils';
 
 export interface Props {
 	locale: Locale;
@@ -10,163 +10,258 @@ const { locale } = Astro.props;
 const t = useTranslations(locale);
 ---
 
-<!-- Trigger: other components can use data-search-open attribute or call window.__openSearch() -->
-<dialog id="search-modal" class="modal" aria-label={t('search.title')}>
+<dialog
+	id="search-modal"
+	class="modal modal-top sm:modal-middle"
+	aria-label={t('search.title')}
+	data-locale={locale}
+	data-endpoint={withBase('api/search')}
+	data-date-locale={locale === 'uk' ? 'uk-UA' : 'en-US'}
+	data-hint={t('search.hint')}
+	data-loading={t('search.loading')}
+	data-empty={t('search.empty')}
+	data-error={t('search.error')}
+>
 	<div class="modal-box w-11/12 max-w-2xl">
-		<form method="dialog" class="flex justify-end mb-2">
-			<button class="btn btn-ghost btn-sm btn-circle" aria-label="Close search">
+		<div class="flex items-center gap-2 mb-3">
+			<label class="input w-full">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 20 20"
-					fill="currentColor"
-					class="size-5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="size-4 opacity-60"
 					aria-hidden="true"
 				>
-					<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"></path>
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-			</button>
-		</form>
-		<div id="pagefind-ui-container" data-locale={locale}></div>
+				<input
+					id="search-input"
+					type="search"
+					class="grow"
+					placeholder={t('search.placeholder')}
+					autocomplete="off"
+					spellcheck="false"
+					maxlength="100"
+					role="combobox"
+					aria-autocomplete="list"
+					aria-controls="search-results"
+					aria-expanded="false"
+					aria-label={t('search.placeholder')}
+				/>
+			</label>
+			<form method="dialog">
+				<button class="btn btn-ghost btn-sm btn-circle" aria-label={t('search.close')}>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 20 20"
+						fill="currentColor"
+						class="size-5"
+						aria-hidden="true"
+					>
+						<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"></path>
+					</svg>
+				</button>
+			</form>
+		</div>
+		<p id="search-status" class="px-1 py-2 text-sm text-base-content/60" role="status">
+			{t('search.hint')}
+		</p>
+		<ul
+			id="search-results"
+			class="menu w-full gap-1 p-0"
+			role="listbox"
+			aria-label={t('search.results')}
+		></ul>
 	</div>
 	<form method="dialog" class="modal-backdrop">
-		<button>Close</button>
+		<button tabindex="-1">{t('search.close')}</button>
 	</form>
 </dialog>
 
 <script>
+	import { previewAwareHref } from '../lib/preview-links';
+
+	interface SearchResult {
+		title: string;
+		description: string;
+		url: string;
+		publishedAt: string;
+	}
+
+	const MIN_QUERY_LENGTH = 2;
+	const MAX_QUERY_LENGTH = 100;
+	const DEBOUNCE_MS = 200;
 	const RESULTS_REPORT_DELAY_MS = 1500;
-	const LEADING_COUNT = /^\s*(\d+)/;
-	let pagefindLoaded = false;
+	const ACTIVE_CLASS = 'menu-active';
 
-	function readResultsCount(container: HTMLElement): number | null {
-		const messageText = container.querySelector('.pagefind-ui__message')?.textContent?.trim();
-		const hasSettledResults = container.querySelector('.pagefind-ui__results') !== null;
-		if (!messageText || !hasSettledResults) return null;
-		const leadingCount = LEADING_COUNT.exec(messageText);
-		if (leadingCount) return Number(leadingCount[1]);
-		return container.querySelectorAll('.pagefind-ui__result').length;
-	}
+	const modal = document.getElementById('search-modal') as HTMLDialogElement | null;
+	const input = document.getElementById('search-input') as HTMLInputElement | null;
+	const status = document.getElementById('search-status');
+	const list = document.getElementById('search-results');
 
-	function reportSearchUsed(resultsCount: number) {
-		document.dispatchEvent(
-			new CustomEvent('blog:telemetry', { detail: { type: 'search_used', resultsCount } }),
-		);
-	}
-
-	function observeSearchUsage(container: HTMLElement) {
-		let reportedQuery = '';
+	if (modal && input && status && list) {
+		const strings = modal.dataset;
+		let results: SearchResult[] = [];
+		let activeIndex = -1;
+		let debounceTimer: number | undefined;
+		let inFlight: AbortController | undefined;
 		let reportTimer: number | undefined;
+		let lastReportedQuery = '';
 
-		function reportOnceSettled() {
-			const query =
-				container.querySelector<HTMLInputElement>('.pagefind-ui__search-input')?.value.trim() ?? '';
-			if (!query) {
-				reportedQuery = '';
+		const reportSearchUsed = (query: string, resultsCount: number) => {
+			if (query === lastReportedQuery) return;
+			lastReportedQuery = query;
+			document.dispatchEvent(
+				new CustomEvent('blog:telemetry', { detail: { type: 'search_used', resultsCount } }),
+			);
+		};
+
+		const setStatus = (message: string) => {
+			status.textContent = message;
+			status.hidden = message === '';
+		};
+
+		const optionId = (index: number) => `search-option-${index}`;
+
+		const setActive = (index: number) => {
+			const options = list.querySelectorAll<HTMLAnchorElement>('a[role="option"]');
+			activeIndex = options.length === 0 ? -1 : (index + options.length) % options.length;
+			options.forEach((option, optionIndex) => {
+				const isActive = optionIndex === activeIndex;
+				option.classList.toggle(ACTIVE_CLASS, isActive);
+				option.setAttribute('aria-selected', String(isActive));
+				if (isActive) option.scrollIntoView({ block: 'nearest' });
+			});
+			if (activeIndex >= 0) input.setAttribute('aria-activedescendant', optionId(activeIndex));
+			else input.removeAttribute('aria-activedescendant');
+		};
+
+		const formatDate = (iso: string) => {
+			const date = new Date(iso);
+			return Number.isNaN(date.getTime())
+				? ''
+				: date.toLocaleDateString(strings.dateLocale, {
+						year: 'numeric',
+						month: 'short',
+						day: 'numeric',
+					});
+		};
+
+		const renderResults = () => {
+			list.replaceChildren(
+				...results.map((result, index) => {
+					const item = document.createElement('li');
+					const link = document.createElement('a');
+					link.href = previewAwareHref(result.url);
+					link.id = optionId(index);
+					link.setAttribute('role', 'option');
+					link.setAttribute('aria-selected', 'false');
+					link.className = 'flex flex-col items-start gap-1 py-3';
+					const title = document.createElement('span');
+					title.className = 'font-semibold';
+					title.textContent = result.title;
+					const meta = document.createElement('span');
+					meta.className = 'text-xs text-base-content/60';
+					meta.textContent = formatDate(result.publishedAt);
+					const description = document.createElement('span');
+					description.className = 'text-sm text-base-content/70 line-clamp-2';
+					description.textContent = result.description;
+					link.replaceChildren(title, meta, description);
+					link.addEventListener('mousemove', () => setActive(index));
+					item.replaceChildren(link);
+					return item;
+				}),
+			);
+			input.setAttribute('aria-expanded', String(results.length > 0));
+			setActive(results.length > 0 ? 0 : -1);
+		};
+
+		const search = async (query: string) => {
+			window.clearTimeout(reportTimer);
+			inFlight?.abort();
+			const controller = new AbortController();
+			inFlight = controller;
+			setStatus(strings.loading ?? '');
+			try {
+				const url = new URL(strings.endpoint ?? '', window.location.origin);
+				url.searchParams.set('q', query);
+				url.searchParams.set('locale', strings.locale ?? 'en');
+				const response = await fetch(url, { signal: controller.signal });
+				if (!response.ok) throw new Error(`Search failed with ${response.status}`);
+				const payload = (await response.json()) as { results: SearchResult[] };
+				results = payload.results;
+				renderResults();
+				setStatus(results.length === 0 ? (strings.empty ?? '').replaceAll('{query}', query) : '');
+				const resultsCount = results.length;
+				reportTimer = window.setTimeout(
+					() => reportSearchUsed(query, resultsCount),
+					RESULTS_REPORT_DELAY_MS,
+				);
+			} catch (error) {
+				if (controller.signal.aborted) return;
+				results = [];
+				renderResults();
+				setStatus(strings.error ?? '');
+				console.error(error);
+			}
+		};
+
+		const onInput = () => {
+			window.clearTimeout(debounceTimer);
+			const query = input.value.trim().slice(0, MAX_QUERY_LENGTH);
+			if (query.length < MIN_QUERY_LENGTH) {
+				window.clearTimeout(reportTimer);
+				lastReportedQuery = '';
+				inFlight?.abort();
+				results = [];
+				renderResults();
+				setStatus(strings.hint ?? '');
 				return;
 			}
-			const resultsCount = readResultsCount(container);
-			if (query === reportedQuery || resultsCount === null) return;
-			reportedQuery = query;
-			reportSearchUsed(resultsCount);
-		}
+			debounceTimer = window.setTimeout(() => search(query), DEBOUNCE_MS);
+		};
 
-		new MutationObserver(() => {
-			window.clearTimeout(reportTimer);
-			reportTimer = window.setTimeout(reportOnceSettled, RESULTS_REPORT_DELAY_MS);
-		}).observe(container, { childList: true, subtree: true, characterData: true });
-	}
-
-	function loadScript(src: string): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (document.querySelector(`script[src="${src}"]`)) return resolve();
-			const s = document.createElement('script');
-			s.src = src;
-			s.async = true;
-			s.onload = () => resolve();
-			s.onerror = () => reject(new Error(`Failed to load ${src}`));
-			document.head.appendChild(s);
-		});
-	}
-
-	function loadStyle(href: string) {
-		if (document.querySelector(`link[href="${href}"]`)) return;
-		const l = document.createElement('link');
-		l.rel = 'stylesheet';
-		l.href = href;
-		document.head.appendChild(l);
-	}
-
-	async function loadPagefind(locale: string) {
-		if (pagefindLoaded) return;
-		pagefindLoaded = true;
-
-		try {
-			const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-			const pagefindBase = `${base}/pagefind/`;
-			loadStyle(`${pagefindBase}pagefind-ui.css`);
-			await loadScript(`${pagefindBase}pagefind-ui.js`);
-			// Pagefind builds a separate index per <html lang>, so same-language
-			// isolation is automatic — no explicit locale filter needed here.
-			const container = document.getElementById('pagefind-ui-container');
-			// @ts-expect-error – PagefindUI is a global injected by the script above
-			new PagefindUI({
-				element: '#pagefind-ui-container',
-				bundlePath: pagefindBase,
-				showImages: false,
-				translations: {
-					placeholder: locale === 'uk' ? 'Шукати в дописах…' : 'Search posts…',
-					zero_results: locale === 'uk' ? 'Нічого не знайдено' : 'No results for [SEARCH_TERM]',
-				},
-			});
-			if (container) observeSearchUsage(container);
-		} catch (e) {
-			// Pagefind not available (only after `pnpm build`)
-			const container = document.getElementById('pagefind-ui-container');
-			if (container) {
-				container.textContent =
-					locale === 'uk'
-						? 'Пошук доступний після білду сайту.'
-						: 'Search is available after building the site.';
+		const onKeydown = (event: KeyboardEvent) => {
+			if (event.key === 'ArrowDown') {
+				event.preventDefault();
+				setActive(activeIndex + 1);
+			} else if (event.key === 'ArrowUp') {
+				event.preventDefault();
+				setActive(activeIndex - 1);
+			} else if (event.key === 'Enter' && activeIndex >= 0) {
+				event.preventDefault();
+				const href = results[activeIndex]?.url;
+				if (href) window.location.assign(previewAwareHref(href));
 			}
-		}
-	}
+		};
 
-	function openSearch() {
-		const modal = document.getElementById('search-modal') as HTMLDialogElement | null;
-		if (!modal) return;
-		const locale = document.getElementById('pagefind-ui-container')?.dataset.locale ?? 'en';
-		loadPagefind(locale);
-		modal.showModal();
-	}
+		const openSearch = () => {
+			if (!modal.open) modal.showModal();
+			input.focus();
+			input.select();
+		};
 
-	// Expose for Header trigger
-	(window as Window & { __openSearch?: () => void }).__openSearch = openSearch;
+		input.addEventListener('input', onInput);
+		input.addEventListener('keydown', onKeydown);
 
-	// Keyboard shortcut: "/" opens search (skip when typing in inputs)
-	document.addEventListener('keydown', (e) => {
-		if (e.key !== '/') return;
-		const tag = (e.target as HTMLElement).tagName;
-		if (
-			tag === 'INPUT' ||
-			tag === 'TEXTAREA' ||
-			tag === 'SELECT' ||
-			(e.target as HTMLElement).isContentEditable
-		)
-			return;
-		e.preventDefault();
-		openSearch();
-	});
-
-	// Allow external buttons with data-search-open attribute
-	document.querySelectorAll('[data-search-open]').forEach((el) => {
-		el.addEventListener('click', openSearch);
-	});
-
-	// Re-wire after Astro view transitions
-	document.addEventListener('astro:after-swap', () => {
-		pagefindLoaded = false;
-		document.querySelectorAll('[data-search-open]').forEach((el) => {
-			el.addEventListener('click', openSearch);
+		document.querySelectorAll('[data-search-open]').forEach((trigger) => {
+			trigger.addEventListener('click', openSearch);
 		});
-	});
+
+		document.addEventListener('keydown', (event) => {
+			if (event.key !== '/' || modal.open) return;
+			const target = event.target as HTMLElement;
+			const tag = target.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+				return;
+			}
+			event.preventDefault();
+			openSearch();
+		});
+	}
 </script>

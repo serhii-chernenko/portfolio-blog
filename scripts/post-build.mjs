@@ -40,7 +40,7 @@ console.log('post-build: wrote dist/client/index.html (apex → /blog/en/ redire
 
 // robots.txt is bound to this Worker at the exact host-root path (wrangler.jsonc
 // routes), but Astro only ever emits `public/robots.txt` under the `/blog` base
-// — there's no `/[...locale]/[page]`-style route for it, so `context.rewrite()`
+// — there's no `/[locale]/[page]`-style route for it, so `context.rewrite()`
 // in src/middleware.ts can't hand off to it (rewrite only resolves real Astro
 // routes, not static files — it throws at request time for a static target).
 // Copying the already-built file to the assets root instead means Cloudflare's

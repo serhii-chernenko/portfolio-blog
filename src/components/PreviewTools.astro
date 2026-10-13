@@ -1,0 +1,50 @@
+---
+import type { Locale } from '../i18n/config';
+import { useTranslations, withBase } from '../i18n/utils';
+import { PREVIEW_SEARCH_PARAM } from '../lib/sanity/config';
+import VisualEditing from './VisualEditing';
+
+export interface Props {
+	locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const basePath = withBase('').replace(/\/+$/, '');
+const exitPreviewHref = `${withBase('api/draft-mode/disable')}?redirect=${encodeURIComponent(Astro.url.pathname)}`;
+---
+
+<VisualEditing client:only="react" basePath={basePath} previewParam={PREVIEW_SEARCH_PARAM} />
+
+<a
+	id="preview-exit"
+	href={exitPreviewHref}
+	class="btn btn-neutral btn-sm fixed bottom-4 right-4 z-50 shadow-lg"
+	hidden
+>
+	{t('preview.exit')}
+</a>
+
+<script>
+	import { previewAwareHref } from '../lib/preview-links';
+
+	function markPreviewLink(anchor: HTMLAnchorElement): void {
+		const href = anchor.getAttribute('href');
+		if (!href) return;
+		const previewHref = previewAwareHref(href);
+		if (previewHref !== href) anchor.setAttribute('href', previewHref);
+	}
+
+	document.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(markPreviewLink);
+	document.addEventListener(
+		'click',
+		(event) => {
+			const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[href]');
+			if (anchor) markPreviewLink(anchor);
+		},
+		true,
+	);
+
+	const exitLink = document.getElementById('preview-exit');
+	if (exitLink && window.self === window.top) exitLink.hidden = false;
+</script>

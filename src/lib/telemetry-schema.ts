@@ -304,8 +304,16 @@ export function rateLimitKey(ip: string | null | undefined): string {
 	return `${hextets.slice(0, IPV6_PREFIX_HEXTETS).join(':')}::/64`;
 }
 
+const CMS_PAGE_ROUTE = '/:locale/:page';
+
+function isRedirectStatus(status: number): boolean {
+	return status >= 300 && status < 400;
+}
+
 export function shouldEmitHttpEvent(route: string, status: number): boolean {
 	if (status >= 500) return true;
+	if (isRedirectStatus(status)) return false;
+	if (route === CMS_PAGE_ROUTE && status === 404) return false;
 	return route !== '/unknown' && !DOMAIN_EVENT_ROUTES.has(route);
 }
 
@@ -450,26 +458,38 @@ const STATIC_ROUTES = new Set([
 	'/admin/emails',
 	'/llms.txt',
 	'/llms-full.txt',
+	'/sitemap-index.xml',
+	'/sitemap-0.xml',
+	'/api/search',
+	'/api/sanity/revalidate',
+	'/api/draft-mode/enable',
+	'/api/draft-mode/disable',
 ]);
+
+const ROUTE_TEMPLATES: ReadonlyArray<readonly [RegExp, string]> = [
+	[/^\/api\/emails\/templates\/[^/]+$/, '/api/emails/templates/:slug'],
+	[/^\/admin\/emails\/[^/]+$/, '/admin/emails/:slug'],
+	[/^\/(en|uk)$/, '/:locale'],
+	[/^\/(en|uk)\/posts$/, '/:locale/posts'],
+	[/^\/(en|uk)\/posts\/page\/[^/]+$/, '/:locale/posts/page/:page'],
+	[/^\/(en|uk)\/posts\/[^/]+$/, '/:locale/posts/:slug'],
+	[/^\/(en|uk)\/tags$/, '/:locale/tags'],
+	[/^\/(en|uk)\/tags\/[^/]+$/, '/:locale/tags/:tag'],
+	[/^\/(en|uk)\/subscribe$/, '/:locale/subscribe'],
+	[/^\/(en|uk)\/unsubscribe$/, '/:locale/unsubscribe'],
+	[/^\/(en|uk)\/rss\.xml$/, '/:locale/rss.xml'],
+	[/^\/(en|uk)\/[^/]+$/, CMS_PAGE_ROUTE],
+];
 
 export function normalizeRoute(pathname: string, base: string): string {
 	const path = trimTrailingSlash(stripBasePath(pathname, base));
 	if (STATIC_ROUTES.has(path)) return path;
-	if (/^\/api\/emails\/templates\/[^/]+$/.test(path)) return '/api/emails/templates/:slug';
-	if (/^\/admin\/emails\/[^/]+$/.test(path)) return '/admin/emails/:slug';
-	if (/^\/(en|uk)\/unsubscribe$/.test(path)) return '/:locale/unsubscribe';
-	return '/unknown';
+	return ROUTE_TEMPLATES.find(([pattern]) => pattern.test(path))?.[1] ?? '/unknown';
 }
 
 export function isUntrackedRoute(pathname: string, base: string): boolean {
 	const path = trimTrailingSlash(stripBasePath(pathname, base));
-	return (
-		path === '/api/events' ||
-		path === '/api/keystatic' ||
-		path.startsWith('/api/keystatic/') ||
-		path === '/keystatic' ||
-		path.startsWith('/keystatic/')
-	);
+	return path === '/api/events';
 }
 
 export function parseClientEvent(body: unknown): ClientEvent | null {

@@ -14,6 +14,7 @@ export default defineConfig(
 			'node_modules/',
 			'patches/',
 			'scripts/',
+			'studio/',
 			'worker-configuration.d.ts',
 		],
 	},

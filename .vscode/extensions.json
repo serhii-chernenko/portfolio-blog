@@ -1,7 +1,7 @@
 {
 	"recommendations": [
 		"astro-build.astro-vscode",
-		"stripe.markdoc-language-support",
+		"sanity-io.vscode-sanity",
 		"bradlc.vscode-tailwindcss",
 		"esbenp.prettier-vscode",
 		"dbaeumer.vscode-eslint",

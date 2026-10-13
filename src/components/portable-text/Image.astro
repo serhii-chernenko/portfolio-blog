@@ -1,0 +1,45 @@
+---
+import { stegaClean } from '@sanity/client/stega';
+import type { TypedObjectProps } from 'astro-portabletext/types';
+import {
+	croppedImageDimensions,
+	imageSrcSet,
+	imageUrl,
+	type SanityImage,
+} from '../../lib/sanity/image';
+
+type Props = TypedObjectProps;
+
+interface ImageNode extends SanityImage {
+	caption?: string;
+}
+
+const SRCSET_WIDTHS = [480, 768, 1024, 1536];
+const DEFAULT_WIDTH = 1024;
+const SIZES = '(min-width: 1024px) 768px, 100vw';
+
+const { node } = Astro.props;
+const image = node as unknown as ImageNode;
+const cropped = croppedImageDimensions(image);
+const width = cropped ? Math.min(DEFAULT_WIDTH, cropped.width) : DEFAULT_WIDTH;
+const height = cropped ? Math.round((width * cropped.height) / cropped.width) : undefined;
+const alt = image.alt ?? '';
+const caption = image.caption;
+---
+
+{image.asset && (
+	<figure>
+		<img
+			src={imageUrl(image, { width })}
+			srcset={imageSrcSet(image, SRCSET_WIDTHS)}
+			sizes={SIZES}
+			alt={alt}
+			width={width}
+			height={height}
+			loading="lazy"
+			decoding="async"
+			class="rounded-box"
+		/>
+		{caption && stegaClean(caption) && <figcaption>{caption}</figcaption>}
+	</figure>
+)}

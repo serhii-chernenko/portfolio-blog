@@ -1,78 +1,66 @@
 // @ts-check
+import type { AstroUserConfig } from 'astro';
 import { defineConfig, envField } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
+import { cacheCloudflare } from '@astrojs/cloudflare/cache';
 import node from '@astrojs/node';
 import react from '@astrojs/react';
-import markdoc from '@astrojs/markdoc';
-import keystatic from '@keystatic/astro';
-import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
-import { fileURLToPath } from 'node:url';
-import { createSitemapPolicy } from './src/lib/sitemap';
 
-// Canonical production URL — used at build time for sitemap.xml and RSS
-// absolute links. Runtime URLs are derived from the incoming request, so
-// preview Workers and local `wrangler dev` produce self-referential links.
 const SITE = 'https://serhiichernenko.com';
 
+const USE_NODE_DEV_ADAPTER = process.env.ASTRO_NODE_DEV === 'true';
+
+type VitePlugin = Extract<
+	NonNullable<NonNullable<AstroUserConfig['vite']>['plugins']>[number],
+	{ name: string }
+>;
+
+const SANITY_UI_STYLES = '@sanity/ui/styles.css';
+const INLINE_SANITY_UI_STYLES_ID = '\0inline-sanity-ui-styles.js';
+
 /**
- * Keystatic + base-path mode.
- *
- * Keystatic's Astro integration auto-mounts UI at `/keystatic` and API at
- * `/api/keystatic/*`. Its React client hardcodes ~20 root-relative paths to
- * `/api/keystatic/*`, with no `basePath` option. So when Astro `base: '/blog'`
- * is set, the UI loads at `/blog/keystatic` but its fetches hit `/api/keystatic/*`
- * (the apex) which 404s — UI renders blank.
- *
- * `pnpm dev` (Astro dev server, Node.js):
- *   Sets PUBLIC_KEYSTATIC_MODE=local. Base path collapses to apex so
- *   Keystatic's hardcoded API paths line up. keystatic.config.ts reads the
- *   same flag and uses local kind — no GitHub auth, saves write straight to
- *   `src/content/posts/{en,uk}/`. Only works in a real Node.js process
- *   (Keystatic's local storage requires `fs`).
- *
- * `pnpm wrangler:dev` and production (Cloudflare Worker runtime):
- *   The flag is unset, so base is `/blog` and Keystatic uses GitHub kind
- *   (OAuth via the GitHub App credentials — wrangler secrets in prod,
- *   `.dev.vars` for `wrangler:dev`; see docs/KEYSTATIC.md). The Worker
- *   runtime isn't Node.js, so local storage isn't an option there. The
- *   base-path/API-path mismatch is solved by two pieces:
- *     1. wrangler.jsonc binds the Worker to apex /api/keystatic[/*] routes
- *        in addition to /blog/*, so the UI's apex fetches reach this Worker.
- *     2. src/middleware.ts rewrites those apex requests to /blog/api/keystatic/*
- *        so Astro's router (which lives under base: '/blog') can serve them.
- *   This /blog handling is actually split across two places: the middleware
- *   rewrite above adds the /blog prefix so Astro's router matches, then
- *   patches/@keystatic__astro@6.0.0.patch strips it back off inside
- *   Keystatic's API route handler before its generic handler parses params.
+ * Astro hoists every stylesheet reachable from a client-only island into each page that
+ * imports it, so the Visual Editing overlay's `@sanity/ui` CSS would ship render-blocking on
+ * every public page. Importing it as an inline string defers it to the draft-mode-only chunk.
  */
-// astro.config.mts runs in Node before Vite kicks in, so it reads from
-// `process.env`. The same flag is read by keystatic.config.ts via
-// `import.meta.env` (which Vite inlines at build time) and by middleware.ts.
-const LOCAL_MODE = process.env.PUBLIC_KEYSTATIC_MODE === 'local';
-const BASE_PATH = LOCAL_MODE ? '/' : '/blog';
+function inlineSanityUiStyles(): VitePlugin {
+	let stylesheetPath = '';
+	return {
+		name: 'inline-sanity-ui-styles',
+		enforce: 'pre',
+		async resolveId(source, importer) {
+			if (source !== SANITY_UI_STYLES) return null;
+			const resolved = await this.resolve(source, importer, { skipSelf: true });
+			if (!resolved?.id.endsWith('.css')) return null;
+			stylesheetPath = resolved.id;
+			return INLINE_SANITY_UI_STYLES_ID;
+		},
+		load(id) {
+			if (id !== INLINE_SANITY_UI_STYLES_ID) return null;
+			return [
+				`import css from ${JSON.stringify(`${stylesheetPath}?inline`)};`,
+				"const style = document.createElement('style');",
+				'style.textContent = css;',
+				'document.head.append(style);',
+			].join('\n');
+		},
+	};
+}
 
-const sitemapPolicy = createSitemapPolicy({
-	site: SITE,
-	base: BASE_PATH,
-	contentRoot: fileURLToPath(new URL('./src/content', import.meta.url)),
-	includeDrafts: process.env.PREVIEW_MODE === 'true',
-});
+const runtimeConfig = USE_NODE_DEV_ADAPTER
+	? { adapter: node({ mode: 'standalone' }) }
+	: {
+			adapter: cloudflare({
+				// 'passthrough' avoids bundling sharp into the Worker.
+				imageService: 'passthrough',
+			}),
+			cache: { provider: cacheCloudflare() },
+		};
 
-const integrations = [
-	react(),
-	markdoc(),
-	sitemap({
-		filter: sitemapPolicy.filter,
-		serialize: sitemapPolicy.serialize,
-	}),
-	keystatic(), // always loaded — dev uses base `/`, prod uses `/blog/`
-];
-
-// https://astro.build/config
 export default defineConfig({
 	site: SITE,
-	base: BASE_PATH,
+	base: '/blog',
 	output: 'server',
 	// Astro v7 defaults to 'jsx' whitespace collapsing between inline elements — pin true to keep v6 rendering behavior.
 	compressHTML: true,
@@ -81,17 +69,7 @@ export default defineConfig({
 	security: {
 		checkOrigin: false,
 	},
-	// Adapter is mode-dependent. `pnpm dev` (PUBLIC_KEYSTATIC_MODE=local) needs the
-	// Node runtime: Keystatic local storage reads/writes src/content via `fs`, which
-	// the Cloudflare adapter's `astro dev` can't provide since v13 (it runs on the
-	// workerd runtime, no `fs`). Everything else — `wrangler:dev`, `build`,
-	// production — uses the Cloudflare adapter (workerd). See keystatic.config.ts.
-	adapter: LOCAL_MODE
-		? node({ mode: 'standalone' })
-		: cloudflare({
-				// 'passthrough' avoids bundling sharp into the Worker.
-				imageService: 'passthrough',
-			}),
+	...runtimeConfig,
 	image: {
 		// No-op service prevents sharp from being pulled into the bundle.
 		service: { entrypoint: 'astro/assets/services/noop' },
@@ -104,7 +82,7 @@ export default defineConfig({
 			redirectToDefaultLocale: false,
 		},
 	},
-	integrations,
+	integrations: [react()],
 	env: {
 		// validateSecrets defaults to false — so production CI builds without secrets present are fine.
 		// astro:env validates secrets at runtime (worker startup), not build time.
@@ -123,6 +101,21 @@ export default defineConfig({
 				optional: true,
 			}),
 			TELEGRAM_CHAT_ID: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
+			SANITY_API_READ_TOKEN: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
+			SANITY_WEBHOOK_SECRET: envField.string({
+				context: 'server',
+				access: 'secret',
+				optional: true,
+			}),
+			DRAFT_MODE_COOKIE_SECRET: envField.string({
 				context: 'server',
 				access: 'secret',
 				optional: true,
@@ -161,18 +154,13 @@ export default defineConfig({
 		},
 	},
 	vite: {
-		plugins: [tailwindcss()],
-		// Keystatic UI needs Vite to pre-bundle (CJS→ESM) react-dom/client and the
-		// React Spectrum / Keystatic UI modules. Including them eagerly avoids the
-		// "createRoot is not exported" runtime hydration error.
+		plugins: [tailwindcss(), inlineSanityUiStyles()],
 		optimizeDeps: {
 			include: [
 				'react',
 				'react/jsx-runtime',
 				'react-dom',
 				'react-dom/client',
-				'@keystatic/core/ui',
-				'@keystatic/astro/ui',
 				'@react-email/editor',
 			],
 		},

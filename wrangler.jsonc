@@ -5,9 +5,6 @@
 //  ── Required public vars (declared below under "vars") ──
 //    MAIL_FROM                             Sender address. Must be on a domain with
 //                                          Cloudflare Email Routing enabled.
-//    PUBLIC_KEYSTATIC_GITHUB_APP_SLUG      The "slug" of the GitHub App that backs
-//                                          Keystatic — the part after `/apps/` in
-//                                          https://github.com/apps/<slug>.
 //
 //  ── Required secrets (set via `wrangler secret put`) ──
 //    SUBSCRIBE_RATE_LIMIT_SECRET           32-byte random — derives opaque
@@ -15,19 +12,40 @@
 //    TELEGRAM_BOT_TOKEN                    Optional in dev. Required in prod for
 //                                          notifications.
 //    TELEGRAM_CHAT_ID                      Optional in dev. Required in prod.
-//    KEYSTATIC_SECRET                      32-byte random — signs Keystatic auth
-//                                          cookies. Required for prod GitHub mode.
-//    KEYSTATIC_GITHUB_CLIENT_ID            GitHub App client ID (prod GitHub mode).
-//    KEYSTATIC_GITHUB_CLIENT_SECRET        GitHub App client secret (prod GitHub mode).
 //
-//  Set them all in one go (see docs/KEYSTATIC.md for the GitHub App setup):
+//  ── Optional secrets (Sanity) ──
+//    SANITY_API_READ_TOKEN                 Sanity Viewer token. Enables draft mode
+//                                          (Presentation / Visual Editing). Without
+//                                          it, only published content is served
+//                                          and /api/draft-mode/enable returns 401.
+//    SANITY_WEBHOOK_SECRET                 Secret of the Sanity GROQ webhook that
+//                                          POSTs to /blog/api/sanity/revalidate to
+//                                          purge the Workers Cache `sanity` tag.
+//                                          Without it, revalidation returns 401 and
+//                                          pages refresh only when their cache TTL
+//                                          expires.
+//    DRAFT_MODE_COOKIE_SECRET              HMAC key (32+ chars) that signs the
+//                                          draft-session cookie. Draft mode needs
+//                                          it and SANITY_API_READ_TOKEN; without
+//                                          either, /api/draft-mode/enable returns 401.
+//
+//  Set them all in one go:
 //
 //    pnpm wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
 //    pnpm wrangler secret put TELEGRAM_BOT_TOKEN
 //    pnpm wrangler secret put TELEGRAM_CHAT_ID
-//    pnpm wrangler secret put KEYSTATIC_SECRET
-//    pnpm wrangler secret put KEYSTATIC_GITHUB_CLIENT_ID
-//    pnpm wrangler secret put KEYSTATIC_GITHUB_CLIENT_SECRET
+//    pnpm wrangler secret put SANITY_API_READ_TOKEN
+//    pnpm wrangler secret put SANITY_WEBHOOK_SECRET
+//    pnpm wrangler secret put DRAFT_MODE_COOKIE_SECRET
+//
+//  ── Optional secret (observability) ──
+//    NEW_RELIC_LICENSE_KEY                 New Relic ingest license key. Forwards
+//                                          visitor and newsletter telemetry
+//                                          events to New Relic; without it,
+//                                          events are only written to Workers
+//                                          logs (docs/OBSERVABILITY.md).
+//
+//    pnpm wrangler secret put NEW_RELIC_LICENSE_KEY
 //
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from
@@ -86,6 +104,9 @@
 			"dataset": "portfolio_blog_events",
 		},
 	],
+	"cache": {
+		"enabled": true,
+	},
 	"ratelimits": [
 		{
 			"name": "EVENTS_RATE_LIMITER",
@@ -118,13 +139,7 @@
 	// the apex before Workers run (docs/DNS-ROUTING.md).
 	//
 	//   …/blog             → blog landing
-	//   …/blog/*           → all blog routes (incl. /blog/keystatic UI)
-	//   …/api/keystatic, …/api/keystatic/*
-	//                       → host-root Keystatic API. The shipped Keystatic
-	//                         React UI fetches these absolute paths;
-	//                         src/middleware.ts rewrites them to
-	//                         /blog/api/keystatic/* so Astro (base: '/blog')
-	//                         can serve them.
+	//   …/blog/*           → all blog routes
 	//
 	// `zone_name` is the apex (serhiichernenko.com) — the Cloudflare zone; the
 	// route *pattern* is what selects the host.
@@ -134,7 +149,7 @@
 	// routing across MULTIPLE Workers (one per app, separate repos): a future
 	// portfolio Worker — its own repo, a from-scratch rewrite of the old
 	// chernenko.digital — will claim the root `/`. It can bind a catch-all
-	// `serhiichernenko.com/*`; these `/blog*` + `/api/keystatic*` routes are
+	// `serhiichernenko.com/*`; these `/blog*` routes are
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	//
@@ -153,22 +168,6 @@
 		},
 		{
 			"pattern": "serhiichernenko.com/blog/*",
-			"zone_name": "serhiichernenko.com",
-		},
-		{
-			"pattern": "serhiichernenko.com/api/keystatic",
-			"zone_name": "serhiichernenko.com",
-		},
-		{
-			"pattern": "serhiichernenko.com/api/keystatic/*",
-			"zone_name": "serhiichernenko.com",
-		},
-		{
-			"pattern": "serhiichernenko.com/keystatic",
-			"zone_name": "serhiichernenko.com",
-		},
-		{
-			"pattern": "serhiichernenko.com/keystatic/*",
 			"zone_name": "serhiichernenko.com",
 		},
 		{
@@ -201,6 +200,5 @@
 		// email will fail. Set it up in the CF dashboard before relying on
 		// production sends.
 		"MAIL_FROM": "hello@serhiichernenko.com",
-		"PUBLIC_KEYSTATIC_GITHUB_APP_SLUG": "serhii-chernenko-portfolio-blog",
 	},
 }

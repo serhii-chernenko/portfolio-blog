@@ -20,7 +20,7 @@ function jsonError(message: string, status: number): Response {
 function guardLocal(): Response | null {
 	// These endpoints read/write the local filesystem, which is unavailable in
 	// Cloudflare Workers. Only allow access in local development mode.
-	if (import.meta.env.PUBLIC_KEYSTATIC_MODE !== 'local') {
+	if (!import.meta.env.DEV) {
 		return jsonError('Not available in production', 403);
 	}
 	return null;

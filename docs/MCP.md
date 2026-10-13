@@ -4,23 +4,27 @@ This blog exposes a read-only [Model Context Protocol](https://modelcontextproto
 server so AI assistants can query post content directly instead of scraping HTML.
 
 - **Endpoint:** `https://serhiichernenko.com/blog/api/mcp` (production) /
-  `http://localhost:4321/api/mcp` (`pnpm dev`)
+  `http://localhost:4321/blog/api/mcp` (`pnpm dev`)
 - **Transport:** MCP Streamable HTTP (JSON-RPC 2.0 over a single POST endpoint)
 - **Auth:** none — same trust level as the public RSS feed. Read-only, no
   mutation tools.
 
 ## Tools
 
-| Tool                  | Purpose                                                                          |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `list_posts`          | List published posts, newest first. Optional `locale`, `tag`, `limit`, `offset`. |
-| `get_post`            | Full content (including raw body) of one post by `locale` + `slug`.              |
-| `search_posts_by_tag` | Posts matching a tag, optionally scoped to a `locale`.                           |
-| `list_tags`           | All tags with post counts, optionally scoped to a `locale`.                      |
+| Tool                  | Purpose                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `list_posts`          | List published posts, newest first. Optional `locale`, `tag`, `limit`, `offset`.                               |
+| `get_post`            | One post by `locale` + `slug`: metadata, `translations` (URL per locale or `null`) and the body as plain text. |
+| `search_posts_by_tag` | Posts matching a tag, optionally scoped to a `locale`.                                                         |
+| `list_tags`           | All tags with post counts, optionally scoped to a `locale`.                                                    |
 
-All four source from the same `getPublishedPosts()` / `getTagsForLocale()`
-helpers (`src/lib/posts.ts`) the HTML pages use, so draft posts and
-future-dated `publishedAt` posts are excluded identically everywhere.
+All four read from [Sanity](./SANITY.md) through the same helpers
+(`src/lib/posts.ts`, backed by `src/lib/sanity/`) the HTML pages use, always in
+the published perspective, so draft posts and future-dated `publishedAt` posts
+are excluded identically everywhere. `get_post` returns the body as plain text
+extracted from Portable Text (`pt::text(body)`): only text blocks are included,
+while code blocks, callouts, images and embeds are omitted. It is not Markdown
+and not the raw block structure.
 
 ## Implementation
 
@@ -62,13 +66,13 @@ developing the MCP tools themselves (see below).
 
 ```bash
 pnpm dev
-npx @modelcontextprotocol/inspector http://localhost:4321/api/mcp
+npx @modelcontextprotocol/inspector http://localhost:4321/blog/api/mcp
 ```
 
 Re-test with `pnpm build && npx wrangler dev` (`http://localhost:8787/blog/api/mcp`,
 or send a request with `Host: serhiichernenko.com` to check the production
 route) before shipping any change here — that's the workerd runtime, not the
 Node adapter `pnpm dev` uses, and the two can resolve dependencies differently.
-Don't use `pnpm wrangler:dev` for this — it runs `astro preview`, which gives
-false 404s on injected/dynamic routes; `wrangler dev` against the real build
-is the reliable check.
+`pnpm wrangler:dev` does the same (build, then `wrangler dev`).
+Don't use `pnpm preview` for this — `astro preview` gives false 404s on
+injected/dynamic routes.

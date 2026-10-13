@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
 	BATCH_SIZE,
+	CACHE_BUST_PARAM,
 	HOST,
 	INDEXNOW_ENDPOINT,
 	INDEXNOW_KEY,
@@ -8,6 +9,7 @@ import {
 	SCOPE_PREFIX,
 	batchUrls,
 	buildPayload,
+	cacheBustedUrl,
 	diffSitemaps,
 	entriesFromJson,
 	entriesToJson,
@@ -29,10 +31,17 @@ const indexXml = `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="htt
 const childOneXml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml"><url><loc>${POST}</loc><lastmod>2026-05-18T11:43:01.000Z</lastmod><xhtml:link rel="alternate" hreflang="en" href="${POST}"/></url><url><loc>${ABOUT}</loc></url></urlset>`;
 const childTwoXml = `<urlset><url><loc>${TAGS}?a=1&amp;b=2</loc><lastmod>2026-06-01</lastmod></url></urlset>`;
 
+function withoutCacheBust(url) {
+	const parsed = new URL(url);
+	parsed.searchParams.delete(CACHE_BUST_PARAM);
+	return parsed.toString();
+}
+
 function fakeFetch(routes) {
 	const calls = [];
-	const fetchFn = async (url, init) => {
-		calls.push({ url, init });
+	const fetchFn = async (rawUrl, init) => {
+		const url = withoutCacheBust(rawUrl);
+		calls.push({ url, rawUrl, init });
 		if (!routes.has(url)) {
 			return { ok: false, status: 404, text: async () => '' };
 		}
@@ -74,6 +83,19 @@ assert.equal(
 		calls.map((call) => call.url),
 		[INDEX_URL, CHILD_ONE, CHILD_TWO],
 	);
+	const cacheBusters = calls.map((call) => new URL(call.rawUrl).searchParams.get(CACHE_BUST_PARAM));
+	assert.ok(
+		cacheBusters.every(Boolean),
+		'every sitemap fetch carries a cache-busting query so the edge cache is bypassed',
+	);
+	assert.equal(new Set(cacheBusters).size, cacheBusters.length, 'cache-busting values are unique');
+}
+
+{
+	const busted = new URL(cacheBustedUrl(`${INDEX_URL}?existing=1`));
+	assert.equal(busted.searchParams.get('existing'), '1', 'existing query parameters are kept');
+	assert.ok(busted.searchParams.get(CACHE_BUST_PARAM), 'the cache-busting parameter is added');
+	assert.equal(withoutCacheBust(busted.toString()), `${INDEX_URL}?existing=1`);
 }
 
 {

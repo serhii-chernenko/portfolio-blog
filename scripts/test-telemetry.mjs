@@ -378,6 +378,26 @@ const routeCases = [
 	['/en/unsubscribe', '/', '/:locale/unsubscribe'],
 	['/llms.txt', '', '/llms.txt'],
 	['/llms-full.txt', '', '/llms-full.txt'],
+	['/blog/sitemap-index.xml', '/blog', '/sitemap-index.xml'],
+	['/blog/sitemap-0.xml', '/blog', '/sitemap-0.xml'],
+	['/blog/api/search', '/blog', '/api/search'],
+	['/blog/api/sanity/revalidate', '/blog', '/api/sanity/revalidate'],
+	['/blog/api/draft-mode/enable', '/blog', '/api/draft-mode/enable'],
+	['/blog/api/draft-mode/disable', '/blog', '/api/draft-mode/disable'],
+	['/blog/en/', '/blog', '/:locale'],
+	['/blog/uk', '/blog', '/:locale'],
+	['/blog/en/posts/', '/blog', '/:locale/posts'],
+	['/blog/uk/posts/page/2/', '/blog', '/:locale/posts/page/:page'],
+	['/blog/en/posts/my-post/', '/blog', '/:locale/posts/:slug'],
+	['/blog/uk/tags/', '/blog', '/:locale/tags'],
+	['/blog/en/tags/astro/', '/blog', '/:locale/tags/:tag'],
+	['/blog/en/subscribe/', '/blog', '/:locale/subscribe'],
+	['/blog/uk/rss.xml', '/blog', '/:locale/rss.xml'],
+	['/blog/en/privacy/', '/blog', '/:locale/:page'],
+	['/blog/uk/pryvatnist', '/blog', '/:locale/:page'],
+	['/blog/de/privacy/', '/blog', '/unknown'],
+	['/blog/en/posts/my-post/extra/', '/blog', '/unknown'],
+	['/blog/en/tags/astro/extra/', '/blog', '/unknown'],
 	['/blog/does-not-exist', '/blog', '/unknown'],
 	['/blog', '/blog', '/unknown'],
 	['/blog/de/unsubscribe', '/blog', '/unknown'],
@@ -408,11 +428,8 @@ assert.equal(
 
 assert.equal(isUntrackedRoute('/blog/api/events', '/blog'), true);
 assert.equal(isUntrackedRoute('/api/events', '/'), true);
-assert.equal(isUntrackedRoute('/api/keystatic/github/login', '/blog'), true);
-assert.equal(isUntrackedRoute('/blog/api/keystatic/github/login', '/blog'), true);
-assert.equal(isUntrackedRoute('/keystatic/branch/main', '/blog'), true);
-assert.equal(isUntrackedRoute('/blog/keystatic', '/blog'), true);
 assert.equal(isUntrackedRoute('/blog/api/subscribe', '/blog'), false);
+assert.equal(isUntrackedRoute('/blog/en/posts/my-post/', '/blog'), false);
 
 assert.equal(rateLimitKey('203.0.113.7'), '203.0.113.7');
 assert.equal(rateLimitKey(null), 'unknown');
@@ -454,11 +471,24 @@ for (const route of [
 	'/:locale/unsubscribe',
 	'/llms.txt',
 	'/llms-full.txt',
+	'/sitemap-0.xml',
+	'/:locale',
+	'/:locale/posts/:slug',
+	'/:locale/tags/:tag',
+	'/:locale/rss.xml',
 ]) {
 	assert.equal(shouldEmitHttpEvent(route, 200), true, route);
 	assert.equal(shouldEmitHttpEvent(route, 404), true, route);
 	assert.equal(shouldEmitHttpEvent(route, 500), true, route);
 }
+for (const route of ['/:locale', '/:locale/posts', '/:locale/posts/:slug', '/:locale/:page']) {
+	assert.equal(shouldEmitHttpEvent(route, 301), false, `${route} redirect`);
+	assert.equal(shouldEmitHttpEvent(route, 307), false, `${route} redirect`);
+	assert.equal(shouldEmitHttpEvent(route, 308), false, `${route} redirect`);
+}
+assert.equal(shouldEmitHttpEvent('/:locale/:page', 200), true);
+assert.equal(shouldEmitHttpEvent('/:locale/:page', 404), false, 'CMS page probes are not logged');
+assert.equal(shouldEmitHttpEvent('/:locale/:page', 500), true);
 assert.equal(httpOutcome(200), 'success');
 assert.equal(httpOutcome(302), 'success');
 assert.equal(httpOutcome(400), 'rejected');

@@ -111,16 +111,25 @@ export function blogJsonLd(input: {
 	};
 }
 
-export function ogLocaleFor(locale: Locale): string {
-	return ogLocale[locale];
-}
-
 const JSON_LD_ESCAPES: Record<string, string> = {
 	'<': '\\u003c',
+	'>': '\\u003e',
+	'&': '\\u0026',
 	'\u2028': '\\u2028',
 	'\u2029': '\\u2029',
 };
 
-export function serializeJsonLd(block: object): string {
-	return JSON.stringify(block).replace(/[<\u2028\u2029]/g, (char) => JSON_LD_ESCAPES[char]);
+/**
+ * Serializes structured data for an inline `<script type="application/ld+json">`, escaping
+ * characters that could close the script element or break JavaScript parsing.
+ */
+export function serializeJsonLd(data: unknown): string {
+	return JSON.stringify(data).replace(
+		/[<>&\u2028\u2029]/g,
+		(character) => JSON_LD_ESCAPES[character],
+	);
+}
+
+export function ogLocaleFor(locale: Locale): string {
+	return ogLocale[locale];
 }

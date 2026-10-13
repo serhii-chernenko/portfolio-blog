@@ -201,6 +201,17 @@
 	pointer-events: none;
 	z-index: 2;
 }
+.code-filename {
+	font-family: ui-monospace, SFMono-Regular, monospace;
+	font-size: 0.75rem;
+	line-height: 1.25rem;
+	color: var(--color-base-content);
+	opacity: 0.7;
+	overflow-wrap: anywhere;
+}
+.code-block-wrap > .code-filename {
+	padding: 0 1.25rem 0.5rem;
+}
 .code-block-wrap > .copy-btn {
 	position: absolute;
 	top: 0.4rem;
@@ -252,12 +263,4 @@ html[data-theme='dark'] .astro-code span {
 /* Smooth theme transitions */
 :where(html) {
 	scroll-behavior: smooth;
-}
-
-/* Pagefind UI dark mode tweak */
-html[data-theme='dark'] .pagefind-ui {
-	--pagefind-ui-background: var(--color-base-100);
-	--pagefind-ui-text: var(--color-base-content);
-	--pagefind-ui-primary: var(--color-primary);
-	--pagefind-ui-border: var(--color-base-300);
 }

@@ -1,10 +1,14 @@
 ---
 import type { Locale } from '../i18n/config';
 import { htmlLangAttribute } from '../i18n/config';
+import { getSanityContext } from '../lib/sanity/request';
+import { getLayoutData } from '../lib/site';
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import SearchModal from '../components/SearchModal.astro';
+import PreviewTools from '../components/PreviewTools.astro';
+import { PREVIEW_ROOT_ATTRIBUTE } from '../lib/preview-links';
 import Telemetry from '../components/Telemetry.astro';
 import type { PageType } from '../lib/telemetry-schema';
 import '../styles/global.css';
@@ -22,11 +26,8 @@ export interface Props {
 	updatedAt?: Date;
 	tags?: string[];
 	alternates?: Partial<Record<Locale, string | null>>;
-	translationKey?: string;
-	/** Pre-resolved translated post URLs for LanguageSwitcher on post pages */
+	/** Pre-resolved translated URLs for the LanguageSwitcher on post and page routes */
 	translatedUrls?: Partial<Record<Locale, string | null>>;
-	/** Pre-resolved author page URL for JSON-LD on article pages */
-	authorUrl?: string;
 	/** Prevent sensitive or utility pages from appearing in search results. */
 	noIndex?: boolean;
 	noIndexFollow?: boolean;
@@ -49,7 +50,6 @@ const {
 	tags,
 	alternates,
 	translatedUrls,
-	authorUrl,
 	noIndex = false,
 	noIndexFollow = false,
 	omitCanonical = false,
@@ -58,10 +58,13 @@ const {
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
+const sanity = getSanityContext(Astro.locals);
+const layout = await getLayoutData(locale, sanity);
+const previewRootAttributes = sanity.preview ? { [PREVIEW_ROOT_ATTRIBUTE]: '' } : {};
 ---
 
 <!doctype html>
-<html lang={lang} data-theme="light">
+<html lang={lang} data-theme="light" {...previewRootAttributes}>
 	<head>
 		<BaseHead
 			title={title}
@@ -76,24 +79,35 @@ const lang = htmlLangAttribute[locale];
 			updatedAt={updatedAt}
 			tags={tags}
 			alternates={alternates}
-			authorUrl={authorUrl}
-			noIndex={noIndex}
+			noIndex={noIndex || sanity.preview}
 			noIndexFollow={noIndexFollow}
 			omitCanonical={omitCanonical}
 			pageType={pageType}
+			layout={layout}
 		/>
 	</head>
 	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">
-		<Header locale={locale} currentPath={Astro.url.pathname} translatedUrls={translatedUrls} />
+		<Header
+			locale={locale}
+			currentPath={Astro.url.pathname}
+			translatedUrls={translatedUrls}
+			layout={layout}
+		/>
 
 		<main id="content" class="flex-1">
 			<slot />
 		</main>
 
-		<Footer locale={locale} currentPath={Astro.url.pathname} translatedUrls={translatedUrls} />
+		<Footer
+			locale={locale}
+			currentPath={Astro.url.pathname}
+			translatedUrls={translatedUrls}
+			layout={layout}
+		/>
 
 		<SearchModal locale={locale} />
 
-		<Telemetry locale={locale} pageType={pageType} contentKey={contentKey} />
+		{sanity.preview && <PreviewTools locale={locale} />}
+		{!sanity.preview && <Telemetry locale={locale} pageType={pageType} contentKey={contentKey} />}
 	</body>
 </html>

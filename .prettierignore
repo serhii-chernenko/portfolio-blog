@@ -11,3 +11,4 @@ public/
 # Giscus.astro uses <script is:inline data-*={expr}> which prettier-plugin-astro
 # cannot parse (expression-attributed inline script tags)
 src/components/Giscus.astro
+studio/

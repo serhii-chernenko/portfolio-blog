@@ -1,5 +1,6 @@
 ---
 import { PUBLIC_GOOGLE_SITE_VERIFICATION, PUBLIC_BING_SITE_VERIFICATION } from 'astro:env/client';
+import { stegaClean } from '@sanity/client/stega';
 import { locales, type Locale } from '../i18n/config';
 import {
 	buildCanonical,
@@ -12,9 +13,10 @@ import {
 	serializeJsonLd,
 } from '../lib/seo';
 import { defaultOgImage, DEFAULT_OG_IMAGE_WIDTH, DEFAULT_OG_IMAGE_HEIGHT } from '../lib/og';
-import { useTranslations, localeHref, withBase } from '../i18n/utils';
-import { getPagePath } from '../lib/pages';
+import { imageUrl } from '../lib/sanity/image';
+import type { LayoutData } from '../lib/site';
 import type { PageType } from '../lib/telemetry-schema';
+import { useTranslations, localeHref, withBase } from '../i18n/utils';
 
 export interface Props {
 	title: string;
@@ -29,42 +31,54 @@ export interface Props {
 	updatedAt?: Date;
 	tags?: string[];
 	alternates?: Partial<Record<Locale, string | null>>;
-	authorUrl?: string;
 	noIndex?: boolean;
 	noIndexFollow?: boolean;
 	omitCanonical?: boolean;
 	pageType?: PageType;
+	layout: LayoutData;
 }
 
 const {
-	title,
-	description,
+	title: rawTitle,
+	description: rawDescription,
 	locale,
 	image,
 	imageWidth,
 	imageHeight,
-	imageAlt,
+	imageAlt: rawImageAlt,
 	type = 'website',
 	publishedAt,
 	updatedAt,
-	tags,
-	alternates,
-	authorUrl,
+	tags: rawTags,
+	alternates: rawAlternates,
 	noIndex = false,
 	noIndexFollow = false,
 	omitCanonical = false,
 	pageType,
+	layout,
 } = Astro.props;
 
 const t = useTranslations(locale);
+const title = stegaClean(rawTitle);
+const description = stegaClean(rawDescription);
+const tags = rawTags?.map((tag) => stegaClean(tag));
+const alternates = rawAlternates ? stegaClean(rawAlternates) : undefined;
 const site = Astro.site!;
 const canonical = buildCanonical(site, Astro.url.pathname);
 const hreflangLinks = buildHreflang(site, locale, Astro.url.pathname, alternates);
-const siteName = t('site.name');
-const ogImage = image ?? defaultOgImage(site);
+const siteName = stegaClean(layout.settings.siteName);
+const settingsOgImage = layout.settings.defaultOgImage
+	? imageUrl(layout.settings.defaultOgImage, {
+			width: DEFAULT_OG_IMAGE_WIDTH,
+			height: DEFAULT_OG_IMAGE_HEIGHT,
+			format: 'jpg',
+		})
+	: undefined;
+const ogImage = image ?? settingsOgImage ?? defaultOgImage(site);
 const ogImageWidth = image ? imageWidth : DEFAULT_OG_IMAGE_WIDTH;
 const ogImageHeight = image ? imageHeight : DEFAULT_OG_IMAGE_HEIGHT;
-const ogImageAlt = imageAlt ?? (image ? title : siteName);
+const ogImageAlt =
+	(rawImageAlt ? stegaClean(rawImageAlt) : undefined) ?? (image ? title : siteName);
 const robotsContent = noIndex
 	? 'noindex,nofollow,noarchive'
 	: noIndexFollow
@@ -73,7 +87,7 @@ const robotsContent = noIndex
 const alternateOgLocales = locales
 	.filter((alternateLocale) => alternateLocale !== locale && alternates?.[alternateLocale])
 	.map((alternateLocale) => ogLocaleFor(alternateLocale));
-const authorPath = authorUrl ?? (await getPagePath('about', locale));
+const authorPath = layout.aboutPath;
 const authorCanonical = buildCanonical(site, authorPath);
 const isArticle = type === 'article' && publishedAt !== undefined;
 const modifiedAt = updatedAt ?? publishedAt;
@@ -168,7 +182,7 @@ if (isArticle) {
 	rel="alternate"
 	type="application/rss+xml"
 	title={`${siteName} — RSS`}
-	href={new URL(withBase(`${locale}/rss.xml`), site).toString()}
+	href={new URL(localeHref(locale, 'rss.xml'), site).toString()}
 />
 
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />

@@ -1,15 +1,16 @@
-import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from 'astro:env/server';
+import { getTelegramCredentials } from './server-secrets';
 
 type ParseMode = 'HTML' | 'Markdown';
 
 export async function notify(text: string, parseMode: ParseMode = 'HTML'): Promise<void> {
-	if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+	const credentials = await getTelegramCredentials();
+	if (!credentials) return;
 	try {
-		const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+		const res = await fetch(`https://api.telegram.org/bot${credentials.botToken}/sendMessage`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
-				chat_id: TELEGRAM_CHAT_ID,
+				chat_id: credentials.chatId,
 				text,
 				parse_mode: parseMode,
 				disable_web_page_preview: true,

@@ -1,7 +1,17 @@
 import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
+import { perspectiveCookieName } from '@sanity/preview-url-secret/constants';
 import { GET as getLlmsTxt } from './pages/llms.txt';
 import { GET as getLlmsFullTxt } from './pages/llms-full.txt';
+import { getDraftModeSecrets } from './lib/server-secrets';
+import {
+	PREVIEW_SEARCH_PARAM,
+	SANITY_CACHE_TAG,
+	sanityDashboardOrigin,
+	studioUrl,
+} from './lib/sanity/config';
+import { DRAFT_SESSION_COOKIE_NAME, isValidDraftSession } from './lib/sanity/draft-mode';
+import { createRequestContext, parseDraftPerspective } from './lib/sanity/request';
 import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
 import {
 	httpOutcome,
@@ -9,6 +19,7 @@ import {
 	normalizeRoute,
 	shouldEmitHttpEvent,
 } from './lib/telemetry-schema';
+import { hasAssetExtension } from './lib/trailing-slash';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -51,36 +62,73 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 	);
 }
 
-// Keystatic's React Admin UI ships with hardcoded fetch URLs to `/api/keystatic/*`
-// (root-relative, no base path). With Astro `base: '/blog'`, the Keystatic API
-// routes live at `/blog/api/keystatic/*`, so the UI's fetches would 404.
-//
-// The Worker is bound to apex `/api/keystatic/*` (see wrangler.jsonc routes),
-// so those requests reach this Worker. This middleware rewrites them onto the
-// `/blog`-prefixed path Astro's router knows about. The browser sees a normal
-// 200 from `/api/keystatic/...`; Astro internally serves the prefixed route.
-//
-// Skipped under `pnpm dev` (PUBLIC_KEYSTATIC_MODE=local) — the base is `/`
-// there, so /api/keystatic/* already matches without rewriting.
-//
-// The `/api/keystatic` apex route is also robots-blocked.
-// Keystatic has no base-path support — both its admin UI (`/keystatic`) and its
-// API (`/api/keystatic`) are hardcoded to the host root in the shipped React
-// client. We bind both at the apex (wrangler.jsonc routes) and rewrite them here
-// onto Astro's `/blog`-prefixed routes so the client (which only ever sees apex
-// paths) routes correctly. Access the CMS at https://<host>/keystatic — NOT
-// /blog/keystatic (the React UI can't route under the /blog base and 404s).
-const BASE = '/blog';
-const APEX_PREFIXES = ['/api/keystatic', '/keystatic'];
+const CACHEABLE_METHODS = ['GET', 'HEAD'];
+const CACHEABLE_STATUSES = [200, 404];
+const CACHEABLE_API_PATHS = [`${RUNTIME_BASE}/api/search`];
+const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
+const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: [SANITY_CACHE_TAG] };
+const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: [SANITY_CACHE_TAG] };
+const PRIVATE_CACHE_CONTROL = 'private, no-store';
+const INTERNAL_SEGMENT_PREFIX = '/_';
+const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
+const FRAME_ANCESTORS = [
+	"'self'",
+	studioUrl,
+	sanityDashboardOrigin,
+	...(import.meta.env.DEV ? [LOCAL_STUDIO_ORIGIN] : []),
+];
+const HTML_SECURITY_HEADERS: Record<string, string> = {
+	'x-content-type-options': 'nosniff',
+	'referrer-policy': 'strict-origin-when-cross-origin',
+	'content-security-policy': `frame-ancestors ${FRAME_ANCESTORS.join(' ')}`,
+};
 
-// NOTE: `/robots.txt` (host-root) is bound to this Worker in wrangler.jsonc,
-// but is NOT rewritten here like the Keystatic paths above — `context.rewrite()`
-// only resolves to real Astro routes, and `public/robots.txt` is a static file
-// with no route-manifest entry (rewriting to it throws "Unexpectedly unable to
-// find a component instance"). scripts/post-build.mjs instead copies the built
-// file to the assets root (`dist/client/robots.txt`), where Cloudflare's static
-// assets serve it directly ahead of any Worker code — see that script and
-// docs/DNS-ROUTING.md.
+interface DraftMode {
+	token: string;
+	perspective: ReturnType<typeof parseDraftPerspective>;
+}
+
+function isCacheableRoute(pathname: string): boolean {
+	if (pathname.startsWith(`${RUNTIME_BASE}/admin`)) return false;
+	if (pathname.startsWith(API_PATH_PREFIX)) return CACHEABLE_API_PATHS.includes(pathname);
+	return true;
+}
+
+function isCacheableResponse(response: Response): boolean {
+	const cacheControl = response.headers.get('cache-control')?.toLowerCase() ?? '';
+	return (
+		CACHEABLE_STATUSES.includes(response.status) &&
+		!response.headers.has('set-cookie') &&
+		!cacheControl.includes('no-store') &&
+		!cacheControl.includes('private')
+	);
+}
+
+function needsTrailingSlash(request: Request, pathname: string): boolean {
+	return (
+		CACHEABLE_METHODS.includes(request.method) &&
+		!pathname.endsWith('/') &&
+		pathname.startsWith(`${RUNTIME_BASE}/`) &&
+		!pathname.startsWith(API_PATH_PREFIX) &&
+		!pathname.includes(INTERNAL_SEGMENT_PREFIX) &&
+		!hasAssetExtension(pathname)
+	);
+}
+
+function isPreviewPageRequest(request: Request, url: URL): boolean {
+	return (
+		CACHEABLE_METHODS.includes(request.method) &&
+		url.searchParams.has(PREVIEW_SEARCH_PARAM) &&
+		!url.pathname.startsWith(API_PATH_PREFIX)
+	);
+}
+
+function redirect(location: string, status: 307 | 308): Response {
+	return new Response(null, {
+		status,
+		headers: { location, 'cache-control': 'no-store' },
+	});
+}
 
 const APEX_ENDPOINTS: Record<string, (context: APIContext) => Promise<Response>> = {
 	'/llms.txt': getLlmsTxt,
@@ -108,7 +156,54 @@ function redirectSitemapAlias(request: Request, url: URL): Response | null {
 	});
 }
 
-function handleRequest(context: APIContext, next: MiddlewareNext) {
+async function resolveDraftMode(context: APIContext): Promise<DraftMode | null> {
+	const session = context.cookies.get(DRAFT_SESSION_COOKIE_NAME)?.value;
+	if (!session) return null;
+	const secrets = await getDraftModeSecrets();
+	if (!secrets || !(await isValidDraftSession(secrets.cookieSecret, session))) return null;
+	const perspective = parseDraftPerspective(context.cookies.get(perspectiveCookieName)?.value);
+	return { token: secrets.readToken, perspective };
+}
+
+function withMutableHeaders(response: Response): Response {
+	try {
+		response.headers.set('x-content-type-options', 'nosniff');
+		return response;
+	} catch {
+		return new Response(response.body, response);
+	}
+}
+
+function applySecurityHeaders(response: Response): Response {
+	const mutable = withMutableHeaders(response);
+	mutable.headers.set('x-content-type-options', 'nosniff');
+	const contentType = mutable.headers.get('content-type')?.toLowerCase() ?? '';
+	if (!contentType.includes('text/html')) return mutable;
+	for (const [name, value] of Object.entries(HTML_SECURITY_HEADERS)) {
+		if (!mutable.headers.has(name)) mutable.headers.set(name, value);
+	}
+	return mutable;
+}
+
+function disableCaching(context: APIContext, response: Response): Response {
+	if (context.cache.enabled) context.cache.set(false);
+	response.headers.set('cache-control', PRIVATE_CACHE_CONTROL);
+	response.headers.set('x-robots-tag', 'noindex');
+	return response;
+}
+
+function applyCachePolicy(context: APIContext, response: Response): void {
+	if (
+		context.cache.enabled &&
+		CACHEABLE_METHODS.includes(context.request.method) &&
+		isCacheableRoute(context.url.pathname) &&
+		isCacheableResponse(response)
+	) {
+		context.cache.set(response.status === 404 ? NOT_FOUND_CACHE_POLICY : PUBLISHED_CACHE_POLICY);
+	}
+}
+
+async function handleRequest(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	const { request, url, isPrerendered } = context;
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
 		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
@@ -128,25 +223,29 @@ function handleRequest(context: APIContext, next: MiddlewareNext) {
 		}
 	}
 
-	if (import.meta.env.PUBLIC_KEYSTATIC_MODE === 'local') {
-		return next();
-	}
+	if (isPrerendered) return next();
 
 	const sitemapRedirect = redirectSitemapAlias(request, url);
 	if (sitemapRedirect) return sitemapRedirect;
 
-	const { pathname, search } = context.url;
-
-	const apexEndpoint = apexEndpointFor(request, pathname);
-	if (apexEndpoint) return apexEndpoint(context);
-
-	for (const prefix of APEX_PREFIXES) {
-		if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-			return context.rewrite(`${BASE}${pathname}${search}`);
-		}
+	if (needsTrailingSlash(request, url.pathname)) {
+		return redirect(`${url.pathname}/${url.search}`, 308);
 	}
 
-	return next();
+	const draftMode = await resolveDraftMode(context);
+	if (!draftMode && isPreviewPageRequest(request, url)) {
+		const cleanUrl = new URL(url);
+		cleanUrl.searchParams.delete(PREVIEW_SEARCH_PARAM);
+		return redirect(`${cleanUrl.pathname}${cleanUrl.search}`, 307);
+	}
+
+	context.locals.sanity = createRequestContext(draftMode);
+
+	const apexEndpoint = apexEndpointFor(request, url.pathname);
+	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
+	if (draftMode) return disableCaching(context, response);
+	applyCachePolicy(context, response);
+	return response;
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {

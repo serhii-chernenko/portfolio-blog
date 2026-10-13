@@ -1,60 +1,59 @@
 ---
+import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
-import type { AnyPost } from '../lib/posts';
-import { tagSlug } from '../lib/posts';
-import { getTranslatedPostUrls, useTranslations, localeHref } from '../i18n/utils';
-import { getPagePath } from '../lib/pages';
+import type { Post } from '../lib/posts';
+import { getTranslatedPostUrls, tagSlug } from '../lib/posts';
+import type { TocHeading } from '../lib/portable-text';
+import { imageSrcSet, imageUrl } from '../lib/sanity/image';
+import { DEFAULT_OG_IMAGE_HEIGHT, DEFAULT_OG_IMAGE_WIDTH } from '../lib/og';
+import { useTranslations, localeHref } from '../i18n/utils';
 import BaseLayout from './BaseLayout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import Giscus from '../components/Giscus.astro';
 
 export interface Props {
-	post: AnyPost;
-	locale: Locale;
-	headings: { depth: number; slug: string; text: string }[];
-	translationKey?: string;
-	alternates?: Partial<Record<Locale, string | null>>;
+	post: Post;
+	headings: TocHeading[];
 	readingTime?: number;
 }
 
-const { post, locale, headings, translationKey, alternates, readingTime } = Astro.props;
+const HERO_ASPECT_RATIO = 16 / 9;
+const HERO_WIDTH = 1200;
+const HERO_HEIGHT = Math.round(HERO_WIDTH / HERO_ASPECT_RATIO);
+const HERO_SRCSET_WIDTHS = [640, 960, 1200, 1600, 2000];
+const HERO_SIZES = '(min-width: 1024px) 1024px, 100vw';
+
+const { post, headings, readingTime } = Astro.props;
+const locale: Locale = post.language;
 const t = useTranslations(locale);
-
-// Resolve translated URLs for language switcher
-let translatedUrls: Partial<Record<Locale, string | null>> | undefined;
-if (translationKey) {
-	translatedUrls = await getTranslatedPostUrls(translationKey);
-}
-
-const authorUrl = await getPagePath('about', locale);
-
-const isDraft = post.data.draft;
-const showDraft = isDraft && (import.meta.env.DEV || import.meta.env.PREVIEW_MODE === 'true');
-
-// Tags with computed slugs
-const tags = post.data.tags ?? [];
-
-const heroImage = post.data.heroImage;
-const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : undefined;
+const translatedUrls = getTranslatedPostUrls(post);
+const tags = post.tags;
+const heroImage = post.heroImage;
+const ogImage = heroImage
+	? imageUrl(heroImage, {
+			width: DEFAULT_OG_IMAGE_WIDTH,
+			height: DEFAULT_OG_IMAGE_HEIGHT,
+			format: 'jpg',
+		})
+	: undefined;
 ---
 
 <BaseLayout
-	title={post.data.title}
-	description={post.data.description}
+	title={post.title}
+	description={post.description}
 	locale={locale}
 	image={ogImage}
-	imageWidth={heroImage?.width}
-	imageHeight={heroImage?.height}
-	imageAlt={post.data.heroImageAlt || post.data.title}
+	imageWidth={ogImage ? DEFAULT_OG_IMAGE_WIDTH : undefined}
+	imageHeight={ogImage ? DEFAULT_OG_IMAGE_HEIGHT : undefined}
+	imageAlt={stegaClean(heroImage?.alt) || post.title}
 	type="article"
-	publishedAt={post.data.publishedAt}
-	updatedAt={post.data.updatedAt}
+	publishedAt={post.publishedAt}
+	updatedAt={post.updatedAt}
 	tags={tags}
-	alternates={alternates ?? translatedUrls}
+	alternates={translatedUrls}
 	translatedUrls={translatedUrls}
-	authorUrl={authorUrl}
 	pageType="post"
-	contentKey={post.data.translationKey}
+	contentKey={post.translationKey}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">
@@ -83,15 +82,15 @@ const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : unde
 
 			<div class="max-w-4xl space-y-6">
 				<!-- Draft badge -->
-				{showDraft && <span class="badge badge-warning">{t('post.draft')}</span>}
+				{post.isDraft && <span class="badge badge-warning">{t('post.draft')}</span>}
 
 				<div class="space-y-4">
 					<h1 class="max-w-5xl font-black tracking-tight text-balance text-4xl sm:text-5xl lg:text-6xl">
-						{post.data.title}
+						{post.title}
 					</h1>
-					{post.data.description && (
+					{post.description && (
 						<p class="max-w-3xl text-lg sm:text-xl leading-8 text-base-content/70">
-							{post.data.description}
+							{post.description}
 						</p>
 					)}
 				</div>
@@ -99,10 +98,10 @@ const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : unde
 				<!-- Meta badges -->
 				<div class="flex flex-wrap gap-2">
 					<time
-						datetime={post.data.publishedAt.toISOString()}
+						datetime={post.publishedAt.toISOString()}
 						class="badge badge-primary badge-outline badge-sm rounded-full"
 					>
-						{post.data.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
+						{post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
 							year: 'numeric',
 							month: 'long',
 							day: 'numeric',
@@ -125,18 +124,16 @@ const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : unde
 			</div>
 
 			<!-- Hero image -->
-			{post.data.heroImage && (
+			{heroImage && (
 				<div class="overflow-hidden rounded-box bg-base-300 shadow-sm">
 					<div class="relative aspect-video w-full">
 						<img
-							src={
-								typeof post.data.heroImage === 'string'
-									? post.data.heroImage
-									: post.data.heroImage.src
-							}
-							alt={post.data.heroImageAlt ?? post.data.title}
-							width={1200}
-							height={675}
+							src={imageUrl(heroImage, { width: HERO_WIDTH, height: HERO_HEIGHT })}
+							srcset={imageSrcSet(heroImage, HERO_SRCSET_WIDTHS, HERO_ASPECT_RATIO)}
+							sizes={HERO_SIZES}
+							alt={heroImage.alt ?? post.title}
+							width={HERO_WIDTH}
+							height={HERO_HEIGHT}
 							class="w-full h-full object-cover object-center"
 							loading="eager"
 							decoding="async"
@@ -152,11 +149,8 @@ const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : unde
 		<div class="lg:grid lg:grid-cols-[1fr_240px] lg:gap-12">
 			<!-- Main prose content -->
 			<div class="min-w-0">
-				<!-- Article body — Pagefind indexes this -->
 				<article
 					class="prose dark:prose-invert lg:prose-lg max-w-none"
-					data-pagefind-body
-					data-pagefind-meta={`locale:${locale}`}
 					lang={locale === 'uk' ? 'uk-UA' : 'en'}
 				>
 					<slot />
@@ -192,9 +186,14 @@ const ogImage = heroImage ? new URL(heroImage.src, Astro.site).toString() : unde
 						pre.setAttribute('data-enhanced', '1');
 						const lang = pre.getAttribute('data-language') || '';
 
+						const filename = pre.previousElementSibling?.classList.contains('code-filename')
+							? pre.previousElementSibling
+							: null;
+
 						const wrap = document.createElement('div');
 						wrap.className = 'code-block-wrap mockup-code w-full';
 						pre.parentNode?.insertBefore(wrap, pre);
+						if (filename) wrap.appendChild(filename);
 						wrap.appendChild(pre);
 
 						if (lang) {

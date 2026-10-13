@@ -1,0 +1,21 @@
+---
+import { stegaClean } from '@sanity/client/stega';
+import type { TypedObjectProps } from 'astro-portabletext/types';
+import { highlightCode } from '../../lib/highlighter';
+
+type Props = TypedObjectProps;
+
+interface CodeNode {
+	code?: string;
+	language?: string;
+	filename?: string;
+}
+
+const { node } = Astro.props;
+const { code = '', language, filename: rawFilename } = node as unknown as CodeNode;
+const filename = rawFilename ? stegaClean(rawFilename).trim() : '';
+const html = highlightCode(stegaClean(code), language ? stegaClean(language) : undefined);
+---
+
+{filename && <div class="code-filename">{filename}</div>}
+<Fragment set:html={html} />

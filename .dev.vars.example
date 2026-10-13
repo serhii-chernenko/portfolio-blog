@@ -5,8 +5,8 @@
 #   cp .dev.vars.example .dev.vars
 #
 # Both local commands read this one file (no `.env` involved):
-#   • pnpm dev          Astro dev server on the Node adapter (Keystatic local
-#                       editing needs fs). dotenv-cli loads this file into
+#   • pnpm dev          Astro dev server on the Node adapter (the email
+#                       template admin needs fs). dotenv-cli loads this file into
 #                       process.env: PUBLIC_* client vars are inlined via
 #                       astro:env/client, and server secrets are read via
 #                       astro:env/server (which reads process.env in dev).
@@ -18,10 +18,10 @@
 # Production never uses this file: runtime secrets are set via
 # `wrangler secret put <NAME>`; public/build vars come from CI env.
 #
-# NOT here: MAIL_FROM and PUBLIC_KEYSTATIC_GITHUB_APP_SLUG live in wrangler.jsonc
-# `vars` (exposed to local dev automatically). PUBLIC_KEYSTATIC_MODE is set
-# inline on the `pnpm dev` script only — it MUST stay unset for wrangler:dev and
-# production so the Worker uses base `/blog` + Keystatic GitHub mode.
+# NOT here: MAIL_FROM lives in wrangler.jsonc `vars` (exposed to local dev
+# automatically). ASTRO_NODE_DEV is set inline on the `pnpm dev` script only —
+# it MUST stay unset for wrangler:dev and production so the Worker build uses
+# the Cloudflare adapter.
 # =============================================================================
 
 # ── Runtime secrets — read from Astro.locals.runtime.env (dev) / wrangler (wrangler:dev) ──
@@ -34,13 +34,16 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 NEW_RELIC_LICENSE_KEY=
 
-# Keystatic GitHub mode — REQUIRED for `pnpm wrangler:dev` (the Worker runtime
-# can't use Keystatic local storage; only `pnpm dev` can). Get the values from
-# your GitHub App; see docs/KEYSTATIC.md. Same values are set in production via
-# `wrangler secret put`.
-KEYSTATIC_SECRET=
-KEYSTATIC_GITHUB_CLIENT_ID=
-KEYSTATIC_GITHUB_CLIENT_SECRET=
+# Optional — Sanity Viewer token. Enables draft mode / Visual Editing via the
+# Studio Presentation tool. Empty → only published content, draft mode disabled.
+SANITY_API_READ_TOKEN=
+
+# Optional — secret of the Sanity webhook that purges the Workers Cache.
+SANITY_WEBHOOK_SECRET=
+
+# Optional — HMAC key (32+ chars) signing the draft-session cookie. Draft mode
+# needs it together with SANITY_API_READ_TOKEN. Generate: openssl rand -hex 32
+DRAFT_MODE_COOKIE_SECRET=
 
 # ── Public build-time vars — inlined into the bundle via import.meta.env ──
 # All optional locally; features no-op when empty (comments widget, analytics).
@@ -58,7 +61,3 @@ PUBLIC_BING_SITE_VERIFICATION=
 
 # Cloudflare Web Analytics is auto-injected by Cloudflare's edge (auto-install
 # enabled for the serhiichernenko.com zone) — no token or env var needed here.
-
-# Show draft posts. Under `pnpm dev` drafts ALWAYS show (import.meta.env.DEV);
-# this flag only matters for `pnpm wrangler:dev` / preview builds. Leave empty otherwise.
-PREVIEW_MODE=

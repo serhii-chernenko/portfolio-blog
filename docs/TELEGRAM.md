@@ -8,15 +8,15 @@ There is no public bot for visitors. This is a one-bot-one-user setup: the bot s
 
 ## Events you get notified about
 
-| Event                       | Trigger                                  | Source                             |
-| --------------------------- | ---------------------------------------- | ---------------------------------- |
-| 📬 New pending subscriber   | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`       |
-| ✅ Subscriber confirmed     | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`         |
-| 🔔 Preferences changed      | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`     |
-| 📝 Preview deployed         | PR opened or pushed to                   | `.github/workflows/preview.yml`    |
-| 📝 New article PR opened    | PR labeled `new article` by auto-label   | `.github/workflows/auto-label.yml` |
-| ✅ Production deployed      | Push to `main` succeeded                 | `.github/workflows/deploy.yml`     |
-| ❌ Production deploy failed | Push to `main` failed                    | `.github/workflows/deploy.yml`     |
+| Event                       | Trigger                                  | Source                               |
+| --------------------------- | ---------------------------------------- | ------------------------------------ |
+| 📬 New pending subscriber   | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`         |
+| ✅ Subscriber confirmed     | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`           |
+| 🔔 Preferences changed      | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`       |
+| 📝 Preview deployed         | PR opened or pushed to                   | `.github/workflows/preview.yml`      |
+| 📝 New post published       | First publish of a post in Sanity        | `src/pages/api/sanity/revalidate.ts` |
+| ✅ Production deployed      | Push to `main` succeeded                 | `.github/workflows/deploy.yml`       |
+| ❌ Production deploy failed | Push to `main` failed                    | `.github/workflows/deploy.yml`       |
 
 Telegram is best-effort: HTTP failures and fetch/network exceptions are swallowed, so committed
 subscription state is never reported as a 500 because Telegram is down. Warnings are structured

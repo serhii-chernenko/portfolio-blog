@@ -1,31 +1,42 @@
 import { getPages } from './pages';
-import { getPublishedPosts, getTagsForLocale, tagSlug } from './posts';
+import { getPublishedPosts, getTagsForLocale } from './posts';
+import { createPublishedContext } from './sanity/request';
 import type { ContentKind, TelemetryLocale } from './telemetry-schema';
 
-const knownKeysByScope = new Map<string, Promise<Set<string>>>();
+const KNOWN_KEYS_TTL_MS = 5 * 60 * 1000;
+
+interface CachedKeys {
+	expiresAt: number;
+	keys: Promise<Set<string>>;
+}
+
+const knownKeysByScope = new Map<string, CachedKeys>();
 
 async function loadKnownKeys(kind: ContentKind, locale: TelemetryLocale): Promise<Set<string>> {
+	const sanity = createPublishedContext();
 	if (kind === 'post') {
-		const posts = await getPublishedPosts(locale);
-		return new Set(posts.map((post) => post.data.translationKey));
+		const posts = await getPublishedPosts(locale, sanity);
+		return new Set(posts.map((post) => post.translationKey));
 	}
 	if (kind === 'page') {
-		const pages = await getPages(locale);
-		return new Set(pages.map((page) => page.data.translationKey));
+		const pages = await getPages(locale, sanity);
+		return new Set(pages.map((page) => page.key));
 	}
-	const tags = await getTagsForLocale(locale);
-	return new Set(tags.map(({ tag }) => tagSlug(tag)));
+	const tags = await getTagsForLocale(locale, sanity);
+	return new Set(tags.map(({ slug }) => slug));
 }
 
 function knownKeysFor(kind: ContentKind, locale: TelemetryLocale): Promise<Set<string>> {
-	if (import.meta.env.DEV) return loadKnownKeys(kind, locale);
 	const scope = `${kind}:${locale}`;
-	let keys = knownKeysByScope.get(scope);
-	if (!keys) {
-		keys = loadKnownKeys(kind, locale);
-		knownKeysByScope.set(scope, keys);
-		keys.catch(() => knownKeysByScope.delete(scope));
-	}
+	const now = Date.now();
+	const cached = knownKeysByScope.get(scope);
+	if (cached && cached.expiresAt > now) return cached.keys;
+	const keys = loadKnownKeys(kind, locale);
+	const entry: CachedKeys = { expiresAt: now + KNOWN_KEYS_TTL_MS, keys };
+	knownKeysByScope.set(scope, entry);
+	keys.catch(() => {
+		if (knownKeysByScope.get(scope) === entry) knownKeysByScope.delete(scope);
+	});
 	return keys;
 }
 

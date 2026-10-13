@@ -1,13 +1,13 @@
 # Email templates — local visual editor
 
 Notion-style WYSIWYG editor for transactional email templates, built on
-`@react-email/editor` and modeled on the existing Keystatic-for-blog flow.
+`@react-email/editor` and available only in the local dev server.
 
 ## Quick start
 
 ```bash
 pnpm dev
-# open http://127.0.0.1:4321/admin/emails
+# open http://localhost:4321/blog/admin/emails
 ```
 
 The list page shows all templates in `src/emails/`. Click one to open the
@@ -22,10 +22,10 @@ editor, edit, click **Save**. Click **New template** to create one.
 - **Editor**: `src/components/EmailEditorIsland.tsx` mounts `<EmailEditor>`
   as a React island (`client:only="react"` — TipTap needs DOM).
 - **API**: `src/pages/api/emails/templates*` provides REST CRUD. All routes
-  are guarded by `PUBLIC_KEYSTATIC_MODE === 'local'`, so they 403 in
-  production (the Cloudflare Worker doesn't have `fs` anyway).
+  are guarded by `import.meta.env.DEV` (true only under `astro dev`), so they
+  403 in production (the Cloudflare Worker doesn't have `fs` anyway).
 - **CSRF**: Astro 6 blocks cross-origin mutating requests. Browsers send
-  `Origin` automatically; curl needs `-H 'origin: http://127.0.0.1:4321'`.
+  `Origin` automatically; curl needs `-H 'origin: http://localhost:4321'`.
 
 ## Variables
 

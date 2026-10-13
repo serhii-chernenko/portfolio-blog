@@ -10,6 +10,7 @@ export const KEY_LOCATION = `${SCOPE_PREFIX}${INDEXNOW_KEY}.txt`;
 export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
 export const BATCH_SIZE = 10_000;
 export const MAX_SITEMAP_DEPTH = 3;
+export const CACHE_BUST_PARAM = 'indexnow';
 
 const SUCCESS_STATUSES = new Set([200, 202]);
 const STATUS_MEANINGS = new Map([
@@ -66,6 +67,15 @@ export function isInScope(url) {
 	return url.startsWith(SCOPE_PREFIX);
 }
 
+let cacheBustSequence = 0;
+
+export function cacheBustedUrl(url) {
+	const busted = new URL(url);
+	cacheBustSequence += 1;
+	busted.searchParams.set(CACHE_BUST_PARAM, `${Date.now()}-${cacheBustSequence}`);
+	return busted.toString();
+}
+
 async function fetchText(url, fetchFn) {
 	const response = await fetchFn(url);
 	if (!response.ok) {
@@ -78,7 +88,7 @@ export async function fetchSitemapEntries(indexUrl, fetchFn = fetch, depth = 0) 
 	if (depth > MAX_SITEMAP_DEPTH) {
 		throw new Error(`Sitemap nesting deeper than ${MAX_SITEMAP_DEPTH} at ${indexUrl}`);
 	}
-	const xml = await fetchText(indexUrl, fetchFn);
+	const xml = await fetchText(cacheBustedUrl(indexUrl), fetchFn);
 	if (!isSitemapIndex(xml)) {
 		return parseUrlset(xml);
 	}

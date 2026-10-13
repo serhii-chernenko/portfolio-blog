@@ -1,13 +1,5 @@
-const WPM = 220;
+const WORDS_PER_MINUTE = 220;
 
-export function readingTimeMinutes(text: string): number {
-	const words = text
-		.replace(/```[\s\S]*?```/g, ' ')
-		.replace(/`[^`]*`/g, ' ')
-		.replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
-		.replace(/\[[^\]]*\]\([^)]+\)/g, ' ')
-		.replace(/[#>*_~\-]/g, ' ')
-		.split(/\s+/)
-		.filter(Boolean).length;
-	return Math.max(1, Math.round(words / WPM));
+export function readingTimeMinutes(wordCount: number): number {
+	return Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE));
 }

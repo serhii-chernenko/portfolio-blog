@@ -1,342 +1,113 @@
-# Writing articles — the Keystatic flow
+# Writing articles — the Sanity flow
 
-This blog uses [Keystatic](https://keystatic.com) as a git-backed CMS. Posts are Markdoc files (`.mdoc`) committed to the repo.
+Content is managed in [Sanity Studio](https://serhiichernenko-blog.sanity.studio). Posts, pages, menus and site copy live in the Sanity dataset, not in the repo: there are no content files to commit, and publishing never needs a site deploy.
 
-**The CMS runs locally only.** It's mounted at:
-
-- <http://127.0.0.1:4321/keystatic> (when running `pnpm dev`)
-- <http://127.0.0.1:4321/blog/keystatic> (when running `pnpm wrangler:dev`)
-
-There is **no `/keystatic` route in production**. The integration isn't even bundled into the prod build — visiting `chernenko.digital/blog/keystatic` returns 404, by construction.
-
-Why local-only:
-
-1. **Security.** Without a deployed admin auth gate, anyone hitting `/keystatic` could read or modify content. Keeping it off prod removes that entire class of risk.
-2. **Crawlers.** No public CMS URL means nothing for search engines to index or leak.
-3. **Keystatic's React UI** hardcodes its API at root-relative `/api/keystatic/...` and doesn't support a base path, so it can't coexist cleanly with our production `/blog/*` mount anyway.
-
-You write content locally → commit and push → CI deploys the post to production. The PR workflow gives you an auto-labeled preview URL before merge.
+Open the Studio at <https://serhiichernenko-blog.sanity.studio> and sign in with your Sanity account. To run it locally instead, see [`SANITY.md`](./SANITY.md#local-development). Architecture, deploys and caching are also covered there.
 
 ---
 
 ## TL;DR — the happy path
 
-1. `pnpm dev` (or `pnpm wrangler:dev` if you want full prod-parity preview)
-2. Open <http://127.0.0.1:4321/keystatic>
-3. Click **Posts (English)** → **Add Post**
-4. Type a title — slug auto-generates
-5. Fill in description, tags, hero image (optional), translationKey
-6. Write the body using the WYSIWYG editor. Paste images directly. Embed YouTube via the `youtube` tag. Use `callout` for highlighted notes
-7. Toggle **Draft** off when you're ready to publish
-8. Hit **Save** — Keystatic writes the `.mdoc` file to disk and the dev server hot-reloads
-9. `git add` + `git commit` + `git push` (or open a PR for review)
-10. Merge to `main` — CI deploys to production
+1. Open the Studio → **Posts** → **English** → **Create new** (or use the `+` button).
+2. Fill in title, slug (click **Generate**), description, published at, tags.
+3. Add a hero image and its alt text (optional).
+4. Write the body. Paste images, add code blocks, callouts, YouTube embeds.
+5. Switch to the **Presentation** tool to preview the draft on the real site.
+6. Click **Publish**. The site refreshes within seconds.
+7. To add a Ukrainian version, use the **language menu** on the English post → create the translation → write it → publish.
 
 ---
 
-## Writing flow
+## Creating a post
 
-```bash
-pnpm dev
-# in another window — open the browser
-open http://127.0.0.1:4321/keystatic
-```
+Posts are listed per language under **Posts** (English, Українська) and in **All posts**. Create a post in the language you are writing; the language is assigned by the list you create it from and cannot be edited afterwards.
 
-In Keystatic's left sidebar:
+| Field                   | What it does                                                                                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title**               | Required, up to 120 characters. Used for the `<h1>`, `<title>`, OG tags and RSS.                                                               |
+| **Slug**                | Click **Generate** to derive it from the title. Lowercase letters, numbers and hyphens only. Becomes `/blog/{locale}/posts/{slug}`.            |
+| **Description**         | Required, 50–200 characters. Shows in post listings, RSS, OG and the meta description.                                                         |
+| **Published at**        | Required. A date in the future keeps a published post hidden until that time (see [Drafts and scheduling](#drafts-publishing-and-scheduling)). |
+| **Updated at**          | Optional. Set it for meaningful edits; it shows as "Updated …" on the post page.                                                               |
+| **Tags**                | Free-form labels, one per row. Each tag gets a page at `/blog/{locale}/tags/{slug}`, where the slug is derived from the tag text.              |
+| **Hero image**          | Optional. Upload or drag in an image; use the hotspot/crop controls to choose the focal point. Cropped to 16:9 in cards and OG images.         |
+| **Hero image alt text** | Fill it in whenever a hero image is set. Describe what is actually in the image.                                                               |
+| **Body**                | The article — see [Writing the body](#writing-the-body).                                                                                       |
 
-- **Posts (English)** → English collection
-- **Статті (Українською)** → Ukrainian collection
-
-Both are independent collections. They share the same schema. They're linked by the **Translation Key** field (see below).
-
-### Creating a new post
-
-Click the collection, then **+ Add Post**. You'll see a form with:
-
-| Field                   | What it does                                                                                                                                                                                                                                                |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Title**               | The post title. Used in the URL slug, `<h1>`, `<title>`, OG tags.                                                                                                                                                                                           |
-| **Slug**                | Auto-generated from the title. You can override. Becomes the URL: `/blog/{locale}/posts/{slug}`.                                                                                                                                                            |
-| **Translation Key**     | A short identifier used for cross-language pairing. Use the **same** key only for true translations. For an unpaired post, use a locale-prefixed unique key such as `en-osprey-cameras` or `uk-miski-notatky`. Used for hreflang and the language switcher. |
-| **Description**         | 50–200 chars. Shows in post listings, RSS, OG, and meta description.                                                                                                                                                                                        |
-| **Published at**        | ISO datetime. Posts dated in the future are hidden until that time passes (production only).                                                                                                                                                                |
-| **Updated at**          | Optional. Set when you make a meaningful edit. Shows as "Updated …" on the post page.                                                                                                                                                                       |
-| **Tags**                | One tag per row. Tags become DaisyUI chips, and each gets its own page at `/blog/{locale}/tags/{slug}`.                                                                                                                                                     |
-| **Hero image**          | Optional. Drag-drop or paste an image. Keystatic writes it to `src/assets/posts/`.                                                                                                                                                                          |
-| **Hero image alt text** | Required for accessibility when a hero image is set.                                                                                                                                                                                                        |
-| **Draft**               | Checkbox. While checked, the post is invisible in production but visible in local dev and on PR preview URLs.                                                                                                                                               |
-| **Content**             | The article body — see "Writing the body" below.                                                                                                                                                                                                            |
-
-Click **Save**. Locally, this writes a `.mdoc` file in `src/content/posts/{locale}/`. The dev server hot-reloads. Open the post URL to verify it looks right.
-
-### Committing
-
-Keystatic saves to disk, not to git. When you're done iterating:
-
-```bash
-git add src/content/posts/ src/assets/posts/
-git commit -m "post: hello world"
-git push -u origin main         # if you're on main and confident
-# OR
-git checkout -b post/hello-world
-git push -u origin post/hello-world
-# then open a PR → auto-labeled `new article`, gets a preview deploy
-```
-
-The PR workflow gives you a public preview URL and CI checks before merging. Use it for anything non-trivial.
+The Studio validates required fields and length limits and blocks publishing until they pass.
 
 ---
 
-## Publishing flow (after you've saved in Keystatic locally)
+## Writing the body
 
-Keystatic writes to disk, not to git. When you're done iterating:
+The body is a rich-text editor (Portable Text). Use the toolbar and the **+** insert menu.
 
-### Option A — straight to main (low-risk drafts, typo fixes)
+### Text and headings
 
-```bash
-git add src/content/posts/ src/assets/posts/
-git commit -m "post: hello world"
-git push
-```
-
-The `deploy.yml` workflow rebuilds and deploys to production. Telegram pings you on success/failure.
-
-### Option B — PR with preview deploy (recommended for new posts)
-
-```bash
-git checkout -b post/hello-world
-git add src/content/posts/ src/assets/posts/
-git commit -m "post: hello world"
-git push -u origin post/hello-world
-```
-
-Open a PR on GitHub. The CI workflows do the rest:
-
-- `auto-label.yml` tags the PR `new article` (or `edit article`). A Telegram notification fires for new articles.
-- `preview.yml` builds with `PREVIEW_MODE=true` (drafts visible!) and deploys to `blog-pr-{number}.<your-cf-subdomain>.workers.dev`. The preview URL is commented on the PR.
-- Open the preview URL. Verify the post looks right with real production styling, hreflang, etc.
-- When happy, merge the PR. `deploy.yml` redeploys main. `preview-cleanup.yml` tears down the preview Worker.
-
-Total: a couple commits, ~2 min until preview is up, 1 click to merge, ~2 min until prod.
-
----
-
-## Writing the body — Markdoc cheat sheet
-
-The Content field is a WYSIWYG editor backed by [Markdoc](https://markdoc.dev). It saves to a `.mdoc` file that looks like markdown with some extensions.
-
-### Inline formatting
-
-The toolbar has the usual: bold, italic, link, inline code, lists, headings (H2/H3), blockquotes.
-
-Keyboard shortcuts: `Cmd/Ctrl-B` (bold), `Cmd/Ctrl-I` (italic), `Cmd/Ctrl-K` (link).
-
-### Code blocks
-
-Insert via **Insert** → **Code block**, or type ` ``` ` then a language identifier:
-
-````markdown
-```ts
-import { something } from 'somewhere';
-```
-````
-
-Languages we use most: `ts`, `tsx`, `js`, `jsx`, `astro`, `bash`, `sh`, `json`, `jsonc`, `yaml`, `toml`, `sql`, `html`, `css`, `mdx`.
-
-Output: dual-theme Shiki syntax highlighting (GitHub Light / GitHub Dark, switches with the page theme), with a language badge top-right and a copy button on hover.
-
-### Callouts
-
-Four variants — `info`, `tip`, `warn`, `danger`:
-
-```markdoc
-{% callout type="tip" %}
-You can mark important context here. Inline **markdown** works inside callouts.
-{% /callout %}
-```
-
-In the Keystatic editor: **Insert** → **Callout**, pick the type.
-
-### YouTube embeds
-
-Privacy-friendly nocookie embed:
-
-```markdoc
-{% youtube id="dQw4w9WgXcQ" title="Optional title" /%}
-```
-
-In the editor: **Insert** → **YouTube**, paste the video ID (the `v=` parameter from a YouTube URL).
-
-### Images inline
-
-Drag a file into the editor, or paste from clipboard (Cmd/Ctrl-V works with screenshots and copied images). Keystatic uploads to `src/assets/posts/`, inserts a markdown image reference.
+- Styles: Normal, Heading 2, Heading 3, Heading 4, Quote.
+- Lists: bullet and numbered.
+- Marks: strong, emphasis, inline code, strike-through, link.
+- **H1 is reserved for the post title** — it is not offered in the editor. Use H2 for sections and H3/H4 for subsections. The table of contents is built from H2 and H3 automatically and appears when there are 3 or more.
 
 ### Links
 
-`Cmd/Ctrl-K` opens the link dialog. Internal links can be absolute (`/blog/en/about`) — they get the `/blog` base path baked in already. External links open in the same tab by default.
+Select text and add a link. Internal links can be relative (`/blog/en/about`), or `mailto:` / `https:` URLs. Tick **Open in new tab** for external links.
 
-### Headings
+### Images
 
-Use H2 for top-level sections and H3 for subsections. **H1 is reserved for the post title** — don't use it in the body. The TOC sidebar shows H2 and H3 automatically when there are 3+ of them.
+Insert an **Image** block, upload the file and choose the hotspot. **Alternative text is required**; the caption is optional and renders as a figure caption. Images are served from the Sanity image CDN with responsive sizes, so upload the highest quality you have and avoid pre-compressing.
 
----
+### Code blocks
 
-## Slug vs Translation Key — what each is for
+Insert a **Code** block, pick the language and optionally add a filename. Available languages: JavaScript, TypeScript, JSON, Shell, SQL, HTML, CSS and Plain text. Output is dual-theme Shiki highlighting (GitHub Light / GitHub Dark, follows the page theme) with a language badge and a copy button on hover.
 
-Three things that look related but do different jobs.
+### Callouts
 
-### **`slug`** — the URL and the filename
+Insert a **Callout** block and choose a tone: `info`, `tip`, `warn` or `danger`. The callout body supports normal paragraphs, bullet and numbered lists, strong, emphasis, inline code and links.
 
-There's no `slug:` line in your frontmatter. **The slug IS the filename** (without the `.mdoc` extension). When you set the "Slug" field in Keystatic, it renames the file on disk.
+### YouTube embeds
 
-| What you do                                                | Result                                             |
-| ---------------------------------------------------------- | -------------------------------------------------- |
-| File `src/content/posts/en/hello-world.mdoc`               | URL becomes `/blog/en/posts/hello-world/`          |
-| Rename to `src/content/posts/en/why-i-moved-to-astro.mdoc` | URL becomes `/blog/en/posts/why-i-moved-to-astro/` |
-| In Keystatic UI, change Slug → "moved-to-astro" + save     | File renamed to `moved-to-astro.mdoc`, URL updates |
-
-**The slug is local to each language directory.** Two files at:
-
-- `src/content/posts/en/hello-world.mdoc` → `/blog/en/posts/hello-world/`
-- `src/content/posts/uk/hello-world.mdoc` → `/blog/uk/posts/hello-world/`
-
-…are _different posts_ that happen to share a slug. The locale folder is part of the address.
-
-### **`translationKey`** — pairs one post with its translation
-
-This is a separate frontmatter field. It's an arbitrary string that you set the **same** on the EN and UK versions of the same post. It's how the system knows they're translations of each other.
-
-```yaml
-# en/astro-on-cloudflare.mdoc
-title: Astro on Cloudflare
-translationKey: astro-on-cloudflare
-```
-
-```yaml
-# uk/astro-na-cloudflare.mdoc
-title: Astro на Cloudflare
-translationKey: astro-on-cloudflare # SAME as the EN version
-```
-
-Note the slugs differ (`astro-on-cloudflare` vs `astro-na-cloudflare`) — that's fine and expected. The `translationKey` is what links them.
-
-Recommended convention:
-
-- For true translations, use one shared semantic key, often the English slug: `astro-on-cloudflare` in both files.
-- For a post that is not paired, prefix a unique key with its locale: `en-notes-on-osprey-cameras` or `uk-zustrich-z-leshchenkom`.
-
-The prefix matters because slugs are only unique _within_ a locale directory. An unrelated EN and UK post can legitimately share a slug; a bare slug reused as `translationKey` would falsely pair them in the language switcher and hreflang metadata.
-
-### What the `translationKey` actually does
-
-| Feature                                                          | Behavior                                                                                                                              |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Language switcher (header dropdown) on an EN post                | If a UK post with the same `translationKey` exists, choosing Ukrainian navigates to that exact post. If not, it falls back to `/uk/`. |
-| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when a UK translation exists, so SEO doesn't claim a translation that isn't there.                                       |
-| Sitemap                                                          | Groups EN and UK URLs as alternates of the same logical article.                                                                      |
-
-The field is required by the content schema. When its value is unique, the language switcher goes to the other locale's home page and no cross-language alternate is emitted.
+Insert a **YouTube** block and paste the video ID (the `v=` value of the YouTube URL). Add an optional title. Embeds use the privacy-friendly `youtube-nocookie.com` domain.
 
 ---
 
-## Posts that exist in only one language
+## Translations
 
-Completely fine. The system is designed to handle it.
+Every post and page is one document per language. Translations are linked through the **language menu** in the document pane (at the top of the editor):
 
-### Case 1 — you write an EN post, no UK version planned
+1. Open the English post and use the language menu → pick **Українська** → create the translation.
+2. The Studio creates a Ukrainian document linked to the English one. Translate the fields (title, slug, description, tags, body, hero alt text) and publish.
 
-```yaml
-# en/notes-on-osprey-cameras.mdoc
-title: Notes on Osprey cameras
-translationKey: en-notes-on-osprey-cameras # locale-prefixed — no UK counterpart
-```
+The slug is local to a language: `/blog/en/posts/hello-world` and `/blog/uk/posts/hello-world` are different documents that can share a slug, and a translation usually has its own (`astro-on-cloudflare` ↔ `astro-na-cloudflare`).
 
-Behavior:
+### What the translation link does
 
-- URL: `/blog/en/posts/notes-on-osprey-cameras/`
-- Language switcher on this page: the Ukrainian option goes to `/blog/uk/` (the UK home), since no UK translation exists.
-- Hreflang: only `en` and `x-default` emitted. No `uk-UA` alternate.
-- Sitemap: just the EN entry.
+| Feature                                                          | Behavior                                                                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Language switcher (header dropdown) on an English post           | If a Ukrainian translation exists, choosing Ukrainian opens that exact post. If not, it falls back to `/blog/uk/`. |
+| `<link rel="alternate" hreflang="uk-UA" href="...">` in `<head>` | Emitted only when the translation exists, so SEO never claims a translation that isn't there.                      |
+| Sitemap                                                          | Lists each language URL with its alternates.                                                                       |
 
-### Case 2 — you write a UK-only post, no EN version
+### Posts that exist in only one language
 
-```yaml
-# uk/zustrich-z-leshchenkom.mdoc
-title: Зустріч із Лещенком
-translationKey: uk-zustrich-z-leshchenkom # locale-prefixed — no EN counterpart
-```
+Fine — the blog is bilingual, not parallel. Create the post from the list of the language you want and simply do not create a translation. The language switcher on that post goes to the other language's home page, only that language's `hreflang` (and `x-default`) is emitted, and the sitemap lists a single entry. If you translate it later, use the language menu on the existing post; both sides cross-link as soon as the translation is published.
 
-Same as Case 1, mirrored. The English option from this post goes to `/blog/en/`.
-
-**What to put in `translationKey` when the post is single-language:**
-
-Pick a unique value that cannot collide with an unrelated post in the other locale. Use `<locale>-<slug>` for every unpaired post.
-
-```yaml
-# uk-only post — locale-prefixed unique key
-title: Зустріч із Лещенком # the "name" of the slug field
-translationKey: uk-zustrich-z-leshchenkom
-```
-
-Filename and slug remain `zustrich-z-leshchenkom`; only the internal pairing key gets the `uk-` prefix.
-
-### Case 3 — you publish EN first, write UK later
-
-Day 1, EN first, with a UK translation already planned:
-
-```yaml
-# en/astro-on-cloudflare.mdoc
-translationKey: astro-on-cloudflare
-```
-
-Day 30, you decide to write the UK version. Create a new file in `uk/`, use the **same** `translationKey`:
-
-```yaml
-# uk/astro-na-cloudflare.mdoc
-translationKey: astro-on-cloudflare # same as the EN file
-```
-
-Next build, the language switcher on both posts now cross-links to the other. Hreflang gets emitted on both. No retroactive changes needed on the EN file.
-
-If the original post used an unpaired key such as `en-astro-on-cloudflare`, change both files to one shared key when you intentionally create the translation. Never give unrelated posts a shared key merely because their slugs match.
-
-### Case 4 — different topics in each language
-
-Totally fine. Your blog is bilingual, not parallel. Most posts may be EN-only, some UK-only, and some true translations. Use locale-prefixed keys for the independent posts and shared keys only for the true translations.
+Write translations whenever you like; publishing one language never waits for the other.
 
 ---
 
-## Quick reference table
+## Drafts, publishing and scheduling
 
-| Field                  | Where it lives                          | What it controls            | Example for EN post | Example for UK translation of that post | Example for UK-only post             |
-| ---------------------- | --------------------------------------- | --------------------------- | ------------------- | --------------------------------------- | ------------------------------------ |
-| Filename               | `src/content/posts/{en,uk}/<slug>.mdoc` | The URL slug                | `hello-world.mdoc`  | `pryvit-svit.mdoc`                      | `zustrich-z-leshchenkom.mdoc`        |
-| `title:` (frontmatter) | Inside the `.mdoc` file                 | Display title (h1, OG, RSS) | `Hello, world`      | `Привіт, світ`                          | `Зустріч із Лещенком`                |
-| `translationKey:`      | Inside the `.mdoc` file                 | Cross-language pairing      | `hello-world`       | `hello-world` ← SAME                    | `uk-zustrich-z-leshchenkom` ← unique |
+| State                                             | Behavior                                                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Draft** (never published, or unpublished edits) | Only visible in the Studio and in Presentation preview. Not on the site, RSS, sitemap or search.     |
+| **Published**, `publishedAt` in the past          | Live: post lists, post URL, tag pages, RSS, sitemap, search.                                         |
+| **Published**, `publishedAt` in the future        | Hidden everywhere on the public site (post URL returns 404) until that time, but visible in preview. |
 
----
-
-## Writing both translations
-
-You don't have to write them at the same time. Publish whichever is ready, write the other later — just remember to reuse the `translationKey`. The cross-linking activates automatically once both exist.
-
----
-
-## Drafts and future-dated posts
-
-`Draft: true` and `publishedAt` in the future both mean **not yet published**.
-
-| Where                                           | Behavior                                                                                                          |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Local dev (`pnpm dev`, `pnpm wrangler:dev`)     | All drafts and future posts visible                                                                               |
-| Preview deploy (PR Worker, `PREVIEW_MODE=true`) | All drafts and future posts visible                                                                               |
-| Production (`main` branch deployed)             | Drafts and future-dated posts filtered out everywhere: post lists, individual URLs (404), RSS, sitemap, tag pages |
-
-Useful patterns:
-
-- **Schedule a post**: set `publishedAt` to a future datetime, `draft: false`, push to main. The post will go live at that exact time on the next deploy after that timestamp. (Note: this doesn't auto-redeploy at the timestamp — the next push to main triggers it. For an actual auto-publish, look at the Phase 2 "Scheduled posts" cron in the plan.)
-- **WIP article**: keep `draft: true`, push to main, share the preview URL. Drafts on `main` are still hidden in prod.
-- **Verify draft filtering**: the seed `draft-example.mdoc` exists to prove drafts don't leak. After production deploy, hitting `/blog/en/posts/draft-example/` should 404.
+- **Publish** makes the document live; a webhook purges the site cache so it appears within seconds.
+- **Schedule a post**: publish it with `publishedAt` in the future. It becomes visible once the cached pages expire after that time, up to about an hour later (see [`SANITY.md`](./SANITY.md#revalidation)). For an exact moment, publish when you want it live.
+- **Edit a live post**: changes stay in a draft until you click **Publish** again; readers keep seeing the published version meanwhile.
+- **Unpublish** takes a post down without deleting it.
 
 ---
 
@@ -344,115 +115,56 @@ Useful patterns:
 
 Same editor, same fields. Two notes:
 
-- **Set `updatedAt`** when the change is meaningful (re-published, factual correction, expanded section). For typo fixes, leave it alone.
-- **Don't change the slug** of a published post unless you also add a redirect — old links will 404 otherwise. Slug changes are noisy; if you must, push the renamed file and add a redirect in `astro.config.mjs` `redirects:`.
-
-In GitHub mode, editing creates a new commit on the same `post/<slug>` branch (or a new branch if you create a new post). The auto-label workflow tags the PR `edit article` instead of `new article`.
+- **Set `updatedAt`** when the change is meaningful (factual correction, expanded section). For typo fixes, leave it alone.
+- **Don't change the slug** of a published post unless you accept that old links will 404 — there are no automatic redirects.
 
 ---
 
-## Auto-labeling for PRs
+## Pages (about, privacy, support)
 
-The `.github/workflows/auto-label.yml` workflow inspects every PR and applies exactly one of:
-
-| Label          | When                                                                  |
-| -------------- | --------------------------------------------------------------------- |
-| `new article`  | PR adds a new file under `src/content/posts/**` (no dev file changes) |
-| `edit article` | PR only modifies existing posts (no dev files)                        |
-| `dev`          | PR only touches non-content files                                     |
-| `mixed`        | Both content and dev files changed — consider splitting               |
-
-This is just for your sanity when reviewing the PR queue. The actual gate to publish is still merging the PR.
-
-`new article` PRs also fire a Telegram notification to you. The others don't.
+Static pages live under **Pages**. Each has a `key` (`about`, `privacy`, `support`) that stays the same in every language, a localized title, slug, description and body. Menus and code link to pages by key, so you can change a slug without breaking the menus. Avoid slugs that clash with site routes; the Studio rejects reserved ones (`posts`, `tags`, `subscribe`, `api`, …). The full list is in [`SANITY.md`](./SANITY.md#pages-key-and-reserved-slugs).
 
 ---
 
-## Images: where they go, how big they get
+## Menus and site settings
 
-Keystatic writes images to `src/assets/posts/`. They're committed to the repo as part of the post's PR. Astro serves them as static assets at `/blog/_astro/<hash>.{ext}`.
+**Navigation** has four documents — header and footer, each in English and Ukrainian. Each item has:
 
-Practical implications:
+- a **label**,
+- a **link type**: _internal_ (pick a post or page in the same language), _route_ (`home`, `posts`, `tags`, `subscribe`, `rss`) or _external_ (a URL),
+- an optional **icon** (`rss`, `github`, `support`) and **open in new tab**.
 
-- ✅ Zero infrastructure (no R2, no Cloudinary). Just git.
-- ⚠️ Repo size grows with every image. ~50 KB per typical screenshot, more for photos. For a personal blog, this is fine for years.
-- ⚠️ Big photos (multi-MB) shouldn't go in git. Compress before uploading. ImageOptim or `pnpx @squoosh/cli` can help.
-- 🔜 When repo size becomes painful (Phase 2 trigger: >500 MB or >300 image-heavy posts), the migration path is in `blog-build-plan.md` §17 — Keystatic Cloud Images or a custom R2 upload handler.
+Reorder items by dragging them. **Site settings** (per language) holds the site name, tagline, meta description, home hero and about copy, and the default OG image. Empty fields fall back to the defaults in `src/i18n/ui.ts`.
+
+These are single documents that always exist; edit and publish them like any other.
 
 ---
 
-## Cheat sheet — frontmatter as raw YAML
+## Previewing
 
-If you ever edit a `.mdoc` file directly in your editor instead of Keystatic, this is the shape:
+Use the **Presentation** tool in the Studio. It loads the real site in a frame, shows your draft (including unpublished and future-dated posts), and lets you click text on the page to jump to the field. Setup, security and caching details are in [`SANITY.md`](./SANITY.md#visual-editing--draft-mode).
 
-````mdoc
----
-title: A Practical Title
-slug: a-practical-title
-translationKey: a-practical-title
-description: A 50-to-200-character summary that's also the meta description and RSS excerpt.
-publishedAt: 2026-05-19T09:00:00.000Z
-updatedAt: 2026-06-01T12:00:00.000Z
-tags:
-  - engineering
-  - astro
-heroImage: ../../../assets/posts/hero.jpg
-heroImageAlt: Description of the hero for screen readers
-draft: false
----
-
-# DO NOT WRITE H1 HERE — the title above becomes the H1 on the page.
-
-Open with one paragraph that previews what the post is about.
-
-## First section
-
-Body…
-
-{% callout type="tip" %}
-A tip callout.
-{% /callout %}
-
-```ts
-const code = 'goes here';
-````
-
-{% youtube id="abc123" /%}
-
-```
-
-The Zod schema in `src/content.config.ts` validates this at build time. If the build fails with a content error, the message points to the exact field.
+Draft mode needs the `SANITY_API_READ_TOKEN` and `DRAFT_MODE_COOKIE_SECRET` secrets to be set on the Worker. Preview responses are never cached or indexed.
 
 ---
 
 ## Troubleshooting
 
-**`/blog/keystatic` returns 404 under `pnpm dev`.**
-Expected. `pnpm dev` serves at root, so Keystatic is at `/keystatic` (no `/blog/` prefix). The `/blog/keystatic` path is only valid under `pnpm wrangler:dev` and in production.
+**Post is published but not on the site.**
 
-**`/keystatic` page is blank (white).**
-Usually means the React UI failed to hydrate. Open browser devtools console — most likely an API call to `/api/keystatic/...` 404'd. Confirm you're running `pnpm dev` (which sets `PUBLIC_KEYSTATIC_MODE=local`), not `astro dev` directly without the flag.
+1. Is `publishedAt` in the future? Future-dated posts stay hidden until that time (plus up to an hour of cache).
+2. Is the language right? Posts only appear under their own language.
+3. Is the slug set? Posts without a slug are not served.
+4. Check the webhook delivery log (see [`SANITY.md`](./SANITY.md#troubleshooting)). Without a successful webhook the site refreshes by cache TTL, up to an hour.
 
-**Save in Keystatic does nothing (local).**
-Check the `pnpm dev` terminal for an error. Usually a permission issue on `src/content/posts/` or `src/assets/posts/`. `chmod -R u+w` the dirs.
+**Language switcher links to the home page instead of the translated post.**
+The translation isn't linked. Create it from the language menu of the original post rather than as a standalone document.
 
-**Post visible on prod even though it's marked `draft: true`.**
-Check `src/lib/posts.ts` — the `getPublishedPosts` helper filters drafts based on `import.meta.env.DEV` and `import.meta.env.PREVIEW_MODE`. If neither is set, drafts should be hidden. Confirm `PREVIEW_MODE` is **not** baked into your production build (only the preview workflow sets it).
+**"Slug already exists" when creating a post.**
+Two posts can't share a slug within the same language. Pick a different one.
 
-**Post not appearing on prod even though `draft: false` and `publishedAt` is in the past.**
-1. Did you push and merge to `main`?
-2. Did the `deploy.yml` workflow succeed? Check Actions tab.
-3. Cloudflare cache. `wrangler deployments list` to see if the new deploy is live. Try a hard refresh (Cmd/Ctrl-Shift-R) or check the response `cf-cache-status` header.
+**Presentation preview is blank or asks to log in.**
+See the Presentation entry in [`SANITY.md`](./SANITY.md#troubleshooting).
 
-**Translation key mismatch — language switcher links to the home page instead of the translated post.**
-The `translationKey` values in both files don't match. Open both `.mdoc` files, compare the `translationKey:` field. They must be byte-for-byte identical.
-
-**Markdoc tag isn't rendering.**
-The tag isn't registered. Check `markdoc.config.mjs` — only `youtube` and `callout` are wired up. To add a new one, register it in `markdoc.config.mjs` and create the corresponding component in `src/components/markdoc/`.
-
-**Image upload fails in Keystatic (local).**
-The `directory` in `keystatic.config.ts` is `src/assets/posts` and the `publicPath` is `/src/assets/posts/`. If you moved the assets dir, update both. The directory must exist (we keep `src/assets/posts/.gitkeep` to ensure it does).
-
-**"Slug already exists" when creating a new post.**
-Two posts can't share a slug within the same locale (they'd both be at the same URL). Pick a different slug, or delete the old post first.
-```
+**A field or validation rule I expect isn't in the Studio.**
+The hosted Studio needs a redeploy after schema changes (`cd studio && pnpm schema:deploy && pnpm deploy`).

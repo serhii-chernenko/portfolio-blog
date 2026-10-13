@@ -8,18 +8,6 @@ Allow: /
 #   ai-train = using content to train or fine-tune a generative model
 Content-Signal: search=yes, ai-input=yes, ai-train=no
 
-# Keystatic CMS — hide from indexing in every form the URL might take.
-# The Admin UI is gated by GitHub OAuth in production, but we still don't want
-# it surfaced in search results.
-Disallow: /blog/keystatic
-Disallow: /blog/keystatic/
-Disallow: /blog/api/keystatic
-Disallow: /blog/api/keystatic/
-Disallow: /keystatic
-Disallow: /keystatic/
-Disallow: /api/keystatic
-Disallow: /api/keystatic/
-
 # Admin email-template UI — hard 404s outside local/preview mode (see
 # src/pages/admin/emails/index.astro), so this Disallow protects nothing;
 # it's defence-in-depth to keep it out of search results in the meantime.
