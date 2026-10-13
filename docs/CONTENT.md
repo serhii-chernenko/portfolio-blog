@@ -178,4 +178,4 @@ Two posts can't share a slug within the same language. Pick a different one.
 See the Presentation entry in [`SANITY.md`](./SANITY.md#troubleshooting).
 
 **A field or validation rule I expect isn't in the Studio.**
-The hosted Studio needs a redeploy after schema changes (`cd studio && pnpm schema:deploy && pnpm deploy`).
+The hosted Studio needs a redeploy after schema changes (`cd studio && pnpm schema:deploy && pnpm run deploy`).

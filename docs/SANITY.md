@@ -140,10 +140,12 @@ The Studio and its schema are deployed separately, from `studio/`:
 npx sanity login               # use the account that owns project 8xspnp7h
 cd studio
 pnpm schema:deploy             # publishes the schema to the Content Lake
-pnpm deploy                    # builds and uploads the Studio to serhiichernenko-blog.sanity.studio
+pnpm run deploy                # builds and uploads the Studio to serhiichernenko-blog.sanity.studio
 ```
 
-Redeploy both whenever `studio/src/` changes (new fields, validation, structure). `deployment.appId` in `studio/sanity.cli.ts` (`STUDIO_APP_ID` in `studio/src/project.ts`) pins the existing deployment, so `pnpm deploy` updates `serhiichernenko-blog.sanity.studio` without asking for a hostname. `deployment.autoUpdates` is on, so the hosted Studio tracks Sanity's latest Studio version; config such as `SITE_ORIGIN` is compiled into the build and only changes on the next `pnpm deploy`.
+Redeploy both whenever `studio/src/` changes (new fields, validation, structure). `deployment.appId` in `studio/sanity.cli.ts` (`STUDIO_APP_ID` in `studio/src/project.ts`) pins the existing deployment, so `pnpm run deploy` updates `serhiichernenko-blog.sanity.studio` without asking for a hostname. Use `pnpm run deploy`, not `pnpm deploy` (that is pnpm's own workspace deploy command).
+
+The hosted Studio is a static build: `deployment.autoUpdates` is `false`, so it does not load `sanity` from Sanity's module CDN and never changes on its own. Studio upgrades, schema changes and config such as `SITE_ORIGIN` ship only with the next `cd studio && pnpm run deploy`. Auto-updates were turned off because the CDN build of `sanity` embeds a different `@sanity/ui` 4.4.x than the bundled plugins, and the two stylesheets reuse the same hashed class names for different components, which broke the form layout (buttons rendered as full-size overlays). Keep a single `@sanity/ui` copy in `studio/pnpm-lock.yaml`; check with `pnpm build` + `pnpm exec sanity preview --port 3334` before deploying.
 
 ---
 
@@ -259,7 +261,7 @@ Check the webhook delivery log in the Sanity project (API → Webhooks). A 401 m
 `SANITY_API_READ_TOKEN` or `DRAFT_MODE_COOKIE_SECRET` is missing (the enable route returns 401), or the site origin is not in `allowOrigins` in `studio/sanity.config.ts` (site origin, `https://*.chernenko.workers.dev`, and `http://localhost:*` outside production Studio builds).
 
 **A new field or validation rule does not appear in the Studio.**
-Redeploy: `cd studio && pnpm schema:deploy && pnpm deploy`.
+Redeploy: `cd studio && pnpm schema:deploy && pnpm run deploy`.
 
 **`sanity deploy` or `schema deploy` fails to authenticate.**
 Run `npx sanity login` with the account that owns project `8xspnp7h`.
