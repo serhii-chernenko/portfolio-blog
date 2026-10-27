@@ -1,4 +1,5 @@
 ---
+import { getCollectionInfo } from 'emdash';
 import { Comments, CommentForm } from 'emdash/ui/comments';
 import { PUBLIC_TURNSTILE_SITE_KEY } from 'astro:env/client';
 import { dateLocale, type Locale } from '../i18n/config';
@@ -14,6 +15,8 @@ export interface Props {
 const { locale, contentId } = Astro.props;
 const t = useTranslations(locale, Astro.locals.uiOverrides);
 const plural = new Intl.PluralRules(dateLocale[locale]);
+// The whole section (with its own heading) follows Content Types → Posts → Enable comments.
+const enabled = (await getCollectionInfo(COLLECTIONS.posts))?.commentsEnabled ?? false;
 
 /**
  * EmDash's built-in comments (admin → Comments): approved comments with threaded replies and
@@ -35,33 +38,38 @@ const heading = (count: number): string => {
 };
 ---
 
-<section class="post-comments mt-12 pt-8 border-t border-base-300" aria-label={t('comments.title')}>
-	<Comments
-		collection={COLLECTIONS.posts}
-		contentId={contentId}
-		threaded
-		reactions
-		locale={dateLocale[locale]}
-		labels={{ heading, member: t('comments.member'), like: t('comments.like') }}
-	/>
-	<h3 class="text-lg font-semibold mt-10 mb-4">{t('comments.form.title')}</h3>
-	<CommentForm
-		collection={COLLECTIONS.posts}
-		contentId={contentId}
-		turnstileSiteKey={PUBLIC_TURNSTILE_SITE_KEY || undefined}
-		labels={{
-			name: t('comments.form.name'),
-			email: t('comments.form.email'),
-			comment: t('comments.form.comment'),
-			submit: t('comments.form.submit'),
-			submitting: t('comments.form.submitting'),
-			published: t('comments.form.published'),
-			pending: t('comments.form.pending'),
-			error: t('comments.form.error'),
-			networkError: t('comments.form.networkError'),
-		}}
-	/>
-</section>
+{enabled && (
+	<section
+		class="post-comments mt-12 pt-8 border-t border-base-300"
+		aria-label={t('comments.title')}
+	>
+		<Comments
+			collection={COLLECTIONS.posts}
+			contentId={contentId}
+			threaded
+			reactions
+			locale={dateLocale[locale]}
+			labels={{ heading, member: t('comments.member'), like: t('comments.like') }}
+		/>
+		<h3 class="text-lg font-semibold mt-10 mb-4">{t('comments.form.title')}</h3>
+		<CommentForm
+			collection={COLLECTIONS.posts}
+			contentId={contentId}
+			turnstileSiteKey={PUBLIC_TURNSTILE_SITE_KEY || undefined}
+			labels={{
+				name: t('comments.form.name'),
+				email: t('comments.form.email'),
+				comment: t('comments.form.comment'),
+				submit: t('comments.form.submit'),
+				submitting: t('comments.form.submitting'),
+				published: t('comments.form.published'),
+				pending: t('comments.form.pending'),
+				error: t('comments.form.error'),
+				networkError: t('comments.form.networkError'),
+			}}
+		/>
+	</section>
+)}
 
 <style>
 	/* EmDash's comment components are themed through custom properties; map them to the DaisyUI
