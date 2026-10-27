@@ -122,6 +122,11 @@
 	],
 	"cache": {
 		"enabled": true,
+		// Keep cached pages across deploys: an uncached render costs ~1–2.5 s (dozens of sequential
+		// D1 queries), so a per-version cache made every page slow after each deploy. Content
+		// changes still purge by tag; code changes reach cached pages when they expire (1 h, then
+		// stale-while-revalidate), or at once after saving Settings in the admin (purges every page).
+		"cross_version_cache": true,
 	},
 	// Smart Placement: on a cache miss the Worker runs near the D1 primary (WEUR) instead of near
 	// the visitor. A page render makes dozens of sequential D1 queries, ~37 ms each from a distant
