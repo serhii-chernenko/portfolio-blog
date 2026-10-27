@@ -15,13 +15,14 @@ const CALLOUT_TONES = [
  * Runtime entry loaded by EmDash. Declares the blog's custom Portable Text blocks for the admin
  * editor (the public site renders them with its own components) and the publish side effects
  * that used to live in the Sanity webhook: the first-publish Telegram ping and IndexNow. Also
- * enforces the slug rules the Sanity Studio used to validate (see ./slug-policy.ts).
+ * enforces the slug rules the Sanity Studio used to validate (see ./slug-policy.ts), and sends a
+ * Telegram message for new comments.
  */
 export function createPlugin() {
 	return definePlugin({
 		id: SITE_PLUGIN_ID,
 		version: SITE_PLUGIN_VERSION,
-		capabilities: ['content:read', 'hooks.content-policy:register'],
+		capabilities: ['content:read', 'users:read', 'hooks.content-policy:register'],
 		admin: {
 			portableTextBlocks: [
 				{
@@ -74,6 +75,13 @@ export function createPlugin() {
 			'content:beforeSchedule': async (event) => {
 				const reason = slugPolicyViolation(event.collection, event.content.slug);
 				return reason ? { cancel: true, reason } : undefined;
+			},
+			'comment:afterCreate': async (event, ctx) => {
+				const { handleCommentCreated } = await import('../../../src/lib/comment-hooks');
+				handleCommentCreated(
+					{ comment: event.comment, content: event.content },
+					{ siteUrl: ctx.site.url, log: ctx.log },
+				);
 			},
 			'content:afterPublish': async (event, ctx) => {
 				const { handleContentPublished } = await import('../../../src/lib/publish-hooks');

@@ -141,22 +141,10 @@ export default defineConfig({
 				optional: true,
 			}),
 			// ── Client public vars (build-inlined from process.env via dotenv-cli) ──
-			PUBLIC_GISCUS_REPO: envField.string({
-				context: 'client',
-				access: 'public',
-				optional: true,
-			}),
-			PUBLIC_GISCUS_REPO_ID: envField.string({
-				context: 'client',
-				access: 'public',
-				optional: true,
-			}),
-			PUBLIC_GISCUS_CATEGORY: envField.string({
-				context: 'client',
-				access: 'public',
-				optional: true,
-			}),
-			PUBLIC_GISCUS_CATEGORY_ID: envField.string({
+			// Cloudflare Turnstile site key for the comment form; the matching secret is the
+			// EMDASH_TURNSTILE_SECRET_KEY Worker secret. Empty → no Turnstile (honeypot, rate
+			// limit and moderation still apply).
+			PUBLIC_TURNSTILE_SITE_KEY: envField.string({
 				context: 'client',
 				access: 'public',
 				optional: true,

@@ -65,15 +65,6 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 			sun?.classList.add('hidden');
 			moon?.classList.remove('hidden');
 		}
-
-		// Sync with Giscus iframe
-		const giscusFrame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
-		if (giscusFrame) {
-			giscusFrame.contentWindow?.postMessage(
-				{ giscus: { setConfig: { theme: theme === 'dark' ? 'dark' : 'light' } } },
-				'https://giscus.app',
-			);
-		}
 	}
 
 	function initTheme() {

@@ -46,7 +46,7 @@ export default defineConfig(
 			// Allow require() in config files / scripts
 			'@typescript-eslint/no-require-imports': 'warn',
 			// `var` is intentionally used in some inline/vanilla JS snippets
-			// (e.g. Giscus loader, pre-paint IIFE)
+			// (e.g. the pre-paint theme IIFE)
 			'no-var': 'off',
 			// Standard Astro/Cloudflare pattern: empty interface extending a type
 			'@typescript-eslint/no-empty-object-type': 'off',

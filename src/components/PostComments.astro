@@ -1,0 +1,112 @@
+---
+import { Comments, CommentForm } from 'emdash/ui/comments';
+import { PUBLIC_TURNSTILE_SITE_KEY } from 'astro:env/client';
+import { dateLocale, type Locale } from '../i18n/config';
+import { useTranslations } from '../i18n/utils';
+import { COLLECTIONS } from '../lib/cms/config';
+
+export interface Props {
+	locale: Locale;
+	/** Database ID of the post entry (comments belong to one language's entry). */
+	contentId: string;
+}
+
+const { locale, contentId } = Astro.props;
+const t = useTranslations(locale, Astro.locals.uiOverrides);
+const plural = new Intl.PluralRules(dateLocale[locale]);
+
+/**
+ * EmDash's built-in comments (admin → Comments): approved comments with threaded replies and
+ * likes, and the submission form (honeypot, rate limit, optional Turnstile, moderation per
+ * Content Types → Posts). Renders nothing when comments are off for the collection.
+ */
+const heading = (count: number): string => {
+	if (count === 0) return t('comments.count.zero');
+	const form = plural.select(count);
+	const key =
+		form === 'one'
+			? 'comments.count.one'
+			: form === 'few'
+				? 'comments.count.few'
+				: form === 'many'
+					? 'comments.count.many'
+					: 'comments.count.other';
+	return t(key, { count });
+};
+---
+
+<section class="post-comments mt-12 pt-8 border-t border-base-300" aria-label={t('comments.title')}>
+	<Comments
+		collection={COLLECTIONS.posts}
+		contentId={contentId}
+		threaded
+		reactions
+		locale={dateLocale[locale]}
+		labels={{ heading, member: t('comments.member'), like: t('comments.like') }}
+	/>
+	<h3 class="text-lg font-semibold mt-10 mb-4">{t('comments.form.title')}</h3>
+	<CommentForm
+		collection={COLLECTIONS.posts}
+		contentId={contentId}
+		turnstileSiteKey={PUBLIC_TURNSTILE_SITE_KEY || undefined}
+		labels={{
+			name: t('comments.form.name'),
+			email: t('comments.form.email'),
+			comment: t('comments.form.comment'),
+			submit: t('comments.form.submit'),
+			submitting: t('comments.form.submitting'),
+			published: t('comments.form.published'),
+			pending: t('comments.form.pending'),
+			error: t('comments.form.error'),
+			networkError: t('comments.form.networkError'),
+		}}
+	/>
+</section>
+
+<style>
+	/* EmDash's comment components are themed through custom properties; map them to the DaisyUI
+	   theme so light and dark mode follow the site. */
+	.post-comments {
+		--ec-comment-gap: 1.25rem;
+		--ec-comment-indent: 1.5rem;
+		--ec-comment-border: 1px solid var(--color-base-300);
+		--ec-form-gap: 0.75rem;
+		--ec-form-bg: var(--color-base-100);
+		--ec-form-border: var(--color-base-300);
+		--ec-form-color: var(--color-base-content);
+		--ec-form-user-bg: var(--color-base-200);
+		--ec-form-user-bg-dark: var(--color-base-200);
+		--ec-form-user-border: var(--color-base-300);
+		--ec-form-submit-bg: var(--color-primary);
+		--ec-form-submit-color: var(--color-primary-content);
+		--ec-form-success-color: var(--color-success);
+		--ec-form-error-color: var(--color-error);
+	}
+
+	.post-comments :global(.ec-comments-heading) {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin-bottom: 1.5rem;
+	}
+
+	.post-comments :global(.ec-comment-form-field input),
+	.post-comments :global(.ec-comment-form-field textarea) {
+		border-radius: var(--radius-field, 0.5rem);
+		padding: 0.625rem 0.75rem;
+	}
+
+	.post-comments :global(.ec-comment-form-field input:focus-visible),
+	.post-comments :global(.ec-comment-form-field textarea:focus-visible) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 1px;
+	}
+
+	.post-comments :global(.ec-comment-form-field > span) {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.post-comments :global(.ec-comment-form-submit) {
+		border-radius: var(--radius-field, 0.5rem);
+	}
+</style>

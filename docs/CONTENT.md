@@ -179,6 +179,17 @@ Reorder items by dragging them.
 
 ---
 
+## Comments
+
+Readers comment at the bottom of each post. Each language version has its own thread.
+
+- **Moderating:** admin → **Comments**. New comments from first-time commenters wait under **Pending**: **Approve** to publish, **Mark as spam** or **Move to trash** otherwise (**Delete permanently** from the trash). After one approved comment, that commenter's next comments publish directly. Telegram gets a `💬 New comment` message for every new comment.
+- **Settings:** **Content Types → Posts**: **Enable comments**, **Moderation** (_All comments require approval_, _First-time commenters only_, _No moderation (auto-approve all)_), **Close comments after (days)** (`0` = never) and **Auto-approve authenticated users**.
+- **Wording:** the comment form and list texts are UI strings (`comments.*`) under **Site → UI strings**.
+- An approved or removed comment shows on the post within seconds.
+
+---
+
 ## Previewing
 
 Click **Preview** on any post or page. It opens the real site with your draft (or your pending changes to a published entry) through a signed link that is valid for an hour. An **Exit preview** button at the bottom returns to the published page. Preview pages are never cached or indexed. Details are in [`CMS.md`](./CMS.md#preview).

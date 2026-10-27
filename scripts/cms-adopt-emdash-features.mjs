@@ -17,7 +17,10 @@
 //      profile URL per line, rendered as schema.org `sameAs`).
 //   4. Settings: prefills Settings → SEO robots.txt (from seed/robots.txt), the default social
 //      image (public/blog/og-default.png), the site URL and the social links, when unset.
-//   5. With --remove-legacy-fields: deletes `posts.tags` and `site_settings.default_og_image`.
+//   5. Comments: turns on comments for posts (first comment of a commenter held for moderation,
+//      never closed), syncs the `ui_strings.key` options with seed/seed.json (new interface
+//      strings), and replaces the Giscus section of the privacy pages.
+//   6. With --remove-legacy-fields: deletes `posts.tags` and `site_settings.default_og_image`.
 //      Run it after the code that reads taxonomy terms is deployed.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
@@ -382,7 +385,123 @@ async function prefillSettings() {
 	);
 }
 
-// ── 5. Legacy fields ──────────────────────────────────────────────────────────
+// ── 5. Comments, UI string keys, privacy ──────────────────────────────────────
+
+async function enableComments() {
+	console.log('\nComments');
+	const result = await api('GET', '/schema/collections/posts');
+	const collection = result.item ?? result.collection ?? result;
+	if (collection.commentsEnabled) {
+		console.log('  posts: already on (settings left as they are)');
+		return;
+	}
+	await write('posts: turn on (first-time moderation, never closed)', () =>
+		api('PUT', '/schema/collections/posts', {
+			commentsEnabled: true,
+			commentsModeration: 'first_time',
+			commentsClosedAfterDays: 0,
+			commentsAutoApproveUsers: true,
+		}),
+	);
+}
+
+async function syncUiStringKeys() {
+	console.log('\nUI string keys');
+	const seed = JSON.parse(readFileSync('seed/seed.json', 'utf8'));
+	const seedField = seed.collections
+		.find((collection) => collection.slug === 'ui_strings')
+		?.fields.find((field) => field.slug === 'key');
+	const wanted = seedField?.validation?.options ?? [];
+	const result = await api('GET', '/schema/collections/ui_strings/fields/key');
+	const field = result.item ?? result.field ?? result;
+	const current = field.validation?.options ?? [];
+	const missing = wanted.filter((option) => !current.includes(option));
+	if (missing.length === 0) {
+		console.log('  in sync');
+		return;
+	}
+	await write(
+		`add ${missing.length} keys (${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ', …' : ''})`,
+		() =>
+			api('PUT', '/schema/collections/ui_strings/fields/key', {
+				validation: { ...(field.validation ?? {}), options: [...current, ...missing] },
+			}),
+	);
+}
+
+/** New privacy text for the comments section, per language: [heading, paragraph]. */
+const PRIVACY_COMMENTS = {
+	en: [
+		'Comments',
+		'Comments are stored by this site’s own content system (EmDash) on Cloudflare. To comment you enter a name, an email address and the comment. The name and the comment are published; the email address is never shown and is only used to recognise returning commenters and, if needed, to contact you about your comment. A salted hash of your IP address is kept to limit abuse (it cannot be turned back into the address), and likes are counted with the same kind of hash, without cookies or an account. A first comment is reviewed before it appears. To have a comment edited or removed, get in touch through any contact link on this site.',
+	],
+	uk: [
+		'Коментарі',
+		'Коментарі зберігає власна система керування вмістом цього сайту (EmDash) на Cloudflare. Щоб залишити коментар, ви вказуєте ім’я, адресу електронної пошти та текст. Ім’я й текст публікуються; адреса пошти ніколи не показується і використовується лише для того, щоб розпізнати тих, хто вже коментував, і за потреби зв’язатися з вами щодо коментаря. Для захисту від зловживань зберігається хеш вашої IP-адреси із сіллю (з нього не можна відновити адресу); вподобання рахуються за таким самим хешем, без cookie чи облікового запису. Перший коментар з’являється після перевірки. Щоб змінити чи видалити коментар, напишіть через будь-яке контактне посилання на цьому сайті.',
+	],
+};
+
+function blockText(block) {
+	return (block?.children ?? []).map((child) => child.text ?? '').join('');
+}
+
+function textBlock(template, text) {
+	return {
+		...template,
+		children: [{ _type: 'span', _key: `${template._key}s`, text, marks: [] }],
+		markDefs: [],
+	};
+}
+
+async function updatePrivacyPages() {
+	console.log('\nPrivacy pages');
+	for (const locale of LOCALES) {
+		const pages = await listAll(`/content/pages?locale=${locale}`);
+		const page = pages.find((item) => item.data?.key === 'privacy');
+		if (!page) {
+			console.log(`  ${locale}: no privacy page`);
+			continue;
+		}
+		const full = await api('GET', `/content/pages/${page.id}`);
+		const item = full.item ?? full;
+		const body = Array.isArray(item.data?.body) ? item.data.body : [];
+		const headingIndex = body.findIndex(
+			(block) => /giscus/i.test(blockText(block)) && block.style?.startsWith('h'),
+		);
+		if (headingIndex === -1) {
+			console.log(`  ${locale}: no Giscus section, left as it is`);
+			continue;
+		}
+		const [heading, paragraph] = PRIVACY_COMMENTS[locale];
+		const next = [...body];
+		next[headingIndex] = textBlock(body[headingIndex], heading);
+		const paragraphIndex = headingIndex + 1;
+		if (
+			next[paragraphIndex]?._type === 'block' &&
+			/giscus|github/i.test(blockText(next[paragraphIndex]))
+		) {
+			next[paragraphIndex] = textBlock(next[paragraphIndex], paragraph);
+		} else {
+			next.splice(
+				paragraphIndex,
+				0,
+				textBlock(
+					{ _type: 'block', _key: `${body[headingIndex]._key}p`, style: 'normal' },
+					paragraph,
+				),
+			);
+		}
+		await write(`${locale}/${item.slug}: replace the Giscus section and publish`, async () => {
+			await api('PUT', `/content/pages/${page.id}`, {
+				_rev: full._rev,
+				data: { ...item.data, body: next, revised_at: new Date().toISOString() },
+			});
+			await api('POST', `/content/pages/${page.id}/publish`, {});
+		});
+	}
+}
+
+// ── 6. Legacy fields ──────────────────────────────────────────────────────────
 
 async function removeLegacyFields() {
 	console.log('\nLegacy fields');
@@ -407,6 +526,9 @@ async function main() {
 	await migrateTags();
 	await setUpByline();
 	await prefillSettings();
+	await enableComments();
+	await syncUiStringKeys();
+	await updatePrivacyPages();
 	if (args['remove-legacy-fields']) await removeLegacyFields();
 	console.log('\nDone.');
 }
