@@ -20,6 +20,29 @@ function urlLines(value: unknown): string[] {
 		.filter((line) => HTTP_URL.test(line));
 }
 
+/** Identity of a profile URL for de-duplication: host without `www.`, path without the trailing slash. */
+function profileKey(url: string): string {
+	try {
+		const parsed = new URL(url);
+		return `${parsed.hostname.replace(/^www\./, '')}${parsed.pathname.replace(/\/+$/, '')}`.toLowerCase();
+	} catch {
+		return url.toLowerCase();
+	}
+}
+
+/** Profile URLs in order, without the same profile twice in different forms. */
+export function mergeProfiles(...lists: string[][]): string[] {
+	const seen = new Set<string>();
+	const merged: string[] = [];
+	for (const url of lists.flat()) {
+		const key = profileKey(url);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		merged.push(url);
+	}
+	return merged;
+}
+
 /**
  * The author of an entry from its primary byline (`entry.data.byline`, eagerly loaded by
  * EmDash). Returns undefined for entries without a byline.
@@ -40,10 +63,10 @@ export function authorFromByline(
 		record.customFields && typeof record.customFields === 'object'
 			? (record.customFields as Record<string, unknown>)
 			: {};
-	const sameAs = [
-		...urlLines(customFields[BYLINE_PROFILES_FIELD]),
-		...(websiteUrl ? [websiteUrl] : []),
-		...socialProfiles,
-	];
-	return { name, websiteUrl, sameAs: Array.from(new Set(sameAs)) };
+	const sameAs = mergeProfiles(
+		urlLines(customFields[BYLINE_PROFILES_FIELD]),
+		websiteUrl ? [websiteUrl] : [],
+		socialProfiles,
+	);
+	return { name, websiteUrl, sameAs };
 }
