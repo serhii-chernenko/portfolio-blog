@@ -461,9 +461,6 @@ const STATIC_ROUTES = new Set([
 	'/sitemap-index.xml',
 	'/sitemap-0.xml',
 	'/api/search',
-	'/api/sanity/revalidate',
-	'/api/draft-mode/enable',
-	'/api/draft-mode/disable',
 ]);
 
 const ROUTE_TEMPLATES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -487,9 +484,21 @@ export function normalizeRoute(pathname: string, base: string): string {
 	return ROUTE_TEMPLATES.find(([pattern]) => pattern.test(path))?.[1] ?? '/unknown';
 }
 
+const CMS_PATH_PREFIX = '/_emdash';
+const PREVIEW_PATH_PREFIX = '/preview/';
+
+/**
+ * Routes without visitor telemetry: the client-event sink itself, the EmDash admin, API and media
+ * files (`/_emdash/...`, also reachable under the base), and the editor-only preview redirect.
+ */
 export function isUntrackedRoute(pathname: string, base: string): boolean {
 	const path = trimTrailingSlash(stripBasePath(pathname, base));
-	return path === '/api/events';
+	return (
+		path === '/api/events' ||
+		path === CMS_PATH_PREFIX ||
+		path.startsWith(`${CMS_PATH_PREFIX}/`) ||
+		path.startsWith(PREVIEW_PATH_PREFIX)
+	);
 }
 
 export function parseClientEvent(body: unknown): ClientEvent | null {

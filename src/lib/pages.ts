@@ -1,10 +1,17 @@
-import { stegaClean } from '@sanity/client/stega';
 import type { TypedObject } from 'astro-portabletext/types';
-import { isLocale, type Locale } from '../i18n/config';
+import type { Locale } from '../i18n/config';
 import { localeHref } from '../i18n/utils';
-import { resolveTranslationUrls, type LocalizedUrls, type TranslationRef } from './posts';
-import { createPublishedContext, type SanityContext } from './sanity/request';
-import { PAGE_BY_KEY_QUERY, PAGE_BY_SLUG_QUERY, PAGES_BY_LOCALE_QUERY } from './sanity/queries';
+import { COLLECTIONS } from './cms/config';
+import { createPublishedContext, type CmsContext } from './cms/context';
+import {
+	dateField,
+	getEntryBySlug,
+	listEntries,
+	listEntriesForAllLocales,
+	stringField,
+	type CmsEntry,
+} from './cms/entries';
+import { indexByTranslationGroup, translationUrls, type LocalizedUrls } from './cms/translations';
 
 export interface Page {
 	id: string;
@@ -19,18 +26,7 @@ export interface Page {
 	translations: LocalizedUrls;
 }
 
-interface RawPage {
-	id: string;
-	language: string;
-	key: string;
-	slug: string;
-	title: string | null;
-	description: string | null;
-	category: string;
-	updatedAt: string | null;
-	translations: (TranslationRef | null)[] | null;
-	body?: TypedObject[] | null;
-}
+type TranslationIndex = ReturnType<typeof indexByTranslationGroup>;
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -38,59 +34,72 @@ function pagePath(locale: Locale, slug: string): string {
 	return localeHref(locale, slug);
 }
 
-function toPage(raw: RawPage, ctx: SanityContext): Page | null {
-	const language = stegaClean(raw.language);
-	const slug = stegaClean(raw.slug);
-	const key = stegaClean(raw.key);
-	if (!isLocale(language) || !SLUG_PATTERN.test(slug) || !key) return null;
-	const updatedAt = raw.updatedAt ? new Date(stegaClean(raw.updatedAt)) : undefined;
+function toPage(entry: CmsEntry, index: TranslationIndex): Page | null {
+	const slug = entry.slug ?? '';
+	const key = stringField(entry, 'key');
+	if (!SLUG_PATTERN.test(slug) || !key) return null;
 	return {
-		id: raw.id,
-		language,
+		id: entry.id,
+		language: entry.locale,
 		key,
 		slug,
-		title: raw.title ?? '',
-		description: raw.description ?? '',
-		category: stegaClean(raw.category) === 'legal' ? 'legal' : 'static',
-		updatedAt: updatedAt && !Number.isNaN(updatedAt.getTime()) ? updatedAt : undefined,
-		body: raw.body ?? undefined,
-		translations: resolveTranslationUrls(raw.translations, ctx, pagePath),
+		title: stringField(entry, 'title'),
+		description: stringField(entry, 'description'),
+		category: stringField(entry, 'category') === 'legal' ? 'legal' : 'static',
+		updatedAt: dateField(entry, 'revised_at'),
+		body: Array.isArray(entry.data.body) ? (entry.data.body as TypedObject[]) : undefined,
+		translations: translationUrls(entry, index, () => true, pagePath),
 	};
+}
+
+async function translationIndex(): Promise<TranslationIndex> {
+	return indexByTranslationGroup(await listEntriesForAllLocales(COLLECTIONS.pages));
+}
+
+/** Code-point order, as the Sanity-era `order(title asc)` listed pages. */
+function byTitle(a: Page, b: Page): number {
+	if (a.title === b.title) return 0;
+	return a.title < b.title ? -1 : 1;
 }
 
 export function pageUrl(page: Pick<Page, 'language' | 'slug'>): string {
 	return pagePath(page.language, page.slug);
 }
 
-export async function getPages(locale: Locale, ctx: SanityContext): Promise<Page[]> {
-	const raws = await ctx.fetch<RawPage[]>(PAGES_BY_LOCALE_QUERY, { locale });
-	return (raws ?? []).map((raw) => toPage(raw, ctx)).filter((page): page is Page => page !== null);
+export async function getPages(locale: Locale, _ctx: CmsContext): Promise<Page[]> {
+	const [entries, index] = await Promise.all([
+		listEntries(COLLECTIONS.pages, locale),
+		translationIndex(),
+	]);
+	return entries
+		.map((entry) => toPage(entry, index))
+		.filter((page): page is Page => page !== null)
+		.sort(byTitle);
 }
 
 export async function getPageBySlug(
 	locale: Locale,
 	slug: string,
-	ctx: SanityContext,
+	_ctx: CmsContext,
 ): Promise<Page | null> {
 	if (!SLUG_PATTERN.test(slug)) return null;
-	const raw = await ctx.fetch<RawPage | null>(PAGE_BY_SLUG_QUERY, { locale, slug });
-	return raw ? toPage(raw, ctx) : null;
+	const [entry, index] = await Promise.all([
+		getEntryBySlug(COLLECTIONS.pages, slug, locale),
+		translationIndex(),
+	]);
+	return entry ? toPage(entry, index) : null;
 }
 
 export async function getPageByKey(
 	key: string,
 	locale: Locale,
-	ctx: SanityContext,
+	ctx: CmsContext,
 ): Promise<Page | null> {
-	const raw = await ctx.fetch<RawPage | null>(PAGE_BY_KEY_QUERY, { locale, key });
-	return raw ? toPage(raw, ctx) : null;
+	const pages = await getPages(locale, ctx);
+	return pages.find((page) => page.key === key) ?? null;
 }
 
-export async function getPagePath(
-	key: string,
-	locale: Locale,
-	ctx: SanityContext,
-): Promise<string> {
+export async function getPagePath(key: string, locale: Locale, ctx: CmsContext): Promise<string> {
 	const page = await getPageByKey(key, locale, ctx);
 	return page ? pageUrl(page) : localeHref(locale);
 }

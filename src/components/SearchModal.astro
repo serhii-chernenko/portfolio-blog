@@ -1,5 +1,4 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { useTranslations, withBase } from '../i18n/utils';
 
@@ -14,14 +13,14 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 <dialog
 	id="search-modal"
 	class="modal modal-top sm:modal-middle"
-	aria-label={stegaClean(t('search.title'))}
+	aria-label={t('search.title')}
 	data-locale={locale}
 	data-endpoint={withBase('api/search')}
 	data-date-locale={locale === 'uk' ? 'uk-UA' : 'en-US'}
-	data-hint={stegaClean(t('search.hint'))}
-	data-loading={stegaClean(t('search.loading'))}
-	data-empty={stegaClean(t('search.empty'))}
-	data-error={stegaClean(t('search.error'))}
+	data-hint={t('search.hint')}
+	data-loading={t('search.loading')}
+	data-empty={t('search.empty')}
+	data-error={t('search.error')}
 >
 	<div class="modal-box w-11/12 max-w-2xl">
 		<div class="flex items-center gap-2 mb-3">
@@ -44,7 +43,7 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 					id="search-input"
 					type="search"
 					class="grow"
-					placeholder={stegaClean(t('search.placeholder'))}
+					placeholder={t('search.placeholder')}
 					autocomplete="off"
 					spellcheck="false"
 					maxlength="100"
@@ -52,11 +51,11 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 					aria-autocomplete="list"
 					aria-controls="search-results"
 					aria-expanded="false"
-					aria-label={stegaClean(t('search.placeholder'))}
+					aria-label={t('search.placeholder')}
 				/>
 			</label>
 			<form method="dialog">
-				<button class="btn btn-ghost btn-sm btn-circle" aria-label={stegaClean(t('search.close'))}>
+				<button class="btn btn-ghost btn-sm btn-circle" aria-label={t('search.close')}>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 20 20"
@@ -76,7 +75,7 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 			id="search-results"
 			class="menu w-full gap-1 p-0"
 			role="listbox"
-			aria-label={stegaClean(t('search.results'))}
+			aria-label={t('search.results')}
 		></ul>
 	</div>
 	<form method="dialog" class="modal-backdrop">
@@ -85,8 +84,6 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 </dialog>
 
 <script>
-	import { previewAwareHref } from '../lib/preview-links';
-
 	interface SearchResult {
 		title: string;
 		description: string;
@@ -158,7 +155,7 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 				...results.map((result, index) => {
 					const item = document.createElement('li');
 					const link = document.createElement('a');
-					link.href = previewAwareHref(result.url);
+					link.href = result.url;
 					link.id = optionId(index);
 					link.setAttribute('role', 'option');
 					link.setAttribute('aria-selected', 'false');
@@ -237,7 +234,7 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 			} else if (event.key === 'Enter' && activeIndex >= 0) {
 				event.preventDefault();
 				const href = results[activeIndex]?.url;
-				if (href) window.location.assign(previewAwareHref(href));
+				if (href) window.location.assign(href);
 			}
 		};
 

@@ -1,5 +1,4 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
 
@@ -14,8 +13,8 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 <button
 	id="theme-toggle"
 	class="btn btn-ghost btn-square"
-	aria-label={stegaClean(t('theme.toggle'))}
-	title={stegaClean(t('theme.toggle'))}
+	aria-label={t('theme.toggle')}
+	title={t('theme.toggle')}
 >
 	<!-- Sun icon (shown in dark mode) -->
 	<svg

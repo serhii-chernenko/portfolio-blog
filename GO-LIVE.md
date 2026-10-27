@@ -67,8 +67,7 @@ validation happens at runtime when the Worker receives its first request.
 - [x] `TELEGRAM_BOT_TOKEN` — see `docs/TELEGRAM.md` + `docs/TELEGRAM-TESTING.md`. Declared optional in `astro:env/server` — omitting it causes `notify()` to no-op silently.
 - [x] `TELEGRAM_CHAT_ID` — see `docs/TELEGRAM.md`. Same: optional, no-op when absent.
 - [ ] `NEW_RELIC_LICENSE_KEY` — optional; ingest key for the telemetry forwarder (see `docs/OBSERVABILITY.md`). Without it, events are not forwarded to New Relic. `wrangler secret put NEW_RELIC_LICENSE_KEY`.
-- [ ] `SANITY_API_READ_TOKEN`, `DRAFT_MODE_COOKIE_SECRET` and `SANITY_WEBHOOK_SECRET` — optional, set in step 4.
-- **Verify:** `wrangler secret list` shows every secret you set (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEW_RELIC_LICENSE_KEY`, plus the three Sanity secrets after step 4).
+- **Verify:** `wrangler secret list` shows every secret you set (`SUBSCRIBE_RATE_LIMIT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEW_RELIC_LICENSE_KEY`). The CMS needs none; `EMDASH_ENCRYPTION_KEY` is only required if a plugin declares secret settings (none do).
 
 The telemetry endpoint (`/blog/api/events`) is rate limited by the
 `EVENTS_RATE_LIMITER` binding, declared in `wrangler.jsonc` under `ratelimits`
@@ -77,59 +76,33 @@ there is nothing to create by hand.
 
 ---
 
-## 4. 🔴 Sanity (content, Studio, draft preview, cache purge)
+## 4. 🔴 EmDash CMS (content, admin, media)
 
-Content lives in Sanity (project `8xspnp7h`, dataset `production`); the project
-ID, dataset and API version are constants in `src/lib/sanity/config.ts`, so the
-site needs no config to read published content. See `docs/SANITY.md` for the
-full picture.
+Content lives in EmDash, which runs inside the same Worker: content in D1
+`portfolio-blog-cms` (binding `CMS_DB`), media in R2 `portfolio-blog-media`
+(binding `MEDIA`), admin sessions in KV `SESSION` (added by the Cloudflare
+adapter). No secrets are needed. See `docs/CMS.md#first-production-setup` for
+the full picture.
 
-1. [ ] **Deploy the Studio and schema** (once, and after any `studio/src/` change).
-       Log in with the account that owns the project:
+1. [x] **Resources.** D1 `portfolio-blog-cms` (`database_id` in `wrangler.jsonc`)
+       and R2 `portfolio-blog-media` are created. `wrangler deploy` provisions the
+       `SESSION` KV namespace the Cloudflare adapter adds.
+2. [ ] **Admin passkey** — after the deploy, open
+       <https://serhiichernenko.com/_emdash/admin>. The setup wizard creates the
+       first admin with a passkey.
+3. [ ] **API token** — admin → **Settings** → **API Tokens** → create a token
+       with admin scope.
+4. [ ] **Migrate the content** from Sanity (see
+       `docs/CMS.md#migrating-the-sanity-content`):
    ```bash
-   npx sanity login
-   cd studio && pnpm install && pnpm schema:deploy && pnpm deploy
+   EMDASH_TOKEN=<admin API token> SANITY_API_READ_TOKEN=<Sanity viewer token> \
+     pnpm cms:migrate-sanity -- --url https://serhiichernenko.com
    ```
-   The Studio is served at <https://serhiichernenko-blog.sanity.studio>.
-   `pnpm deploy` runs `sanity deploy`, which updates that existing deployment
-   because its `appId` is pinned in `studio/sanity.cli.ts` (`STUDIO_APP_ID` in
-   `studio/src/project.ts`). Run `cd studio && pnpm deploy` again after the apex
-   cutover: the preview origin changed to `https://serhiichernenko.com`
-   (`SITE_ORIGIN` in `studio/src/project.ts`) and is compiled into the Studio
-   build. `deployment.autoUpdates` only updates the Sanity Studio version, not
-   this config.
-2. [ ] **Viewer token** — <https://www.sanity.io/manage> → project `8xspnp7h` →
-       **API** → **Tokens** → add a token with the **Viewer** role, then:
-   ```bash
-   pnpm exec wrangler secret put SANITY_API_READ_TOKEN
-   ```
-   Then generate the draft-session signing key (`openssl rand -hex 32`):
-   ```bash
-   pnpm exec wrangler secret put DRAFT_MODE_COOKIE_SECRET
-   ```
-   Draft mode / Presentation needs both. Without either, the site serves
-   published content only and `/blog/api/draft-mode/enable` returns 401.
-3. [ ] **Cache-purge webhook** — generate a secret
-       (`openssl rand -base64 32`), store it, and create the webhook:
-   ```bash
-   pnpm exec wrangler secret put SANITY_WEBHOOK_SECRET
-   ```
-   Webhook settings (manage → **API** → **Webhooks**): URL
-   `https://serhiichernenko.com/blog/api/sanity/revalidate`, dataset
-   `production`, triggers create/update/delete, filter
-   `_type in ["post","page","navigation","siteSettings","uiStrings","translation.metadata"]`,
-   projection
-   `{_id, _type, "operation": delta::operation(), title, language, "slug": slug.current, publishedAt, "previousSlug": before().slug.current}`,
-   method `POST`, include drafts **off**, and the same secret. The extra fields
-   drive the "📝 New post published" Telegram notification on a post's first
-   publish and the IndexNow submission (`publishedAt`, `previousSlug`; see
-   `docs/SANITY.md`). Without the webhook pages still refresh, but only when the
-   cache TTL (1h) expires.
-4. [ ] Re-deploy the site if you changed any config in this step (secrets don't need a rebuild).
+   The script skips entries that already exist, so it is safe to re-run.
 
-- **Verify:** publish a throwaway edit in the Studio → the webhook delivery log
-  in manage shows `200` and the change appears on the site within seconds. In the
-  Studio's **Presentation** tool the site loads with a draft preview.
+- **Verify:** the posts, pages and menus show on `/blog/en/` and `/blog/uk/`.
+  Publish a throwaway edit in the admin → the change appears on the site within
+  seconds (EmDash purges the cache, see `docs/CMS.md#caching`).
 
 ---
 
@@ -195,7 +168,7 @@ Builds** — the dashboard Git integration — not GitHub Actions, so **no Cloud
 API token lives in the repo**. The only workflows are `ci.yml`
 (format/lint/typecheck/build) and `indexnow.yml` (IndexNow submission after a
 `main` deploy, see step 9a); neither needs secrets. New-post Telegram
-notifications come from the Sanity revalidate webhook on the Worker, not from
+notifications come from the EmDash publish hook on the Worker, not from
 Actions.
 
 Secrets (**Settings → Secrets and variables → Actions**):
@@ -216,7 +189,7 @@ Variables (the `vars.*` context):
 
 ## 9. 🔴 First production deploy
 
-Once steps 1–3 and 8 are done (step 4 can follow):
+Once steps 1–3 and 8 are done (step 4 follows this deploy):
 
 ```bash
 pnpm wrangler:deploy      # pnpm build && wrangler deploy
@@ -225,7 +198,7 @@ pnpm wrangler:deploy      # pnpm build && wrangler deploy
 The build outputs two directories:
 
 - `dist/client/` — static assets served by the `ASSETS` binding (scoped to `./dist/client` in `wrangler.jsonc`).
-- `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `@astrojs/cloudflare/entrypoints/server`. Files in `dist/server/` are never served publicly as static assets.
+- `dist/server/` — the Worker script. `wrangler.jsonc` `main` points to `src/worker.ts` (the Astro handler plus EmDash's Cron Trigger handler). Files in `dist/server/` are never served publicly as static assets.
 
 Or just push to `main` — **Cloudflare Workers Builds** runs `pnpm build` + deploy
 automatically (dashboard Git integration). Non-`main` branches / PRs get a preview
@@ -250,8 +223,9 @@ records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
       `/blog/en/` (delete it when the portfolio Worker takes `/`). Rule IDs are in
       `docs/DNS-ROUTING.md`.
 - [ ] **Routes deploy to the apex only.** `wrangler.jsonc` declares
-      `serhiichernenko.com/blog`, `/blog/*` and the host-root files `/robots.txt`,
-      `/favicon.ico`, `/llms.txt`, `/llms-full.txt` and `/sitemap.xml` (`zone_name`
+      `serhiichernenko.com/blog`, `/blog/*`, `/_emdash/*` (CMS admin, API and
+      media) and the host-root files `/robots.txt`, `/favicon.ico`, `/llms.txt`,
+      `/llms-full.txt` and `/sitemap.xml` (`zone_name`
       is the apex); `www` is not bound. A route change only takes effect
       after `pnpm wrangler:deploy` (the build regenerates the deployed config — a
       bare `wrangler deploy` reuses the old routes). Confirm with
@@ -261,8 +235,8 @@ records and the redirect rule are **dashboard/API actions** (not `wrangler`/CI):
 - **Verify:** run `./scripts/verify-routing.sh` (pure `dig`/`curl`, no auth) — it
   checks the apex resolves to a proxied edge IP, `serhiichernenko.com/blog/en/`
   returns 2xx, and `www/blog` 308-redirects to the apex. Then manually confirm
-  a post page and `serhiichernenko.com/blog/api/draft-mode/enable` (401 without
-  a valid secret). HTTPS may need up
+  a post page and `serhiichernenko.com/_emdash/admin` (the EmDash sign-in page).
+  HTTPS may need up
   to 24h for Universal SSL — test `http://` first.
 
 ---
@@ -278,7 +252,7 @@ gh workflow run indexnow.yml -f mode=all
 ```
 
 From then on, `indexnow.yml` submits sitemap changes after each Workers Builds
-deploy of `main`, and the Sanity webhook submits each publish. See `docs/SEO.md` and `docs/SANITY.md#indexnow-on-publish`.
+deploy of `main`, and the EmDash publish hook submits each publish. See `docs/SEO.md` and `docs/CMS.md#publish-side-effects`.
 
 - **Verify:** the workflow run succeeds, and
   `https://serhiichernenko.com/blog/aa97432c46c58c839540be4d044ece78.txt` returns the key.
@@ -294,8 +268,8 @@ auto-posts a PR comment with the preview URL — no GitHub Action involved.
 
 - [ ] **View content at the `/blog` path.** Preview URLs live on
       `*.workers.dev`, where the production `/blog*` routes do **not** apply — the
-      whole Worker answers at every path. But Astro has `base: '/blog'`, so the blog
-      is served under `/blog`. The bare preview root **404s by design**:
+      whole Worker answers at every path. The blog routes live under
+      `src/pages/blog/`, so the blog is served under `/blog`. The bare preview root **404s by design**:
   - `https://<version>-portfolio-blog.<subdomain>.workers.dev/` → 404
   - `https://<version>-portfolio-blog.<subdomain>.workers.dev/blog` → the blog ✅
 
@@ -308,11 +282,10 @@ auto-posts a PR comment with the preview URL — no GitHub Action involved.
       enable them in the Worker's **Domains** tab (Workers & Pages →
       portfolio-blog → **Domains** → Preview URLs). No
       `wrangler.jsonc` change is required.
-- [ ] **Content on previews.** Content is read from the live Sanity dataset, so a
-      preview version shows the same published content as production — there is no
-      per-branch content. Drafts are reachable only through the Studio's
-      Presentation tool (it needs `SANITY_API_READ_TOKEN` on the Worker, and
-      `https://*.chernenko.workers.dev` is an allowed preview origin in `studio/sanity.config.ts`).
+- [ ] **Content on previews.** Preview versions use the same `CMS_DB` binding,
+      so they read the production D1 content — there is no per-branch content.
+      Drafts are viewed through the admin's **Preview** button on the production
+      site (see `docs/CMS.md#preview`).
 
 ---
 
@@ -326,10 +299,13 @@ Acceptance criteria that can only be checked against the live site
 - [ ] Paste a post URL into <https://app.hreflang.org> — confirm hreflang
       validates clean (reciprocal + `x-default`, consistent trailing slashes).
 - [ ] Validate `/blog/en/rss.xml` and `/blog/uk/rss.xml` as RSS 2.0.
-- [ ] End-to-end CMS flow: create a post in the Studio → preview the draft in
-      Presentation (hidden on the public site) → publish → the webhook purges the
-      cache and the post is live within seconds → a future-dated post stays hidden
-      until its `publishedAt` passes (plus up to 1h of cache).
+- [ ] End-to-end CMS flow: create a post in the EmDash admin → open it with
+      **Preview** (hidden on the public site) → publish → EmDash purges the cache
+      and the post is live within seconds → a scheduled post stays hidden until
+      the cron publishes it (checked every minute).
+- [ ] Decommission Sanity once the production content is verified: delete the
+      old Worker secrets and the webhook, undeploy the Studio. See
+      `docs/CMS.md#decommissioning-sanity`.
 - [ ] Newsletter round-trip (subscribe → confirm → welcome → unsubscribe).
 - [ ] Telegram notifications fire for each event — see `docs/TELEGRAM-TESTING.md`.
 
@@ -337,9 +313,6 @@ Acceptance criteria that can only be checked against the live site
 
 ## Quick reference — placeholders to replace
 
-| Placeholder                                    | File          | Step |
-| ---------------------------------------------- | ------------- | ---- |
-| `SANITY_API_READ_TOKEN` (Viewer token)         | Worker secret | 4    |
-| `SANITY_WEBHOOK_SECRET` (webhook secret)       | Worker secret | 4    |
-| `DRAFT_MODE_COOKIE_SECRET` (session HMAC key)  | Worker secret | 4    |
-| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars   | 6    |
+| Placeholder                                    | File        | Step |
+| ---------------------------------------------- | ----------- | ---- |
+| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars | 6    |

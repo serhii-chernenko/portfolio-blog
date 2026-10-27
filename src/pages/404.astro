@@ -1,5 +1,4 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLocaleFromUrl, localeHref, useTranslations } from '../i18n/utils';
 
@@ -10,8 +9,8 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 ---
 
 <BaseLayout
-	title={stegaClean(t('404.title'))}
-	description={stegaClean(t('404.body'))}
+	title={t('404.title')}
+	description={t('404.body')}
 	locale={locale}
 	noIndex
 	omitCanonical

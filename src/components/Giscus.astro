@@ -1,5 +1,4 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import type { Locale } from '../i18n/config';
 import { htmlLangAttribute } from '../i18n/config';
 import { useTranslations } from '../i18n/utils';
@@ -27,7 +26,7 @@ const isConfigured = repo && repoId && category && categoryId;
 ---
 
 {isConfigured && (
-  <section class="mt-12 pt-8 border-t border-base-300" aria-label={stegaClean(t('comments.title'))}>
+  <section class="mt-12 pt-8 border-t border-base-300" aria-label={t('comments.title')}>
     <h2 class="text-xl font-semibold mb-6">{t('comments.title')}</h2>
 
     <div id="giscus-container" data-locale={locale}></div>

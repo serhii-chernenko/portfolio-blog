@@ -36,7 +36,7 @@ granular controls when they are useful, keeps the initial task easy without weak
 
 `en` and `uk` identify **content audiences**, not translation variants. A post belongs to exactly
 one edition for campaign purposes. Its tags, its slug, or a link to a translation in another
-language (the Sanity `translation.metadata` document, from which `src/lib/posts.ts` derives
+language (the EmDash translation group, from which `src/lib/posts.ts` derives
 `translationKey`) do not change that.
 
 - Publishing an English post targets the enabled English preference.

@@ -381,9 +381,6 @@ const routeCases = [
 	['/blog/sitemap-index.xml', '/blog', '/sitemap-index.xml'],
 	['/blog/sitemap-0.xml', '/blog', '/sitemap-0.xml'],
 	['/blog/api/search', '/blog', '/api/search'],
-	['/blog/api/sanity/revalidate', '/blog', '/api/sanity/revalidate'],
-	['/blog/api/draft-mode/enable', '/blog', '/api/draft-mode/enable'],
-	['/blog/api/draft-mode/disable', '/blog', '/api/draft-mode/disable'],
 	['/blog/en/', '/blog', '/:locale'],
 	['/blog/uk', '/blog', '/:locale'],
 	['/blog/en/posts/', '/blog', '/:locale/posts'],
@@ -430,6 +427,11 @@ assert.equal(isUntrackedRoute('/blog/api/events', '/blog'), true);
 assert.equal(isUntrackedRoute('/api/events', '/'), true);
 assert.equal(isUntrackedRoute('/blog/api/subscribe', '/blog'), false);
 assert.equal(isUntrackedRoute('/blog/en/posts/my-post/', '/blog'), false);
+assert.equal(isUntrackedRoute('/_emdash/admin', '/blog'), true);
+assert.equal(isUntrackedRoute('/_emdash/api/content/posts', '/blog'), true);
+assert.equal(isUntrackedRoute('/blog/_emdash/api/media/file/01ABC.png', '/blog'), true);
+assert.equal(isUntrackedRoute('/blog/preview/posts/01ABC', '/blog'), true);
+assert.equal(isUntrackedRoute('/blog/_emdashx', '/blog'), false);
 
 assert.equal(rateLimitKey('203.0.113.7'), '203.0.113.7');
 assert.equal(rateLimitKey(null), 'unknown');

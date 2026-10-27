@@ -1,19 +1,23 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import { PortableText } from 'astro-portabletext';
 import type { TypedObject, TypedObjectProps } from 'astro-portabletext/types';
+import { calloutBlocks } from '../../lib/portable-text';
 import { inlineComponents } from './components';
 
 type Props = TypedObjectProps;
 
-interface CalloutNode {
+interface CalloutNode extends TypedObject {
 	tone?: string;
+	/** Markdown edited in the EmDash callout block. */
+	text?: string;
+	/** Portable Text body of callouts stored before the EmDash migration. */
 	body?: TypedObject[];
 }
 
 const { node } = Astro.props;
-const { tone, body = [] } = node as unknown as CalloutNode;
-const type = stegaClean(tone ?? 'info');
+const callout = node as unknown as CalloutNode;
+const type = callout.tone ?? 'info';
+const body = calloutBlocks(callout);
 
 const variantMap: Record<string, string> = {
 	info: 'alert-info',

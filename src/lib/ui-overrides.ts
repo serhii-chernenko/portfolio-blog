@@ -1,40 +1,31 @@
-import { stegaClean } from '@sanity/client/stega';
-import { isLocale } from '../i18n/config';
+import { locales } from '../i18n/config';
 import { isUIKey } from '../i18n/ui';
 import type { UiOverrides } from '../i18n/utils';
-import { UI_STRINGS_QUERY } from './sanity/queries';
-import type { SanityContext } from './sanity/request';
+import { COLLECTIONS } from './cms/config';
+import type { CmsContext } from './cms/context';
+import { listEntries, stringField, type CmsEntry } from './cms/entries';
 
-const UI_STRINGS_ID = 'uiStrings';
-
-interface RawUiStringEntry {
-	key: string | null;
-	values: { language: string | null; value: string | null }[] | null;
-}
-
-export function toUiOverrides(entries: RawUiStringEntry[] | null): UiOverrides {
+/** Turns published `ui_strings` entries (one per key and language) into translator overrides. */
+export function toUiOverrides(entries: CmsEntry[]): UiOverrides {
 	const overrides: UiOverrides = {};
-	for (const entry of entries ?? []) {
-		const key = stegaClean(entry.key ?? '');
-		if (!isUIKey(key)) continue;
-		for (const { language: rawLanguage, value } of entry.values ?? []) {
-			const language = stegaClean(rawLanguage ?? '');
-			if (!isLocale(language) || !value || !stegaClean(value).trim()) continue;
-			overrides[language] = { ...overrides[language], [key]: value };
-		}
+	for (const entry of entries) {
+		const key = stringField(entry, 'key');
+		const value = stringField(entry, 'value');
+		if (!isUIKey(key) || !value.trim()) continue;
+		overrides[entry.locale] = { ...overrides[entry.locale], [key]: value };
 	}
 	return overrides;
 }
 
-const overridesByContext = new WeakMap<SanityContext, Promise<UiOverrides>>();
-const failedContexts = new WeakSet<SanityContext>();
+const overridesByContext = new WeakMap<CmsContext, Promise<UiOverrides>>();
+const failedContexts = new WeakSet<CmsContext>();
 
-async function fetchUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
+async function fetchUiOverrides(ctx: CmsContext): Promise<UiOverrides> {
 	try {
-		const entries = await ctx.fetch<RawUiStringEntry[] | null>(UI_STRINGS_QUERY, {
-			uiStringsId: UI_STRINGS_ID,
-		});
-		return toUiOverrides(entries);
+		const perLocale = await Promise.all(
+			locales.map((locale) => listEntries(COLLECTIONS.uiStrings, locale)),
+		);
+		return toUiOverrides(perLocale.flat());
 	} catch (error) {
 		failedContexts.add(ctx);
 		console.error(
@@ -47,7 +38,7 @@ async function fetchUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
 	}
 }
 
-export function loadUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
+export function loadUiOverrides(ctx: CmsContext): Promise<UiOverrides> {
 	let pending = overridesByContext.get(ctx);
 	if (!pending) {
 		pending = fetchUiOverrides(ctx);
@@ -56,6 +47,6 @@ export function loadUiOverrides(ctx: SanityContext): Promise<UiOverrides> {
 	return pending;
 }
 
-export function uiOverridesFailed(ctx: SanityContext): boolean {
+export function uiOverridesFailed(ctx: CmsContext): boolean {
 	return failedContexts.has(ctx);
 }

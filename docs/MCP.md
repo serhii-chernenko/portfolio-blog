@@ -18,18 +18,23 @@ server so AI assistants can query post content directly instead of scraping HTML
 | `search_posts_by_tag` | Posts matching a tag, optionally scoped to a `locale`.                                                         |
 | `list_tags`           | All tags with post counts, optionally scoped to a `locale`.                                                    |
 
-All four read from [Sanity](./SANITY.md) through the same helpers
-(`src/lib/posts.ts`, backed by `src/lib/sanity/`) the HTML pages use, always in
-the published perspective, so draft posts and future-dated `publishedAt` posts
+All four read from [EmDash](./CMS.md) through the same helpers
+(`src/lib/posts.ts`, backed by `src/lib/cms/`) the HTML pages use, always
+published content only, so draft posts and future-dated `publishedAt` posts
 are excluded identically everywhere. `get_post` returns the body as plain text
-extracted from Portable Text (`pt::text(body)`): only text blocks are included,
-while code blocks, callouts, images and embeds are omitted. It is not Markdown
-and not the raw block structure.
+flattened from Portable Text (`portableTextToPlainText` in
+`src/lib/portable-text.ts`, the same text `llms-full.txt` uses): text blocks,
+callout text, fenced code blocks, `[Image: alt]` for images and links for
+YouTube embeds. It is not the raw block structure.
+
+This server is separate from EmDash's own content-management MCP at
+`/_emdash/api/mcp` (OAuth) and from the `emdash-docs` MCP; see
+[`CMS.md`](./CMS.md#ai-tooling).
 
 ## Implementation
 
 `src/lib/mcp.ts` builds a fresh `McpServer` (`@modelcontextprotocol/server`)
-per request; `src/pages/api/mcp.ts` wires it up via `createMcpHandler`, which
+per request; `src/pages/blog/api/mcp.ts` wires it up via `createMcpHandler`, which
 handles the Streamable HTTP transport, stateless serving, and per-request
 instance construction internally. A byte-counted read (not a bare
 `content-length` header check — headers can be missing or wrong) rejects

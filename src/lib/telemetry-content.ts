@@ -1,6 +1,6 @@
 import { getPages } from './pages';
 import { getPublishedPosts, getTagsForLocale } from './posts';
-import { createPublishedContext } from './sanity/request';
+import { createPublishedContext } from './cms/context';
 import type { ContentKind, TelemetryLocale } from './telemetry-schema';
 
 const KNOWN_KEYS_TTL_MS = 5 * 60 * 1000;
@@ -13,16 +13,16 @@ interface CachedKeys {
 const knownKeysByScope = new Map<string, CachedKeys>();
 
 async function loadKnownKeys(kind: ContentKind, locale: TelemetryLocale): Promise<Set<string>> {
-	const sanity = createPublishedContext();
+	const cms = createPublishedContext();
 	if (kind === 'post') {
-		const posts = await getPublishedPosts(locale, sanity);
+		const posts = await getPublishedPosts(locale, cms);
 		return new Set(posts.map((post) => post.translationKey));
 	}
 	if (kind === 'page') {
-		const pages = await getPages(locale, sanity);
+		const pages = await getPages(locale, cms);
 		return new Set(pages.map((page) => page.key));
 	}
-	const tags = await getTagsForLocale(locale, sanity);
+	const tags = await getTagsForLocale(locale, cms);
 	return new Set(tags.map(({ slug }) => slug));
 }
 

@@ -1,0 +1,14 @@
+{
+	"name": "@portfolio-blog/emdash-site",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Site-owned native EmDash plugin: custom Portable Text blocks and publish hooks for the blog.",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./descriptor": "./src/descriptor.ts"
+	},
+	"peerDependencies": {
+		"emdash": "*"
+	}
+}

@@ -1,7 +1,6 @@
 {
 	"recommendations": [
 		"astro-build.astro-vscode",
-		"sanity-io.vscode-sanity",
 		"bradlc.vscode-tailwindcss",
 		"esbenp.prettier-vscode",
 		"dbaeumer.vscode-eslint",

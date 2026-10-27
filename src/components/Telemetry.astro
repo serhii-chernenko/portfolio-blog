@@ -1,4 +1,5 @@
 ---
+import { BASE_PATH } from '../lib/base-path';
 import type { Locale } from '../i18n/config';
 import type { PageType } from '../lib/telemetry-schema';
 
@@ -9,7 +10,7 @@ export interface Props {
 }
 
 const { locale, pageType, contentKey } = Astro.props;
-const endpoint = `${(import.meta.env.BASE_URL || '/').replace(/\/+$/, '')}/api/events`;
+const endpoint = `${BASE_PATH}/api/events`;
 ---
 
 <div

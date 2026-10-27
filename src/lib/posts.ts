@@ -1,22 +1,27 @@
-import { stegaClean } from '@sanity/client/stega';
 import type { TypedObject } from 'astro-portabletext/types';
-import { isLocale, type Locale } from '../i18n/config';
+import { locales, type Locale } from '../i18n/config';
 import { localeHref } from '../i18n/utils';
-import { includesScheduledContent, type SanityContext } from './sanity/request';
-import { portableTextToPlainText } from './portable-text';
-import type { SanityImage } from './sanity/image';
+import { COLLECTIONS } from './cms/config';
+import { includesScheduledContent, type CmsContext } from './cms/context';
 import {
-	ALL_POSTS_QUERY,
-	POST_BY_SLUG_QUERY,
-	POST_PLAIN_TEXT_QUERY,
-	POSTS_BY_LOCALE_QUERY,
-	POSTS_WITH_PLAIN_TEXT_BODY_QUERY,
-} from './sanity/queries';
+	dateField,
+	getEntryBySlug,
+	listEntries,
+	listEntriesForAllLocales,
+	stringField,
+	type CmsEntry,
+} from './cms/entries';
+import { isMediaImage, type MediaImage } from './cms/media';
+import {
+	emptyLocalizedUrls,
+	indexByTranslationGroup,
+	translationUrls,
+	type LocalizedUrls,
+} from './cms/translations';
+import { portableTextToPlainText, portableTextWordCount } from './portable-text';
 import { tagSlug } from './tag-slug';
 
-export { tagSlug };
-
-export type LocalizedUrls = Record<Locale, string | null>;
+export { tagSlug, emptyLocalizedUrls, type LocalizedUrls };
 
 export interface Post {
 	id: string;
@@ -29,170 +34,141 @@ export interface Post {
 	publishedAt: Date;
 	updatedAt?: Date;
 	tags: string[];
-	heroImage?: SanityImage;
+	heroImage?: MediaImage;
 	body?: TypedObject[];
 	wordCount: number;
 	translations: LocalizedUrls;
 }
 
-export interface TranslationRef {
-	_type: string;
-	language: string | null;
-	slug: string | null;
-	publishedAt?: string | null;
-}
-
-interface RawPost {
-	id: string;
-	isDraft: boolean;
-	language: string;
-	slug: string;
-	title: string | null;
-	description: string | null;
-	publishedAt: string;
-	updatedAt: string | null;
-	tags: string[];
-	heroImage: SanityImage | null;
-	wordCount: number;
-	translations: (TranslationRef | null)[] | null;
-	body?: TypedObject[] | null;
-}
+type TranslationIndex = ReturnType<typeof indexByTranslationGroup>;
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
-
-export function emptyLocalizedUrls(): LocalizedUrls {
-	return { en: null, uk: null };
-}
-
-function isLive(ref: TranslationRef, ctx: SanityContext, now: Date): boolean {
-	if (ref._type !== 'post' || includesScheduledContent(ctx)) return true;
-	const publishedAt = ref.publishedAt ? new Date(stegaClean(ref.publishedAt)) : null;
-	return publishedAt !== null && publishedAt <= now;
-}
-
-export function resolveTranslationUrls(
-	refs: (TranslationRef | null)[] | null,
-	ctx: SanityContext,
-	buildPath: (locale: Locale, slug: string) => string,
-): LocalizedUrls {
-	const urls = emptyLocalizedUrls();
-	const now = new Date();
-	for (const ref of refs ?? []) {
-		if (!ref) continue;
-		const language = stegaClean(ref.language ?? '');
-		const slug = stegaClean(ref.slug ?? '');
-		if (!isLocale(language) || !SLUG_PATTERN.test(slug) || !isLive(ref, ctx, now)) continue;
-		urls[language] = buildPath(language, slug);
-	}
-	return urls;
-}
-
-function translationKeyFor(slug: string, refs: (TranslationRef | null)[] | null): string {
-	for (const ref of refs ?? []) {
-		if (!ref || stegaClean(ref.language ?? '') !== 'en') continue;
-		const englishSlug = stegaClean(ref.slug ?? '');
-		if (SLUG_PATTERN.test(englishSlug)) return englishSlug;
-	}
-	return slug;
-}
 
 function postPath(locale: Locale, slug: string): string {
 	return localeHref(locale, `posts/${slug}`);
 }
 
-function toDate(value: string | null | undefined): Date | undefined {
-	if (!value) return undefined;
-	const date = new Date(stegaClean(value));
-	return Number.isNaN(date.getTime()) ? undefined : date;
+/** The date a post is listed under: its publish date, or for an unpublished preview its schedule. */
+function effectivePublishedAt(entry: CmsEntry, ctx: CmsContext): Date | null {
+	if (entry.publishedAt) return entry.publishedAt;
+	if (!includesScheduledContent(ctx)) return null;
+	return dateField(entry, 'scheduledAt') ?? entry.createdAt ?? new Date();
 }
 
-function toPost(raw: RawPost, ctx: SanityContext): Post | null {
-	const language = stegaClean(raw.language);
-	const slug = stegaClean(raw.slug);
-	const publishedAt = toDate(raw.publishedAt);
-	if (!isLocale(language) || !SLUG_PATTERN.test(slug) || !publishedAt) return null;
+/** Published posts with a future date stay hidden until then, except in preview. */
+function isLive(entry: CmsEntry, ctx: CmsContext, now = new Date()): boolean {
+	const publishedAt = effectivePublishedAt(entry, ctx);
+	if (!publishedAt) return false;
+	return includesScheduledContent(ctx) || publishedAt <= now;
+}
+
+function hasPendingDraft(entry: CmsEntry, ctx: CmsContext): boolean {
+	if (!ctx.preview) return false;
+	if (entry.status !== 'published') return true;
+	const draft = entry.data.draftRevisionId;
+	return typeof draft === 'string' && draft !== '' && draft !== entry.data.liveRevisionId;
+}
+
+function stringList(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+}
+
+function portableText(value: unknown): TypedObject[] | undefined {
+	return Array.isArray(value) ? (value as TypedObject[]) : undefined;
+}
+
+function toPost(entry: CmsEntry, index: TranslationIndex, ctx: CmsContext): Post | null {
+	const slug = entry.slug ?? '';
+	const publishedAt = effectivePublishedAt(entry, ctx);
+	if (!SLUG_PATTERN.test(slug) || !publishedAt) return null;
+	const translations = translationUrls(
+		entry,
+		index,
+		(candidate) => isLive(candidate, ctx),
+		postPath,
+	);
+	const englishSlug = index.get(entry.translationGroup)?.en?.slug;
+	const body = portableText(entry.data.body);
+	const heroImage = entry.data.hero_image;
 	return {
-		id: raw.id,
-		isDraft: raw.isDraft,
-		language,
+		id: entry.id,
+		isDraft: hasPendingDraft(entry, ctx),
+		language: entry.locale,
 		slug,
-		translationKey: language === 'en' ? slug : translationKeyFor(slug, raw.translations),
-		title: raw.title ?? '',
-		description: raw.description ?? '',
+		translationKey:
+			entry.locale === 'en' || !englishSlug || !SLUG_PATTERN.test(englishSlug) ? slug : englishSlug,
+		title: stringField(entry, 'title'),
+		description: stringField(entry, 'description'),
 		publishedAt,
-		updatedAt: toDate(raw.updatedAt),
-		tags: (raw.tags ?? []).map((tag) => stegaClean(tag)).filter(Boolean),
-		heroImage: raw.heroImage?.asset ? raw.heroImage : undefined,
-		body: raw.body ?? undefined,
-		wordCount: raw.wordCount ?? 0,
-		translations: resolveTranslationUrls(raw.translations, ctx, postPath),
+		updatedAt: dateField(entry, 'revised_at'),
+		tags: stringList(entry.data.tags),
+		heroImage: isMediaImage(heroImage) ? heroImage : undefined,
+		body,
+		wordCount: portableTextWordCount(body),
+		translations,
 	};
 }
 
-function toPosts(raws: RawPost[] | null, ctx: SanityContext): Post[] {
-	return (raws ?? []).map((raw) => toPost(raw, ctx)).filter((post): post is Post => post !== null);
+async function translationIndex(): Promise<TranslationIndex> {
+	return indexByTranslationGroup(await listEntriesForAllLocales(COLLECTIONS.posts));
+}
+
+function byPublishedAtDesc(a: Post, b: Post): number {
+	return b.publishedAt.getTime() - a.publishedAt.getTime();
 }
 
 export function postUrl(post: Pick<Post, 'language' | 'slug'>): string {
 	return postPath(post.language, post.slug);
 }
 
-export async function getPublishedPosts(locale: Locale, ctx: SanityContext): Promise<Post[]> {
-	const raws = await ctx.fetch<RawPost[]>(POSTS_BY_LOCALE_QUERY, {
-		locale,
-		includeFuture: includesScheduledContent(ctx),
-	});
-	return toPosts(raws, ctx);
+export async function getPublishedPosts(locale: Locale, ctx: CmsContext): Promise<Post[]> {
+	const [entries, index] = await Promise.all([
+		listEntries(COLLECTIONS.posts, locale),
+		translationIndex(),
+	]);
+	const now = new Date();
+	return entries
+		.filter((entry) => isLive(entry, ctx, now))
+		.map((entry) => toPost(entry, index, ctx))
+		.filter((post): post is Post => post !== null)
+		.sort(byPublishedAtDesc);
 }
 
-export async function getAllPublishedPosts(ctx: SanityContext): Promise<Post[]> {
-	const raws = await ctx.fetch<RawPost[]>(ALL_POSTS_QUERY, {
-		includeFuture: includesScheduledContent(ctx),
-	});
-	return toPosts(raws, ctx);
+export async function getAllPublishedPosts(ctx: CmsContext): Promise<Post[]> {
+	const perLocale = await Promise.all(locales.map((locale) => getPublishedPosts(locale, ctx)));
+	return perLocale.flat().sort(byPublishedAtDesc);
 }
 
 export async function getPostBySlug(
 	locale: Locale,
 	slug: string,
-	ctx: SanityContext,
+	ctx: CmsContext,
 ): Promise<Post | null> {
 	if (!SLUG_PATTERN.test(slug)) return null;
-	const raw = await ctx.fetch<RawPost | null>(POST_BY_SLUG_QUERY, {
-		locale,
-		slug,
-		includeFuture: includesScheduledContent(ctx),
-	});
-	return raw ? toPost(raw, ctx) : null;
+	const [entry, index] = await Promise.all([
+		getEntryBySlug(COLLECTIONS.posts, slug, locale),
+		translationIndex(),
+	]);
+	if (!entry || !isLive(entry, ctx)) return null;
+	return toPost(entry, index, ctx);
 }
 
 export async function getPostPlainText(
 	locale: Locale,
 	slug: string,
-	ctx: SanityContext,
+	ctx: CmsContext,
 ): Promise<{ post: Post; plainText: string } | null> {
-	if (!SLUG_PATTERN.test(slug)) return null;
-	const raw = await ctx.fetch<RawPost | null>(POST_PLAIN_TEXT_QUERY, {
-		locale,
-		slug,
-		includeFuture: includesScheduledContent(ctx),
-	});
-	const post = raw ? toPost(raw, ctx) : null;
+	const post = await getPostBySlug(locale, slug, ctx);
 	return post ? { post, plainText: portableTextToPlainText(post.body) } : null;
 }
 
 export async function getPublishedPostsWithPlainText(
 	locale: Locale,
-	ctx: SanityContext,
+	ctx: CmsContext,
 ): Promise<{ post: Post; plainText: string }[]> {
-	const raws = await ctx.fetch<RawPost[]>(POSTS_WITH_PLAIN_TEXT_BODY_QUERY, {
-		locale,
-		includeFuture: includesScheduledContent(ctx),
-	});
-	return toPosts(raws, ctx).map((post) => ({
-		post,
-		plainText: portableTextToPlainText(post.body),
-	}));
+	const posts = await getPublishedPosts(locale, ctx);
+	return posts.map((post) => ({ post, plainText: portableTextToPlainText(post.body) }));
 }
 
 export function getTranslatedPostUrls(post: Pick<Post, 'translations'>): LocalizedUrls {
@@ -206,7 +182,7 @@ export function postHasTagSlug(post: Pick<Post, 'tags'>, slug: string): boolean 
 export async function getPostsForTagSlug(
 	locale: Locale,
 	slug: string,
-	ctx: SanityContext,
+	ctx: CmsContext,
 ): Promise<Post[]> {
 	const posts = await getPublishedPosts(locale, ctx);
 	return posts.filter((post) => postHasTagSlug(post, slug));
@@ -236,13 +212,10 @@ export function summarizeTags(posts: Pick<Post, 'tags'>[]): TagSummary[] {
 	);
 }
 
-export async function getTagsForLocale(locale: Locale, ctx: SanityContext): Promise<TagSummary[]> {
+export async function getTagsForLocale(locale: Locale, ctx: CmsContext): Promise<TagSummary[]> {
 	return summarizeTags(await getPublishedPosts(locale, ctx));
 }
 
-export function getPostsForLocales(
-	locale: Locale | undefined,
-	ctx: SanityContext,
-): Promise<Post[]> {
+export function getPostsForLocales(locale: Locale | undefined, ctx: CmsContext): Promise<Post[]> {
 	return locale ? getPublishedPosts(locale, ctx) : getAllPublishedPosts(ctx);
 }

@@ -34,16 +34,9 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 NEW_RELIC_LICENSE_KEY=
 
-# Optional — Sanity Viewer token. Enables draft mode / Visual Editing via the
-# Studio Presentation tool. Empty → only published content, draft mode disabled.
-SANITY_API_READ_TOKEN=
-
-# Optional — secret of the Sanity webhook that purges the Workers Cache.
-SANITY_WEBHOOK_SECRET=
-
-# Optional — HMAC key (32+ chars) signing the draft-session cookie. Draft mode
-# needs it together with SANITY_API_READ_TOKEN. Generate: openssl rand -hex 32
-DRAFT_MODE_COOKIE_SECRET=
+# The CMS (EmDash) needs no secrets here: its preview-signing secret and IP salt are
+# generated on first use and stored in the CMS database. Set EMDASH_ENCRYPTION_KEY
+# (`pnpm exec emdash secrets generate`) only if a plugin ever declares a secret setting.
 
 # ── Public build-time vars — inlined into the bundle via import.meta.env ──
 # All optional locally; features no-op when empty (comments widget, analytics).

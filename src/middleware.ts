@@ -1,17 +1,9 @@
 import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
-import { perspectiveCookieName } from '@sanity/preview-url-secret/constants';
-import { GET as getLlmsTxt } from './pages/llms.txt';
-import { GET as getLlmsFullTxt } from './pages/llms-full.txt';
-import { getDraftModeSecrets } from './lib/server-secrets';
-import {
-	PREVIEW_SEARCH_PARAM,
-	SANITY_CACHE_TAG,
-	sanityDashboardOrigin,
-	studioUrl,
-} from './lib/sanity/config';
-import { DRAFT_SESSION_COOKIE_NAME, isValidDraftSession } from './lib/sanity/draft-mode';
-import { createRequestContext, parseDraftPerspective } from './lib/sanity/request';
+import { GET as getLlmsTxt } from './pages/blog/llms.txt';
+import { GET as getLlmsFullTxt } from './pages/blog/llms-full.txt';
+import { CMS_CACHE_TAGS, EDIT_MODE_PARAM, PREVIEW_TOKEN_PARAM } from './lib/cms/config';
+import { createRequestContext } from './lib/cms/context';
 import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
 import {
 	httpOutcome,
@@ -21,6 +13,7 @@ import {
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
 import { loadUiOverrides, uiOverridesFailed } from './lib/ui-overrides';
+import { BASE_PATH } from './lib/base-path';
 
 const FORM_CONTENT_TYPES = [
 	'application/x-www-form-urlencoded',
@@ -30,7 +23,7 @@ const FORM_CONTENT_TYPES = [
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 const ONE_CLICK_CONTENT_TYPE = 'application/x-www-form-urlencoded';
 const ONE_CLICK_ACTIONS = ['en', 'uk', 'all'];
-const RUNTIME_BASE = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+const RUNTIME_BASE = BASE_PATH;
 const ONE_CLICK_UNSUBSCRIBE_PATH = `${RUNTIME_BASE}/api/unsubscribe`;
 
 function hasFormLikeHeader(contentType: string | null): boolean {
@@ -67,29 +60,23 @@ const CACHEABLE_METHODS = ['GET', 'HEAD'];
 const CACHEABLE_STATUSES = [200, 404];
 const CACHEABLE_API_PATHS = [`${RUNTIME_BASE}/api/search`];
 const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
-const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: [SANITY_CACHE_TAG] };
-const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: [SANITY_CACHE_TAG] };
+const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: CMS_CACHE_TAGS };
+const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: CMS_CACHE_TAGS };
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const NO_STORE_CACHE_CONTROL = 'no-store';
 const ADMIN_PATH_PREFIX = `${RUNTIME_BASE}/admin`;
 const REDIRECT_ONLY_PATHS = new Set([RUNTIME_BASE, `${RUNTIME_BASE}/`]);
 const INTERNAL_SEGMENT_PREFIX = '/_';
-const LOCAL_STUDIO_ORIGIN = 'http://localhost:*';
-const FRAME_ANCESTORS = [
-	"'self'",
-	studioUrl,
-	sanityDashboardOrigin,
-	...(import.meta.env.DEV ? [LOCAL_STUDIO_ORIGIN] : []),
-];
+const CMS_PATH_PREFIX = '/_emdash/';
 const HTML_SECURITY_HEADERS: Record<string, string> = {
 	'x-content-type-options': 'nosniff',
 	'referrer-policy': 'strict-origin-when-cross-origin',
-	'content-security-policy': `frame-ancestors ${FRAME_ANCESTORS.join(' ')}`,
+	'content-security-policy': "frame-ancestors 'self'",
 };
 
-interface DraftMode {
-	token: string;
-	perspective: ReturnType<typeof parseDraftPerspective>;
+/** EmDash admin, API and media routes: EmDash sets their headers and caching itself. */
+function isCmsRoute(pathname: string): boolean {
+	return pathname === CMS_PATH_PREFIX.slice(0, -1) || pathname.startsWith(CMS_PATH_PREFIX);
 }
 
 function isCacheableRoute(pathname: string): boolean {
@@ -126,16 +113,20 @@ function isPageRoute(pathname: string): boolean {
 function rendersUi(pathname: string): boolean {
 	return (
 		isPageRoute(pathname) &&
+		!isCmsRoute(pathname) &&
 		!pathname.startsWith(ADMIN_PATH_PREFIX) &&
 		!REDIRECT_ONLY_PATHS.has(pathname)
 	);
 }
 
-function isPreviewPageRequest(request: Request, url: URL): boolean {
+/**
+ * Draft views: signed `_preview` links and authenticated edit-mode requests (EmDash verifies
+ * both). Any request carrying either parameter stays out of the shared cache, valid or not,
+ * because the parameter makes the URL per-token.
+ */
+function isDraftViewRequest(url: URL, preview: boolean): boolean {
 	return (
-		CACHEABLE_METHODS.includes(request.method) &&
-		url.searchParams.has(PREVIEW_SEARCH_PARAM) &&
-		!url.pathname.startsWith(API_PATH_PREFIX)
+		preview || url.searchParams.has(PREVIEW_TOKEN_PARAM) || url.searchParams.has(EDIT_MODE_PARAM)
 	);
 }
 
@@ -170,15 +161,6 @@ function redirectSitemapAlias(request: Request, url: URL): Response | null {
 			'cache-control': SITEMAP_REDIRECT_CACHE_CONTROL,
 		},
 	});
-}
-
-async function resolveDraftMode(context: APIContext): Promise<DraftMode | null> {
-	const session = context.cookies.get(DRAFT_SESSION_COOKIE_NAME)?.value;
-	if (!session) return null;
-	const secrets = await getDraftModeSecrets();
-	if (!secrets || !(await isValidDraftSession(secrets.cookieSecret, session))) return null;
-	const perspective = parseDraftPerspective(context.cookies.get(perspectiveCookieName)?.value);
-	return { token: secrets.readToken, perspective };
 }
 
 function withMutableHeaders(response: Response): Response {
@@ -226,6 +208,9 @@ function applyCachePolicy(context: APIContext, response: Response): void {
 
 async function handleRequest(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	const { request, url, isPrerendered } = context;
+	// EmDash admin, API and media: EmDash enforces its own CSRF (X-EmDash-Request header or a
+	// bearer token), sets its own headers and caching, and needs no site UI data.
+	if (isCmsRoute(url.pathname)) return next();
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
 		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
 		const isSameOrigin = request.headers.get('origin') === url.origin;
@@ -253,22 +238,15 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 		return redirect(`${url.pathname}/${url.search}`, 308);
 	}
 
-	const draftMode = await resolveDraftMode(context);
-	if (!draftMode && isPreviewPageRequest(request, url)) {
-		const cleanUrl = new URL(url);
-		cleanUrl.searchParams.delete(PREVIEW_SEARCH_PARAM);
-		return redirect(`${cleanUrl.pathname}${cleanUrl.search}`, 307);
-	}
-
-	context.locals.sanity = createRequestContext(draftMode);
+	context.locals.cms = createRequestContext();
 
 	const apexEndpoint = apexEndpointFor(request, url.pathname);
 	if (!apexEndpoint && rendersUi(url.pathname)) {
-		context.locals.uiOverrides = await loadUiOverrides(context.locals.sanity);
+		context.locals.uiOverrides = await loadUiOverrides(context.locals.cms);
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
-	if (draftMode) return disableCaching(context, response);
-	if (uiOverridesFailed(context.locals.sanity)) {
+	if (isDraftViewRequest(url, context.locals.cms.preview)) return disableCaching(context, response);
+	if (uiOverridesFailed(context.locals.cms)) {
 		disableCachingForDegradedResponse(context, response);
 		return response;
 	}

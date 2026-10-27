@@ -7,6 +7,30 @@
 			"skillPath": "skills/astro/SKILL.md",
 			"computedHash": "ebefe26b231d32379c14e41a46c2de7b4b0184543bedab7febdabe4fb21fba4e"
 		},
+		"building-emdash-site": {
+			"source": "emdash-cms/skills",
+			"sourceType": "github",
+			"skillPath": "skills/building-emdash-site/SKILL.md",
+			"computedHash": "9674c98251856c48d78c611f5e7884fee726e4da4df9a399e921ab7f5aa5e870"
+		},
+		"creating-plugins": {
+			"source": "emdash-cms/skills",
+			"sourceType": "github",
+			"skillPath": "skills/creating-plugins/SKILL.md",
+			"computedHash": "2a40f624a4f8360c85e6efe0e4f3d4c99b966e91a5c21d1fdb075f0bbd7c360d"
+		},
+		"emdash-cli": {
+			"source": "emdash-cms/skills",
+			"sourceType": "github",
+			"skillPath": "skills/emdash-cli/SKILL.md",
+			"computedHash": "18a17701b946afd65e778ea560feddfd18082da3f0e916dcc6ca8c155bc0d803"
+		},
+		"upgrading-emdash": {
+			"source": "emdash-cms/skills",
+			"sourceType": "github",
+			"skillPath": "skills/upgrading-emdash/SKILL.md",
+			"computedHash": "49600bfd83609a8caa40501ed511dac5c0731138bcff51eb5257281dfe3ac8fb"
+		},
 		"workers-best-practices": {
 			"source": "cloudflare/skills",
 			"sourceType": "github",
