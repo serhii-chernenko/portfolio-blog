@@ -9,7 +9,6 @@ import tailwindcss from '@tailwindcss/vite';
 import emdash, { local } from 'emdash/astro';
 import { sqlite } from 'emdash/db';
 import { d1, r2 } from '@emdash-cms/cloudflare';
-import { fieldKitPlugin } from '@emdash-cms/plugin-field-kit';
 import { sitePlugin } from '@portfolio-blog/emdash-site/descriptor';
 
 const SITE = 'https://serhiichernenko.com';
@@ -110,7 +109,7 @@ export default defineConfig({
 		react(),
 		emdash({
 			...cmsStorageConfig,
-			plugins: [fieldKitPlugin(), sitePlugin()],
+			plugins: [sitePlugin()],
 			// The public pages render their own markup and are route-cached; editors preview drafts
 			// through "View on site" links instead of the injected visual-editing toolbar.
 			toolbar: false,

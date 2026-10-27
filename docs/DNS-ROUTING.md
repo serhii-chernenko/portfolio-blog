@@ -59,7 +59,7 @@ details are in the sections further down.
 
    | Path             | Remove from this repo                                                                   | The portfolio must serve                                                            |
    | ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-   | `/robots.txt`    | route in `wrangler.jsonc`, the copy step in `scripts/post-build.mjs`                    | its own file, keeping `Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml` |
+   | `/robots.txt`    | route in `wrangler.jsonc` (the text lives in the admin, Settings → SEO)                 | its own file, keeping `Sitemap: https://serhiichernenko.com/blog/sitemap-index.xml` |
    | `/favicon.ico`   | route in `wrangler.jsonc`, the copy step in `scripts/post-build.mjs`                    | its own favicon                                                                     |
    | `/llms.txt`      | route in `wrangler.jsonc`, `APEX_ENDPOINTS` entry in `src/middleware.ts`                | its own file, linking `https://serhiichernenko.com/blog/llms.txt`                   |
    | `/llms-full.txt` | route in `wrangler.jsonc`, `APEX_ENDPOINTS` entry in `src/middleware.ts`                | its own file or a redirect to `/blog/llms-full.txt`                                 |
@@ -202,32 +202,22 @@ from the Redirect Rules bridges the gap. Point uptime monitors at
 `https://serhiichernenko.com/blog/en/` (a real `200`), not `/`.
 
 `/robots.txt` is a narrow, deliberate exception to "the root belongs to the
-future portfolio Worker": static files live in `public/blog/`, so Astro only
-emits `robots.txt` under `/blog`, and without this route the file 522s at the host root and no
-crawler ever sees it (`Sitemap:`, `Disallow:`, and `Content-Signal:` lines all
-go unread). It's bound at the exact path only — not a `/*` catch-all — so it
-doesn't compete with the portfolio Worker's future routes for anything else.
-When that Worker ships, move `/robots.txt` ownership to it and delete this
-route + the build step in `scripts/post-build.mjs` described below.
+future portfolio Worker": robots.txt is only read at the host root, so without this
+route crawlers never see the blog's `Sitemap:`, `Disallow:` and `Content-Signal:`
+lines. It's bound at the exact path only — not a `/*` catch-all — so it doesn't
+compete with the portfolio Worker's future routes for anything else. When that
+Worker ships, move `/robots.txt` ownership to it and delete this route.
 
 `/favicon.ico` follows the same exception: browsers and Google request it at the
 host root, so `serhiichernenko.com/favicon.ico` is bound at the exact path
 and `scripts/post-build.mjs` copies `dist/client/blog/favicon.ico` to
 `dist/client/favicon.ico`. It moves to the portfolio Worker later, together with
-`/robots.txt` (delete the route and the copy step then).
+`/robots.txt` (delete the routes and the favicon copy step then).
 
-**How it's actually served**: NOT by an Astro route or a middleware rewrite.
-`context.rewrite()` only resolves to
-real Astro routes — `public/blog/robots.txt` is a static file with no route-manifest
-entry, and rewriting to it throws at request time ("Unexpectedly unable to find
-a component instance"). Instead, `scripts/post-build.mjs` copies the already-
-built `dist/client/blog/robots.txt` to `dist/client/robots.txt` (the assets
-root) after `astro build` runs. Cloudflare's static-asset serving picks up a
-matching file directly, ahead of any Worker code — the same mechanism the apex
-`index.html` redirect earlier in that script already relies on. Verify after a
-build with `curl -H "Host: serhiichernenko.com" http://localhost:PORT/robots.txt`
-against `wrangler dev` (using the actual configured port) — a middleware-based
-approach here will silently 500, not fail loudly at build time.
+**How it's served**: by EmDash's built-in `/robots.txt` route, from the admin
+(Settings → SEO: the robots.txt text and "Disallow AI training"; see
+`docs/CMS.md#what-the-admin-controls`). There is no static robots.txt file. Verify
+after a deploy with `curl https://serhiichernenko.com/robots.txt`.
 
 ### Host-root `/llms.txt`, `/llms-full.txt` and `/sitemap.xml`
 

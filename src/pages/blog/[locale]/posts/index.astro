@@ -2,7 +2,6 @@
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import { getPublishedPosts } from '../../../../lib/posts';
-import { POSTS_PAGE_SIZE } from '../../../../lib/pagination';
 import { getCmsContext } from '../../../../lib/cms/context';
 import { getLayoutData } from '../../../../lib/site';
 import { useTranslations, localeHref, mirroredLocaleHrefs } from '../../../../i18n/utils';
@@ -14,12 +13,13 @@ const locale = Astro.params.locale ?? '';
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 const t = useTranslations(locale, Astro.locals.uiOverrides);
 const cms = getCmsContext(Astro.locals);
-const [{ settings }, posts] = await Promise.all([
+const [{ settings, site }, posts] = await Promise.all([
 	getLayoutData(locale, cms),
 	getPublishedPosts(locale, cms),
 ]);
-const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PAGE_SIZE));
-const pagePosts = posts.slice(0, POSTS_PAGE_SIZE);
+const pageSize = site.postsPerPage;
+const totalPages = Math.max(1, Math.ceil(posts.length / pageSize));
+const pagePosts = posts.slice(0, pageSize);
 ---
 
 <BaseLayout

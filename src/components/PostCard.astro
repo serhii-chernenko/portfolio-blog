@@ -3,6 +3,8 @@ import type { Post } from '../lib/posts';
 import { postUrl } from '../lib/posts';
 import { readingTimeMinutes } from '../lib/reading-time';
 import { mediaUrl } from '../lib/cms/media';
+import { getSiteConfig } from '../lib/cms/settings';
+import { formatPostDate } from '../lib/dates';
 import { useTranslations } from '../i18n/utils';
 
 export interface Props {
@@ -20,11 +22,8 @@ const minutes = readingTimeMinutes(post.wordCount);
 const heroImage = post.heroImage;
 const cardImageHeight = Math.round(CARD_IMAGE_WIDTH / CARD_ASPECT_RATIO);
 
-const formattedDate = post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
-	year: 'numeric',
-	month: 'short',
-	day: 'numeric',
-});
+const { timeZone } = await getSiteConfig();
+const formattedDate = formatPostDate(post.publishedAt, locale, timeZone, 'short');
 ---
 
 <article class="size-full">

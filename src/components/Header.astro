@@ -2,6 +2,7 @@
 import type { Locale } from '../i18n/config';
 import { useTranslations, localeHref } from '../i18n/utils';
 import type { LayoutData, NavLink } from '../lib/site';
+import { mediaUrl } from '../lib/cms/media';
 import ThemeToggle from './ThemeToggle.astro';
 import LanguageSwitcher from './LanguageSwitcher.astro';
 
@@ -17,6 +18,9 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 
 const navLinks = layout.header;
 const siteName = layout.settings.siteName;
+// Settings → General: Logo replaces the text site name when set.
+const logo = layout.site.logo;
+const logoSrc = logo ? mediaUrl(logo) : '';
 const currentPathname = currentPath ?? Astro.url.pathname;
 
 function isActive(link: NavLink): boolean {
@@ -70,7 +74,11 @@ function linkTarget(link: NavLink) {
 				</label>
 
 				<a href={localeHref(locale)} class="btn btn-ghost text-xl font-bold">
-					{siteName}
+					{logoSrc ? (
+						<img src={logoSrc} alt={siteName} class="h-8 w-auto" decoding="async" />
+					) : (
+						siteName
+					)}
 				</a>
 			</div>
 
@@ -137,7 +145,11 @@ function linkTarget(link: NavLink) {
 			aria-label="Mobile navigation"
 		>
 			<a href={localeHref(locale)} class="text-xl font-bold block mb-6">
-				{siteName}
+				{logoSrc ? (
+					<img src={logoSrc} alt={siteName} class="h-8 w-auto" decoding="async" />
+				) : (
+					siteName
+				)}
 			</a>
 			<ul class="menu w-full">
 				{navLinks.map((link) => (

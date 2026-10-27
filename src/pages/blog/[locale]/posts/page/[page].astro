@@ -2,7 +2,7 @@
 import BaseLayout from '../../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../../components/PostCard.astro';
 import { getPublishedPosts } from '../../../../../lib/posts';
-import { POSTS_PAGE_SIZE, parsePageNumber } from '../../../../../lib/pagination';
+import { parsePageNumber } from '../../../../../lib/pagination';
 import { getCmsContext } from '../../../../../lib/cms/context';
 import { getLayoutData } from '../../../../../lib/site';
 import { useTranslations, localeHref } from '../../../../../i18n/utils';
@@ -15,13 +15,14 @@ const page = parsePageNumber(Astro.params.page);
 if (!isLocale(locale) || page === null || page < 2) return new Response(null, { status: 404 });
 const t = useTranslations(locale, Astro.locals.uiOverrides);
 const cms = getCmsContext(Astro.locals);
-const [{ settings }, posts] = await Promise.all([
+const [{ settings, site }, posts] = await Promise.all([
 	getLayoutData(locale, cms),
 	getPublishedPosts(locale, cms),
 ]);
-const totalPages = Math.ceil(posts.length / POSTS_PAGE_SIZE);
+const pageSize = site.postsPerPage;
+const totalPages = Math.ceil(posts.length / pageSize);
 if (page > totalPages) return new Response(null, { status: 404 });
-const pagePosts = posts.slice((page - 1) * POSTS_PAGE_SIZE, page * POSTS_PAGE_SIZE);
+const pagePosts = posts.slice((page - 1) * pageSize, page * pageSize);
 const pageLabel = t('pagination.page', { page, total: totalPages });
 ---
 

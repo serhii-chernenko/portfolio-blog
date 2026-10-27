@@ -2,7 +2,6 @@ import type { APIContext } from 'astro';
 import { locales, type Locale } from '../../i18n/config';
 import { localeHref, mirroredLocaleHrefs } from '../../i18n/utils';
 import { getPages, pageUrl } from '../../lib/pages';
-import { POSTS_PAGE_SIZE } from '../../lib/pagination';
 import {
 	getAllPublishedPosts,
 	postHasTagSlug,
@@ -11,6 +10,7 @@ import {
 	type Post,
 } from '../../lib/posts';
 import { createPublishedContext } from '../../lib/cms/context';
+import { getSiteConfig } from '../../lib/cms/settings';
 import { renderUrlSet, xmlResponse, type SitemapEntry } from '../../lib/sitemap';
 import { MIN_POSTS_FOR_TAG_INDEXING } from '../../lib/tag-slug';
 
@@ -57,9 +57,10 @@ export async function GET(context: APIContext) {
 		...mirroredEntries('subscribe/'),
 	];
 
+	const { postsPerPage } = await getSiteConfig();
 	for (const locale of locales) {
 		const localePosts = postsByLocale.get(locale) ?? [];
-		const totalPages = Math.ceil(localePosts.length / POSTS_PAGE_SIZE);
+		const totalPages = Math.ceil(localePosts.length / postsPerPage);
 		for (let page = 2; page <= totalPages; page++) {
 			entries.push({ locale, path: localeHref(locale, `posts/page/${page}`) });
 		}

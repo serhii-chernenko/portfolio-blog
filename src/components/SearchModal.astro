@@ -1,6 +1,7 @@
 ---
-import type { Locale } from '../i18n/config';
+import { dateLocale, type Locale } from '../i18n/config';
 import { useTranslations, withBase } from '../i18n/utils';
+import { getSiteConfig } from '../lib/cms/settings';
 
 export interface Props {
 	locale: Locale;
@@ -8,6 +9,7 @@ export interface Props {
 
 const { locale } = Astro.props;
 const t = useTranslations(locale, Astro.locals.uiOverrides);
+const { timeZone } = await getSiteConfig();
 ---
 
 <dialog
@@ -16,7 +18,8 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 	aria-label={t('search.title')}
 	data-locale={locale}
 	data-endpoint={withBase('api/search')}
-	data-date-locale={locale === 'uk' ? 'uk-UA' : 'en-US'}
+	data-date-locale={dateLocale[locale]}
+	data-time-zone={timeZone}
 	data-hint={t('search.hint')}
 	data-loading={t('search.loading')}
 	data-empty={t('search.empty')}
@@ -147,6 +150,7 @@ const t = useTranslations(locale, Astro.locals.uiOverrides);
 						year: 'numeric',
 						month: 'short',
 						day: 'numeric',
+						...(strings.timeZone ? { timeZone: strings.timeZone } : {}),
 					});
 		};
 

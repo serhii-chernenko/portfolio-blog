@@ -1,7 +1,9 @@
 ---
 import type { Locale } from '../i18n/config';
 import type { Post } from '../lib/posts';
-import { getTranslatedPostUrls, tagSlug } from '../lib/posts';
+import { getTranslatedPostUrls, tagLabels } from '../lib/posts';
+import { getSiteConfig } from '../lib/cms/settings';
+import { formatPostDate } from '../lib/dates';
 import type { TocHeading } from '../lib/portable-text';
 import { absoluteMediaUrl, imageDimensions, mediaUrl } from '../lib/cms/media';
 import { useTranslations, localeHref } from '../i18n/utils';
@@ -24,6 +26,7 @@ const locale: Locale = post.language;
 const t = useTranslations(locale, Astro.locals.uiOverrides);
 const translatedUrls = getTranslatedPostUrls(post);
 const tags = post.tags;
+const { timeZone } = await getSiteConfig();
 const heroImage = post.heroImage;
 // Media is served as the original file (no image CDN), so social cards use its real size.
 const ogImage = heroImage ? absoluteMediaUrl(heroImage, Astro.site!) || undefined : undefined;
@@ -41,11 +44,13 @@ const ogImageSize = heroImage ? imageDimensions(heroImage) : null;
 	type="article"
 	publishedAt={post.publishedAt}
 	updatedAt={post.updatedAt}
-	tags={tags}
+	tags={tagLabels(post)}
 	alternates={translatedUrls}
 	translatedUrls={translatedUrls}
 	pageType="post"
 	contentKey={post.translationKey}
+	seo={post.seo}
+	author={post.author}
 >
 	<!-- Article header: bg-base-200 section with back button, title, meta, hero image -->
 	<section class="bg-base-200">
@@ -93,11 +98,7 @@ const ogImageSize = heroImage ? imageDimensions(heroImage) : null;
 						datetime={post.publishedAt.toISOString()}
 						class="badge badge-primary badge-outline badge-sm rounded-full"
 					>
-						{post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-US', {
-							year: 'numeric',
-							month: 'long',
-							day: 'numeric',
-						})}
+						{formatPostDate(post.publishedAt, locale, timeZone)}
 					</time>
 					{readingTime != null && (
 						<span class="badge badge-primary badge-outline badge-sm rounded-full">
@@ -106,10 +107,10 @@ const ogImageSize = heroImage ? imageDimensions(heroImage) : null;
 					)}
 					{tags.map((tag) => (
 						<a
-							href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+							href={localeHref(locale, `tags/${tag.slug}`)}
 							class="badge badge-primary badge-outline badge-sm rounded-full hover:badge-primary hover:text-primary-content transition-colors"
 						>
-							{tag}
+							{tag.label}
 						</a>
 					))}
 				</div>
@@ -153,10 +154,10 @@ const ogImageSize = heroImage ? imageDimensions(heroImage) : null;
 						<div class="flex flex-wrap gap-2" aria-label={t('post.tags')}>
 							{tags.map((tag) => (
 								<a
-									href={localeHref(locale, `tags/${tagSlug(tag)}`)}
+									href={localeHref(locale, `tags/${tag.slug}`)}
 									class="badge badge-outline hover:badge-primary transition-colors"
 								>
-									{tag}
+									{tag.label}
 								</a>
 							))}
 						</div>

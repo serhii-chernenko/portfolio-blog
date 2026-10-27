@@ -1,7 +1,7 @@
 import type { Locale } from '../i18n/config';
 import { htmlLangAttribute, ogLocale } from '../i18n/config';
 import { ensureTrailingSlash } from './hreflang';
-import { AUTHOR_NAME, AUTHOR_SAME_AS } from './author';
+import type { Author } from './cms/author';
 
 export { buildCanonical, buildHreflang, ensureTrailingSlash } from './hreflang';
 
@@ -15,12 +15,13 @@ function absoluteCanonical(site: URL | string, path: string): string {
 	return ensureTrailingSlash(new URL(path, toUrl(site)).toString());
 }
 
-function authorPerson(site: URL | string, authorPath: string) {
+/** schema.org Person of the author: their byline, linked to the site's about page. */
+function authorPerson(site: URL | string, authorPath: string, author: Author) {
 	return {
 		'@type': 'Person',
-		name: AUTHOR_NAME,
+		name: author.name,
 		url: absoluteCanonical(site, authorPath),
-		sameAs: AUTHOR_SAME_AS,
+		...(author.sameAs.length > 0 ? { sameAs: author.sameAs } : {}),
 	};
 }
 
@@ -40,9 +41,10 @@ export function blogPostingJsonLd(input: {
 	updatedAt?: Date;
 	tags?: string[];
 	authorPath: string;
+	author: Author;
 }) {
 	const url = absoluteCanonical(input.site, input.pathname);
-	const author = authorPerson(input.site, input.authorPath);
+	const author = authorPerson(input.site, input.authorPath, input.author);
 	return {
 		'@context': SCHEMA_CONTEXT,
 		'@type': 'BlogPosting',
@@ -80,6 +82,7 @@ export function websiteJsonLd(input: {
 	description: string;
 	locale: Locale;
 	authorPath: string;
+	author: Author;
 }) {
 	return {
 		'@context': SCHEMA_CONTEXT,
@@ -88,7 +91,7 @@ export function websiteJsonLd(input: {
 		description: input.description,
 		url: absoluteCanonical(input.site, input.homePath),
 		inLanguage: htmlLangAttribute[input.locale],
-		publisher: authorPerson(input.site, input.authorPath),
+		publisher: authorPerson(input.site, input.authorPath, input.author),
 	};
 }
 
@@ -99,6 +102,7 @@ export function blogJsonLd(input: {
 	description: string;
 	locale: Locale;
 	authorPath: string;
+	author: Author;
 }) {
 	return {
 		'@context': SCHEMA_CONTEXT,
@@ -107,7 +111,7 @@ export function blogJsonLd(input: {
 		description: input.description,
 		url: absoluteCanonical(input.site, input.homePath),
 		inLanguage: htmlLangAttribute[input.locale],
-		author: authorPerson(input.site, input.authorPath),
+		author: authorPerson(input.site, input.authorPath, input.author),
 	};
 }
 

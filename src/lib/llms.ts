@@ -1,5 +1,5 @@
 import { localeLabels } from '../i18n/config';
-import { postUrl, type Post } from './posts';
+import { postUrl, tagLabels, type Post } from './posts';
 
 export const LLMS_CONTENT_TYPE = 'text/plain; charset=utf-8';
 
@@ -34,7 +34,7 @@ export function postHeading(post: Post, site: URL | undefined): string[] {
 		`- Published: ${post.publishedAt.toISOString()}`,
 	];
 	if (post.updatedAt) lines.push(`- Updated: ${post.updatedAt.toISOString()}`);
-	if (post.tags.length > 0) lines.push(`- Tags: ${post.tags.join(', ')}`);
+	if (post.tags.length > 0) lines.push(`- Tags: ${tagLabels(post).join(', ')}`);
 	lines.push('', `> ${collapseWhitespace(post.description)}`);
 	return lines;
 }

@@ -222,9 +222,6 @@ importers:
       '@emdash-cms/cloudflare':
         specifier: 1.3.1
         version: 1.3.1(92ff342bc720a48f804995bf9fb2a7cc)
-      '@emdash-cms/plugin-field-kit':
-        specifier: ^0.1.2
-        version: 0.1.2(75492376fc70bc60227ca7f4d07909ca)
       '@modelcontextprotocol/server':
         specifier: ^2.3.1
         version: 2.3.1
@@ -1039,14 +1036,6 @@ packages:
 
   '@emdash-cms/gutenberg-to-portable-text@1.3.1':
     resolution: {integrity: sha512-Gh/3f1DhP2uqaOrdR6cha5za8romVjcSYhufTFYV/MzwZSBvcWq06BD5PLAEubovbSYH+TmO/47bN46Q4OtWEA==}
-
-  '@emdash-cms/plugin-field-kit@0.1.2':
-    resolution: {integrity: sha512-5M0inRDnlxV4VpWXumyve8l5mThGO5B5NkPg409zEiPSpycSFyu7F65sf0BXtk47xBLQ+/g13MpW1/gXBe1xyQ==}
-    peerDependencies:
-      '@cloudflare/kumo': 2.6.0
-      '@phosphor-icons/react': ^2.1.10
-      emdash: '>=0.9.0'
-      react: ^18.0.0 || ^19.0.0
 
   '@emdash-cms/plugin-types@0.6.0':
     resolution: {integrity: sha512-uImNUlOCEBVG1v7H1/lNqpQQRmAVi+L92ICMiPwWu+DvGap55mCMS18Msb5IGxLwoaN0mGFEaPRvtc4f/t+nhw==}
@@ -6247,6 +6236,7 @@ snapshots:
       - '@emotion/is-prop-valid'
       - '@types/react'
       - date-fns
+    optional: true
 
   '@cloudflare/kv-asset-handler@0.5.0': {}
 
@@ -6673,13 +6663,6 @@ snapshots:
     dependencies:
       '@wordpress/block-serialization-default-parser': 5.57.0
       parse5: 7.3.0
-
-  '@emdash-cms/plugin-field-kit@0.1.2(75492376fc70bc60227ca7f4d07909ca)':
-    dependencies:
-      '@cloudflare/kumo': 2.6.0(@date-fns/tz@1.5.0)(@emotion/is-prop-valid@1.4.0)(@phosphor-icons/react@2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(date-fns@4.4.0)(echarts@6.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@4.6.6)
-      '@phosphor-icons/react': 2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      emdash: 1.3.1(@astrojs/react@7.0.1(@types/node@24.12.4)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(esbuild@0.28.2)(jiti@2.7.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(yaml@2.9.0))(@atcute/cbor@2.3.8(@atcute/cid@2.5.0))(@atcute/cid@2.5.0)(@atcute/identity@2.0.2(@atcute/lexicons@2.1.1)(typescript@6.0.3))(@date-fns/tz@1.5.0)(@emotion/is-prop-valid@1.4.0)(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))(@tiptap/pm@3.32.0))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(astro@7.3.8(@types/node@24.12.4)(esbuild@0.28.2)(idb-keyval@6.2.2)(jiti@2.7.0)(yaml@2.9.0))(date-fns@4.4.0)(echarts@6.1.0)(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-view@1.42.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@6.0.3)
-      react: 19.3.0
 
   '@emdash-cms/plugin-types@0.6.0':
     dependencies:

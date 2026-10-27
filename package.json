@@ -27,6 +27,7 @@
 		"test:telemetry": "node scripts/test-telemetry.mjs",
 		"test:indexnow": "node scripts/test-indexnow.mjs",
 		"cms:migrate-sanity": "node scripts/migrate-sanity-to-emdash.mjs",
+		"cms:adopt": "node scripts/cms-adopt-emdash-features.mjs",
 		"test:ui-keys": "node scripts/sync-ui-keys.mjs --check",
 		"ui-keys:sync": "node scripts/sync-ui-keys.mjs",
 		"prepare": "husky"
@@ -38,9 +39,8 @@
 		"@astrojs/react": "^7.0.1",
 		"@astrojs/rss": "^4.0.19",
 		"@emdash-cms/cloudflare": "1.3.1",
-		"@emdash-cms/plugin-field-kit": "^0.1.2",
-		"@portfolio-blog/emdash-site": "link:./plugins/emdash-site",
 		"@modelcontextprotocol/server": "^2.3.1",
+		"@portfolio-blog/emdash-site": "link:./plugins/emdash-site",
 		"@react-email/editor": "1.7.12",
 		"astro": "^7.3.8",
 		"astro-portabletext": "^1.0.1",

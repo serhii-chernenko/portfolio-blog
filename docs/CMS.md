@@ -44,22 +44,52 @@ The Worker is bound to `serhiichernenko.com/blog*` plus `serhiichernenko.com/_em
 
 The content model is defined in `seed/seed.json`, which EmDash applies on the first request before setup. After that, the schema lives in the database: change it in the admin (**Content Types**) or with `pnpm exec emdash schema …`, and mirror the change in `seed/seed.json` so a fresh install matches.
 
-| Collection      | Per language                       | Fields                                                                                                                                  |
-| --------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts`         | one entry per language, translated | `title`, `description` (50–200 chars), `revised_at`, `tags` (ordered list, Field Kit tags widget), `hero_image`, `body` (Portable Text) |
-| `pages`         | one entry per language, translated | `key` (shared), `title`, `description`, `category` (`static`/`legal`, shared), `revised_at`, `body`                                     |
-| `site_settings` | one entry per language             | `site_name`, `tagline`, `description`, `hero_*`, `about_*`, `default_og_image` (shared)                                                 |
-| `ui_strings`    | one entry per key and language     | `key` (shared, select of the keys in `src/i18n/ui.ts`), `value`                                                                         |
+| Collection      | Per language                       | Fields                                                                                                                  |
+| --------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `posts`         | one entry per language, translated | `title`, `description` (50–200 chars), `revised_at`, `hero_image`, `body` (Portable Text); tags from the `tag` taxonomy |
+| `pages`         | one entry per language, translated | `key` (shared), `title`, `description`, `category` (`static`/`legal`, shared), `revised_at`, `body`                     |
+| `site_settings` | one entry per language             | `site_name`, `tagline`, `description`, `hero_*`, `about_*`                                                              |
+| `ui_strings`    | one entry per key and language     | `key` (shared, select of the keys in `src/i18n/ui.ts`), `value`                                                         |
 
-System fields cover the rest: `slug`, `locale`, `status`, `publishedAt` (the post date), `createdAt`, `updatedAt` and the translation group. Posts and pages support drafts, revisions and preview; posts also support scheduling. Posts and pages are indexed by EmDash's full-text search.
+System fields cover the rest: `slug`, `locale`, `status`, `publishedAt` (the post date), `createdAt`, `updatedAt` and the translation group. Posts and pages support drafts, revisions, preview and the SEO panel; posts also support scheduling. Posts and pages are indexed by EmDash's full-text search.
 
-**Tags** are a `json` field holding an ordered string array rather than an EmDash taxonomy, because EmDash taxonomy assignments are shared by all translations of an entry, while this blog has per-language tags (`war` / `війна`) whose order feeds `keywords` and `article:tag`.
+### What the admin controls
+
+Everything editorial is edited in the admin; code only holds defaults for empty values.
+
+| Admin screen                         | Used by the site for                                                                                                                                         | Fallback when empty                                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Posts, Pages                         | Content, per-entry **SEO** panel (title, description, social image, canonical URL, noindex)                                                                  | Entry title and description, hero image                                                                       |
+| Tags                                 | Post tags, tag pages and their translations                                                                                                                  | –                                                                                                             |
+| Bylines (+ Byline Schema `profiles`) | Post author in structured data (`BlogPosting`, `WebSite`, `Blog`): name, profile URLs as `sameAs`                                                            | Site name, Settings → Social                                                                                  |
+| Menus                                | Header and footer                                                                                                                                            | Built-in links                                                                                                |
+| Site → Site settings                 | Per-language site name, tagline, description, home hero and about copy                                                                                       | Settings → General title/tagline, then `src/i18n/ui.ts`                                                       |
+| Site → UI strings                    | Overrides of interface strings                                                                                                                               | `src/i18n/ui.ts`                                                                                              |
+| Settings → General                   | Title and tagline (fallbacks, above), Logo (header, instead of the text name), Favicon, Timezone of displayed dates                                          | Text name, `public/blog/favicon.*`, UTC                                                                       |
+| Settings → Reading                   | Posts per page (posts index, pagination, sitemap)                                                                                                            | 10                                                                                                            |
+| Settings → Social                    | Profile URLs added to the author's `sameAs`                                                                                                                  | –                                                                                                             |
+| Settings → SEO                       | Title separator (`{title}{separator}{site name}` on every page but home), default social image, Google/Bing verification, robots.txt, "Disallow AI training" | No suffix, `public/blog/og-default.png`, `PUBLIC_*_SITE_VERIFICATION` build vars, EmDash's default robots.txt |
+| Redirects                            | Redirects of any `/blog/...` path, applied by EmDash before the page renders                                                                                 | –                                                                                                             |
+
+Settings → General's **Date Format** is not used: one pattern can't produce correct dates in both languages, so each language keeps its own `Intl` format (`src/lib/dates.ts`). Categories, Widgets, Sections and Comments are EmDash features the site doesn't render (comments are Giscus).
+
+The built-in settings are read through `src/lib/cms/settings.ts`; the per-entry SEO panel through `src/lib/cms/seo.ts` and `BaseHead.astro`.
+
+### Tags
+
+Tags are terms of EmDash's `tag` taxonomy (admin → **Tags**, and the Tags box on a post). Each language has its own terms; a Ukrainian term is linked to its English one as a translation (`database` ↔ `база-даних`). Term assignments belong to a post's translation group, so a post and its translation carry the same tags, each language showing its own translation of a term (`src/lib/cms/tags.ts`). A term without a translation in a language falls back to the English one there, so translate every term that is used on a Ukrainian post.
+
+The term slug is the URL segment of `/blog/{locale}/tags/{slug}/`, and the tag page's language switcher links to the translated term's page. Tags are listed in label order.
+
+### Bylines
+
+The author is the post's primary byline (admin → **Bylines**), one byline per language (`Serhii Chernenko` / `Сергій Черненко`). It is linked to the admin user, so EmDash credits it automatically on that user's posts; assign another byline on a post to change it. The `profiles` custom field (admin → **Byline Schema**) holds profile URLs, one per line, which become the author's schema.org `sameAs` together with the byline's website and Settings → Social (`src/lib/cms/author.ts`).
 
 ### Internationalization
 
 Languages are `en` (default) and `uk`, set in `astro.config.mts` (`i18n.locales`). Astro's i18n routing is `manual`: the site builds its own `/blog/{locale}/` URLs, and EmDash only uses the locale list (it treats `manual` as "no prefix for the default locale", which keeps the admin working).
 
-A translation is a separate entry with its own slug, linked to the original through a translation group (admin: **Translations** panel on the entry). The site reads the group to build the language switcher and `hreflang` alternates (`src/lib/cms/translations.ts`). An entry without a live translation emits no alternates, and the switcher sends the other language to its home page. Fields marked shared (`key`, `category`, `default_og_image`) are not translatable: a new translation copies them from the original.
+A translation is a separate entry with its own slug, linked to the original through a translation group (admin: **Translations** panel on the entry). The site reads the group to build the language switcher and `hreflang` alternates (`src/lib/cms/translations.ts`). An entry without a live translation emits no alternates, and the switcher sends the other language to its home page. Fields marked shared (`key`, `category`) are not translatable: a new translation copies them from the original.
 
 Slugs must match `^[a-z0-9-]+$` and are unique per collection and language, so an English and a Ukrainian entry can share a slug. A request for a slug that only exists in the other language is a 404 (EmDash's locale fallback is not used).
 
@@ -121,9 +151,9 @@ The visual-editing toolbar is disabled (`toolbar: false`).
 
 ## Caching
 
-Content routes are rendered on demand and cached in Workers Cache through Astro's route cache (`cache.provider` in `astro.config.mts`). `src/middleware.ts` sets the policy for every cacheable `GET`: `maxAge` 1 hour, `swr` 1 day, tagged with all collection names (`posts`, `pages`, `site_settings`, `ui_strings`) plus `emdash:menu:header` and `emdash:menu:footer`, because every page renders menus and site copy.
+Content routes are rendered on demand and cached in Workers Cache through Astro's route cache (`cache.provider` in `astro.config.mts`). `src/middleware.ts` sets the policy for every cacheable `GET`: `maxAge` 1 hour, `swr` 1 day, tagged with all collection names (`posts`, `pages`, `site_settings`, `ui_strings`), `emdash:menu:header`, `emdash:menu:footer`, `emdash:taxonomy:tag` and `emdash:settings`, because every page renders menus, settings and site copy (`CMS_CACHE_TAGS` in `src/lib/cms/config.ts`).
 
-EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, and editing a menu purges `emdash:menu:{name}`. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
+EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, editing a menu purges `emdash:menu:{name}`, editing tags purges `emdash:taxonomy:tag` and saving Settings purges `emdash:settings`. Byline edits purge nothing; they show once a page expires or its post is saved. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
 
 If a purge fails, pages refresh when their TTL expires.
 
@@ -174,6 +204,23 @@ It uploads the 28 images to the media library, creates pages and posts per langu
 
 Verified locally: after migrating, a crawl of all 113 public URLs (pages, tags, RSS, sitemaps, `llms.txt`, search API) matched the Sanity-backed site, except the OG image URLs.
 
+### Moving an existing site onto the built-in features
+
+`scripts/cms-adopt-emdash-features.mjs` (`pnpm cms:adopt`) brings a site migrated before tags, bylines and the SEO panel were wired up to the current model. It is idempotent and never overwrites values already set in the admin:
+
+1. turns on the SEO panel for posts and pages;
+2. turns the legacy `posts.tags` list into `tag` terms per language, links Ukrainian terms to their English ones and assigns them (`швидкодія` is the Ukrainian term for `performance`, since the old data used `продуктивність` for both performance and productivity);
+3. creates the `profiles` byline field and the author byline (English and Ukrainian), linked to the signed-in user;
+4. prefills Settings → SEO robots.txt (from `seed/robots.txt`), the default social image (`public/blog/og-default.png`), the site URL and the social links;
+5. with `--remove-legacy-fields`, deletes `posts.tags` and `site_settings.default_og_image`.
+
+```bash
+EMDASH_TOKEN=<admin API token> pnpm cms:adopt -- --url https://serhiichernenko.com            # before deploying the code
+EMDASH_TOKEN=<admin API token> pnpm cms:adopt -- --url https://serhiichernenko.com --remove-legacy-fields  # after
+```
+
+Run steps 1–4 before deploying code that reads taxonomy terms, so tags never disappear, and remove the legacy fields after the deploy.
+
 ### Decommissioning Sanity
 
 After the production content is verified:
@@ -206,4 +253,4 @@ The [slug policy](#pages-key-and-reserved-slugs) rejected it. Change the slug.
 **Under `pnpm dev`, a hook fails with "Vite module runner has been closed".**
 The dev server restarted after a config change while EmDash kept the old plugin instance. Stop and start `pnpm dev`.
 
-**Upgrading EmDash.** Follow the `upgrading-emdash` skill: bump `emdash`, `@emdash-cms/cloudflare` and `@emdash-cms/plugin-field-kit` together, run `pnpm typecheck` and `pnpm build`, and read the release notes for schema migrations.
+**Upgrading EmDash.** Follow the `upgrading-emdash` skill: bump `emdash` and `@emdash-cms/cloudflare` together, run `pnpm typecheck` and `pnpm build`, and read the release notes for schema migrations.

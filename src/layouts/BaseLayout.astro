@@ -10,6 +10,8 @@ import SearchModal from '../components/SearchModal.astro';
 import PreviewTools from '../components/PreviewTools.astro';
 import Telemetry from '../components/Telemetry.astro';
 import type { PageType } from '../lib/telemetry-schema';
+import type { Author } from '../lib/cms/author';
+import type { EntrySeo } from '../lib/cms/seo';
 import '../styles/global.css';
 
 export interface Props {
@@ -33,6 +35,10 @@ export interface Props {
 	omitCanonical?: boolean;
 	pageType: PageType;
 	contentKey?: string;
+	/** The entry's SEO panel (posts and pages). */
+	seo?: EntrySeo;
+	author?: Author;
+	titleSuffix?: boolean;
 }
 
 const {
@@ -54,6 +60,9 @@ const {
 	omitCanonical = false,
 	pageType,
 	contentKey,
+	seo,
+	author,
+	titleSuffix,
 } = Astro.props;
 
 const lang = htmlLangAttribute[locale];
@@ -82,6 +91,9 @@ const layout = await getLayoutData(locale, cms);
 			omitCanonical={omitCanonical}
 			pageType={pageType}
 			layout={layout}
+			seo={seo}
+			author={author}
+			titleSuffix={titleSuffix}
 		/>
 	</head>
 	<body class="min-h-screen flex flex-col bg-base-100 text-base-content">

@@ -1,6 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { getPublishedPosts, postUrl } from '../../../lib/posts';
+import { getPublishedPosts, postUrl, tagLabels } from '../../../lib/posts';
 import { createPublishedContext } from '../../../lib/cms/context';
 import { getLayoutData } from '../../../lib/site';
 import { localeHref } from '../../../i18n/utils';
@@ -35,7 +35,7 @@ export async function GET(context: APIContext) {
 			description: post.description,
 			pubDate: post.publishedAt,
 			link: postUrl(post),
-			categories: post.tags,
+			categories: tagLabels(post),
 		})),
 		customData: `<language>${langCode}</language><atom:link href="${feedUrl.toString()}" rel="self" type="application/rss+xml" />`,
 	});
