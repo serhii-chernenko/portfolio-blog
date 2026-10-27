@@ -160,6 +160,18 @@ EmDash doesn't purge anything for comments, so `src/middleware.ts` does: after a
 
 If a purge fails, pages refresh when their TTL expires.
 
+### Deploys keep the cache
+
+An uncached render is slow (roughly 1–2.5 s): EmDash makes 30–45 sequential D1 queries per page, about 30 ms each, plus 200–400 ms to start a fresh isolate. EmDash reports this in the `Server-Timing` response header (`db.count`, `db.total`, `rt`). Cached responses take about 50 ms.
+
+Workers Cache keys on the Worker version by default, which made every page uncached after each deploy. `wrangler.jsonc` sets `cache.cross_version_cache: true`, so cached pages survive deploys. As a consequence:
+
+- **Code changes** (markup, styles) reach cached pages when they expire: after 1 hour the stale copy is served once while the new version re-renders it in the background. To apply a deploy to every page at once, save **Settings** in the admin (every page carries the `emdash:settings` tag).
+- **Stylesheets are inlined** (`build.inlineStylesheets: 'always'` in `astro.config.mts`). Each deploy replaces the hashed `/blog/_astro/*` files, and old ones return 404, so a page cached by an older version must not link to them. Scripts are inline already, and font files are named by content hash.
+- **Content changes** are unaffected: tag purges work the same.
+
+`placement.mode: "smart"` is also on, so Cloudflare can run uncached renders near the D1 primary. So far it keeps the Worker local (`cf-placement: local-…`), most likely because traffic is too low.
+
 ---
 
 ## Comments
