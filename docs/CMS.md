@@ -69,9 +69,10 @@ Everything editorial is edited in the admin; code only holds defaults for empty 
 | Settings → Reading                   | Posts per page (posts index, pagination, sitemap)                                                                                                            | 10                                                                                                            |
 | Settings → Social                    | Profile URLs added to the author's `sameAs`                                                                                                                  | –                                                                                                             |
 | Settings → SEO                       | Title separator (`{title}{separator}{site name}` on every page but home), default social image, Google/Bing verification, robots.txt, "Disallow AI training" | No suffix, `public/blog/og-default.png`, `PUBLIC_*_SITE_VERIFICATION` build vars, EmDash's default robots.txt |
+| Comments                             | Comments on posts: moderation queue, approve, spam, trash. Per-collection settings in Content Types → Posts                                                  |
 | Redirects                            | Redirects of any `/blog/...` path, applied by EmDash before the page renders                                                                                 | –                                                                                                             |
 
-Settings → General's **Date Format** is not used: one pattern can't produce correct dates in both languages, so each language keeps its own `Intl` format (`src/lib/dates.ts`). Categories, Widgets, Sections and Comments are EmDash features the site doesn't render (comments are Giscus).
+Settings → General's **Date Format** is not used: one pattern can't produce correct dates in both languages, so each language keeps its own `Intl` format (`src/lib/dates.ts`). Categories, Widgets and Sections are EmDash features the site doesn't render.
 
 The built-in settings are read through `src/lib/cms/settings.ts`; the per-entry SEO panel through `src/lib/cms/seo.ts` and `BaseHead.astro`.
 
@@ -155,9 +156,20 @@ Content routes are rendered on demand and cached in Workers Cache through Astro'
 
 EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, editing a menu purges `emdash:menu:{name}`, editing tags purges `emdash:taxonomy:tag` and saving Settings purges `emdash:settings`. Byline edits purge nothing; they show once a page expires or its post is saved. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
 
+EmDash doesn't purge anything for comments, so `src/middleware.ts` does: after a successful comment submission or moderation action (`POST /_emdash/api/comments/…`, any write under `/_emdash/api/admin/comments`) it purges the `posts` tag. Likes don't purge; their counts update in the browser and refresh with the page.
+
 If a purge fails, pages refresh when their TTL expires.
 
 ---
+
+## Comments
+
+EmDash's built-in comments, enabled for `posts`. `src/components/PostComments.astro` renders EmDash's `Comments` (approved comments, threaded replies, likes) and `CommentForm` from `emdash/ui/comments`, with the UI strings (`comments.*`, Ukrainian plural forms included) and the DaisyUI theme colours mapped to their `--ec-*` custom properties. Comments belong to one language's entry, so each translation has its own thread.
+
+- **Moderation** (Content Types → Posts): a commenter's first comment is held for review, later ones publish directly; comments never close (EmDash's default is 90 days, which would lock older posts); comments from signed-in admin users are approved.
+- **Spam:** a honeypot field and a per-IP rate limit (salted hash, no raw IPs stored) are always on. [Turnstile](https://developers.cloudflare.com/turnstile/) is optional: `PUBLIC_TURNSTILE_SITE_KEY` (build variable) plus the `EMDASH_TURNSTILE_SECRET_KEY` Worker secret.
+- **Notifications:** the site plugin's `comment:afterCreate` hook (`src/lib/comment-hooks.ts`, production host only) sends `💬 New comment` to Telegram with the post, the author, an excerpt and the admin link. EmDash's own comment emails need an email provider, which isn't configured.
+- **Privacy:** the privacy pages describe what is stored (name, email, comment, salted IP hash).
 
 ## Publish side effects
 

@@ -41,11 +41,9 @@ NEW_RELIC_LICENSE_KEY=
 # ── Public build-time vars — inlined into the bundle via import.meta.env ──
 # All optional locally; features no-op when empty (comments widget, analytics).
 
-# Giscus comments (https://giscus.app). Empty → comments widget is hidden.
-PUBLIC_GISCUS_REPO=serhii-chernenko/portfolio-blog
-PUBLIC_GISCUS_REPO_ID=
-PUBLIC_GISCUS_CATEGORY=Comments
-PUBLIC_GISCUS_CATEGORY_ID=
+# Cloudflare Turnstile site key for the comment form (optional). Pair it with the
+# EMDASH_TURNSTILE_SECRET_KEY Worker secret. Empty → honeypot, rate limit and moderation only.
+PUBLIC_TURNSTILE_SITE_KEY=
 
 # Search engine site-verification meta tags (fallback to DNS verification).
 # Empty → the tag is not rendered.

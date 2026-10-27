@@ -58,9 +58,6 @@ jobs:
       # at build; passed through for parity but not load-bearing for the gate.
       - name: Build (Astro)
         env:
-          PUBLIC_GISCUS_REPO: ${{ vars.PUBLIC_GISCUS_REPO }}
-          PUBLIC_GISCUS_REPO_ID: ${{ vars.PUBLIC_GISCUS_REPO_ID }}
-          PUBLIC_GISCUS_CATEGORY: ${{ vars.PUBLIC_GISCUS_CATEGORY }}
-          PUBLIC_GISCUS_CATEGORY_ID: ${{ vars.PUBLIC_GISCUS_CATEGORY_ID }}
           PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
         run: pnpm build:astro

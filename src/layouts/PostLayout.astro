@@ -9,7 +9,7 @@ import { absoluteMediaUrl, imageDimensions, mediaUrl } from '../lib/cms/media';
 import { useTranslations, localeHref } from '../i18n/utils';
 import BaseLayout from './BaseLayout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
-import Giscus from '../components/Giscus.astro';
+import PostComments from '../components/PostComments.astro';
 
 export interface Props {
 	post: Post;
@@ -165,7 +165,7 @@ const ogImageSize = heroImage ? imageDimensions(heroImage) : null;
 				)}
 
 				<!-- Comments -->
-				<Giscus locale={locale} />
+				<PostComments locale={locale} contentId={post.id} />
 			</div>
 
 			<script>

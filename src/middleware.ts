@@ -2,7 +2,12 @@ import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
 import { GET as getLlmsTxt } from './pages/blog/llms.txt';
 import { GET as getLlmsFullTxt } from './pages/blog/llms-full.txt';
-import { CMS_CACHE_TAGS, EDIT_MODE_PARAM, PREVIEW_TOKEN_PARAM } from './lib/cms/config';
+import {
+	CMS_CACHE_TAGS,
+	COLLECTIONS,
+	EDIT_MODE_PARAM,
+	PREVIEW_TOKEN_PARAM,
+} from './lib/cms/config';
 import { createRequestContext } from './lib/cms/context';
 import { errorType, startTelemetryEvent, telemetryInputFromContext } from './lib/telemetry';
 import {
@@ -77,6 +82,36 @@ const HTML_SECURITY_HEADERS: Record<string, string> = {
 /** EmDash admin, API and media routes: EmDash sets their headers and caching itself. */
 function isCmsRoute(pathname: string): boolean {
 	return pathname === CMS_PATH_PREFIX.slice(0, -1) || pathname.startsWith(CMS_PATH_PREFIX);
+}
+
+/**
+ * Comment writes that change what a post page renders: a public submission (approved ones show
+ * immediately) and moderation in the admin. Likes are left out; their counts refresh client-side
+ * and with the page's TTL.
+ */
+const COMMENT_WRITE_PATH = /^\/_emdash\/api\/(?:comments\/[^/]+\/[^/]+|admin\/comments(?:\/.*)?)$/;
+
+/**
+ * EmDash purges the route cache for content, menu, taxonomy and settings changes, but not for
+ * comments, so a post page would show a new comment only after its cached copy expires. Purge
+ * the post pages after a successful comment write instead.
+ */
+async function handleCmsRoute(context: APIContext, next: MiddlewareNext): Promise<Response> {
+	const response = await next();
+	const { request, url } = context;
+	if (
+		!SAFE_METHODS.includes(request.method) &&
+		COMMENT_WRITE_PATH.test(url.pathname) &&
+		response.ok &&
+		context.cache?.enabled
+	) {
+		try {
+			await context.cache.invalidate({ tags: COLLECTIONS.posts });
+		} catch {
+			// Purge failures only delay the comment until the page expires.
+		}
+	}
+	return response;
 }
 
 function isCacheableRoute(pathname: string): boolean {
@@ -210,7 +245,7 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 	const { request, url, isPrerendered } = context;
 	// EmDash admin, API and media: EmDash enforces its own CSRF (X-EmDash-Request header or a
 	// bearer token), sets its own headers and caching, and needs no site UI data.
-	if (isCmsRoute(url.pathname)) return next();
+	if (isCmsRoute(url.pathname)) return handleCmsRoute(context, next);
 	if (!isPrerendered && !SAFE_METHODS.includes(request.method)) {
 		const isOneClickUnsubscribe = isRfc8058OneClickRequest(request, url);
 		const isSameOrigin = request.headers.get('origin') === url.origin;

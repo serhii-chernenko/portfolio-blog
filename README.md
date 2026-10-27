@@ -2,7 +2,7 @@
 
 A bilingual (EN/UK) personal blog. Built per [`blog-build-plan.md`](./blog-build-plan.md) (historical plan; the CMS has since moved to Sanity and then to EmDash).
 
-**Stack:** Astro 7 · Cloudflare Workers · EmDash (D1 + R2) · Tailwind 4 · DaisyUI 5 · Portable Text · D1 · Cloudflare Email · Giscus · Telegram notifications.
+**Stack:** Astro 7 · Cloudflare Workers · EmDash (D1 + R2) · Tailwind 4 · DaisyUI 5 · Portable Text · D1 · Cloudflare Email · EmDash comments · Telegram notifications.
 
 **Adapter versions:** `@astrojs/cloudflare` 14 · `@astrojs/node` 11 · `wrangler` 4.
 
@@ -149,13 +149,13 @@ These are intentionally left as placeholders — none of them have safe defaults
    - `MAIL_FROM` is set as a `var` in `wrangler.jsonc` (default: `hello@serhiichernenko.com`). Override per environment if needed.
 4. **EmDash** — the first deploy provisions the `CMS_DB` D1 database and the `MEDIA` R2 bucket. Then create the admin passkey at `/_emdash/admin` and migrate the content, as described in [`docs/CMS.md`](./docs/CMS.md#first-production-setup).
 5. **`.github/workflows/ci.yml`** — uses these repo vars:
-   - Vars: `PUBLIC_GISCUS_*`
+   - Vars: `PUBLIC_TURNSTILE_SITE_KEY` (optional)
 6. **Wrangler secrets** (set with `pnpm wrangler secret put <NAME>`):
    - `SUBSCRIBE_RATE_LIMIT_SECRET` — random 32+ bytes, used to derive opaque tokens and keyed abuse hashes. Accessed via `astro:env/server` (required, validated at runtime).
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional; accessed via `astro:env/server`. Empty/unset values cause `notify()` to no-op silently.
    - `NEW_RELIC_LICENSE_KEY` — optional; without it, telemetry events are not forwarded to New Relic. See [`docs/OBSERVABILITY.md`](./docs/OBSERVABILITY.md).
    - The CMS needs no secrets. `EMDASH_ENCRYPTION_KEY` is only required if a plugin declares secret settings (none do). See [`docs/CMS.md`](./docs/CMS.md#first-production-setup).
-7. **Giscus** — install the [Giscus GitHub App](https://github.com/apps/giscus), enable Discussions on the repo, then visit [giscus.app](https://giscus.app) to get the `PUBLIC_GISCUS_*` values and put them in repo vars.
+7. **Comments** — EmDash's built-in comments; nothing to set up. Optionally add [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) to the form: put the site key in `PUBLIC_TURNSTILE_SITE_KEY` (build variable) and the secret in the `EMDASH_TURNSTILE_SECRET_KEY` Worker secret. See [`docs/CMS.md`](./docs/CMS.md#comments).
 8. **`public/blog/og-default.png`** — replace the 1×1 placeholder with a real 1200×630 PNG. Phase 2 per the plan generates per-post OGs via satori.
 
 ---
@@ -164,11 +164,11 @@ These are intentionally left as placeholders — none of them have safe defaults
 
 There are three distinct sources for runtime values — use the right one for each variable:
 
-| Source               | What it covers                                                                                                                                                                                                                                    | How to access in code                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `astro:env/server`   | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required); `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEW_RELIC_LICENSE_KEY` (optional)                                                                                                            | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
-| `astro:env/client`   | Public build-time vars: `PUBLIC_GISCUS_*`, optional `PUBLIC_GOOGLE_SITE_VERIFICATION` / `PUBLIC_BING_SITE_VERIFICATION` (render search-engine verification meta tags; DNS verification is the primary method, see [`docs/SEO.md`](./docs/SEO.md)) | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`          |
-| `cloudflare:workers` | Bindings (DB, CMS_DB, MEDIA, SESSION, SEND_EMAIL, ASSETS, EVENTS_RATE_LIMITER) and wrangler.jsonc `vars` (MAIL_FROM, EMDASH_SITE_URL)                                                                                                             | `import { env } from 'cloudflare:workers'`                       |
+| Source               | What it covers                                                                                                                                                                                                                                              | How to access in code                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `astro:env/server`   | Worker secrets: `SUBSCRIBE_RATE_LIMIT_SECRET` (required); `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEW_RELIC_LICENSE_KEY` (optional)                                                                                                                      | `import { SUBSCRIBE_RATE_LIMIT_SECRET } from 'astro:env/server'` |
+| `astro:env/client`   | Public build-time vars: optional `PUBLIC_TURNSTILE_SITE_KEY`, `PUBLIC_GOOGLE_SITE_VERIFICATION` / `PUBLIC_BING_SITE_VERIFICATION` (render search-engine verification meta tags; DNS verification is the primary method, see [`docs/SEO.md`](./docs/SEO.md)) | `import { PUBLIC_GISCUS_REPO } from 'astro:env/client'`          |
+| `cloudflare:workers` | Bindings (DB, CMS_DB, MEDIA, SESSION, SEND_EMAIL, ASSETS, EVENTS_RATE_LIMITER) and wrangler.jsonc `vars` (MAIL_FROM, EMDASH_SITE_URL)                                                                                                                       | `import { env } from 'cloudflare:workers'`                       |
 
 > `Astro.locals.runtime.env` no longer exists (removed in `@astrojs/cloudflare` v13). All binding access goes through `cloudflare:workers`.
 
@@ -181,7 +181,6 @@ There are three distinct sources for runtime values — use the right one for ea
 ## Skipped intentionally (Phase 2 per plan)
 
 - Custom OG image generator — MVP uses a single default (admin → Settings → SEO → Default Social Image, or `public/blog/og-default.png`).
-- Custom comment system — Giscus is MVP.
 - Newsletter campaigns — MVP supports subscribe/confirm/unsubscribe only.
 
 ---

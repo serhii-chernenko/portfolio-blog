@@ -126,24 +126,18 @@ See `docs/EMAIL.md`.
 
 ---
 
-## 6. 🟡 Giscus comments
+## 6. ✅ Comments
 
-`.dev.vars.example` has empty `PUBLIC_GISCUS_REPO_ID` and `PUBLIC_GISCUS_CATEGORY_ID`.
-Comments render blank without them.
+EmDash's built-in comments (admin → **Comments**), enabled for posts. No setup needed.
 
-1. [x] Make the GitHub repo **public** (Giscus requires it) and enable
-       **Discussions** (Settings → General → Features).
-2. [x] Install the [Giscus GitHub App](https://github.com/apps/giscus) on the repo.
-3. [ ] Go to <https://giscus.app>, enter the repo, pick the **Comments**
-       discussion category, and copy the generated `data-repo-id` and
-       `data-category-id`.
-4. [ ] Set these as **Cloudflare Worker vars** (or `wrangler.jsonc` `vars`, since
-       `PUBLIC_*` values are non-secret and inlined at build):
-       `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`,
-       `PUBLIC_GISCUS_CATEGORY_ID`. They must be present **at build time**.
+- [ ] Optional spam protection: create a [Turnstile](https://developers.cloudflare.com/turnstile/)
+      widget for `serhiichernenko.com`, set its site key as the `PUBLIC_TURNSTILE_SITE_KEY` build
+      variable (Workers Builds, and the `ci.yml` repo var) and its secret as the
+      `EMDASH_TURNSTILE_SECRET_KEY` Worker secret. Without it the honeypot, the rate limit and
+      moderation still apply.
 
-- **Verify:** open any post in production → the Giscus thread loads and matches
-  the page's light/dark theme.
+- **Verify:** post a comment on any post → it waits in admin → **Comments** (first comment of a
+  commenter), Telegram gets `💬 New comment`, and after approval it shows on the post.
 
 ---
 
@@ -177,7 +171,7 @@ Secrets (**Settings → Secrets and variables → Actions**):
 
 Variables (the `vars.*` context):
 
-- [ ] The optional `PUBLIC_GISCUS_*` — inlined by the `ci.yml` build step so CI builds
+- [ ] The optional `PUBLIC_TURNSTILE_SITE_KEY` — inlined by the `ci.yml` build step so CI builds
       match production shape. Not load-bearing for the gate.
 
 > Cloudflare credentials (`CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_ACCOUNT_SUBDOMAIN`)
@@ -313,6 +307,5 @@ Acceptance criteria that can only be checked against the live site
 
 ## Quick reference — placeholders to replace
 
-| Placeholder                                    | File        | Step |
-| ---------------------------------------------- | ----------- | ---- |
-| empty `PUBLIC_GISCUS_REPO_ID` / `_CATEGORY_ID` | Worker vars | 6    |
+| Placeholder | File | Step |
+| ----------- | ---- | ---- |
