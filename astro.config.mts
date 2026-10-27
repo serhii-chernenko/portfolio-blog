@@ -83,6 +83,11 @@ export default defineConfig({
 	site: SITE,
 	build: {
 		assets: `${BLOG_PATH.slice(1)}/_astro`,
+		// Pages stay cached across deploys (cache.cross_version_cache in wrangler.jsonc), but each
+		// deploy replaces the hashed /_astro files. Inline CSS keeps a cached page from pointing at
+		// a stylesheet that no longer exists. Scripts are already inline; font files are named by
+		// content hash, so they only change when the font does.
+		inlineStylesheets: 'always',
 	},
 	output: 'server',
 	// Astro v7 defaults to 'jsx' whitespace collapsing between inline elements — pin true to keep v6 rendering behavior.
