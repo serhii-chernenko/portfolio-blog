@@ -19,7 +19,7 @@ export interface SiteConfig {
 	postsPerPage: number;
 	/** IANA time zone for displayed dates (Settings → General: Timezone). */
 	timeZone?: string;
-	/** Settings → Social: profile URLs, used as the author's schema.org `sameAs`. */
+	/** Settings → Social as profile URLs, added to the author's schema.org `sameAs`. */
 	socialProfiles: string[];
 	seo: {
 		/** Settings → SEO: when set, page titles become `{title}{separator}{site name}`. */
@@ -58,9 +58,26 @@ function validTimeZone(value: unknown): string | undefined {
 	}
 }
 
-function httpUrl(value: unknown): string | undefined {
-	const url = nonEmpty(value);
-	return url && /^https?:\/\//i.test(url) ? url : undefined;
+/** Profile URL per Settings → Social network; the admin stores handles (`@name`, `name`). */
+const SOCIAL_PROFILE_URL: Partial<Record<string, (handle: string) => string>> = {
+	twitter: (handle) => `https://x.com/${handle}`,
+	github: (handle) => `https://github.com/${handle}`,
+	facebook: (handle) => `https://www.facebook.com/${handle}`,
+	instagram: (handle) => `https://www.instagram.com/${handle}`,
+	linkedin: (handle) => `https://www.linkedin.com/in/${handle}`,
+	youtube: (handle) => `https://www.youtube.com/@${handle}`,
+};
+
+const HANDLE = /^[\p{L}\p{N}._-]+$/u;
+
+/** A Settings → Social value as a profile URL: full URLs as they are, handles per network. */
+export function socialProfileUrl(network: string, value: unknown): string | undefined {
+	const raw = nonEmpty(value);
+	if (!raw) return undefined;
+	if (/^https?:\/\//i.test(raw)) return raw;
+	const handle = raw.replace(/^@/, '');
+	const build = SOCIAL_PROFILE_URL[network];
+	return build && HANDLE.test(handle) ? build(handle) : undefined;
 }
 
 /** Built-in site settings. EmDash caches them per request and purges `emdash:settings` on save. */
@@ -78,8 +95,8 @@ export async function getSiteConfig(): Promise<SiteConfig> {
 		favicon: mediaFrom(settings.favicon),
 		postsPerPage,
 		timeZone: validTimeZone(settings.timezone),
-		socialProfiles: Object.values(settings.social ?? {})
-			.map(httpUrl)
+		socialProfiles: Object.entries(settings.social ?? {})
+			.map(([network, value]) => socialProfileUrl(network, value))
 			.filter((url): url is string => Boolean(url)),
 		seo: {
 			titleSeparator:

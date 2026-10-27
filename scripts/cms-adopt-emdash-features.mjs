@@ -54,12 +54,13 @@ const AUTHOR = {
 		'https://x.com/serhiichernenko',
 	],
 };
+/** Settings → Social stores handles; the site turns them into profile URLs. */
 const SOCIAL = {
-	youtube: 'https://youtube.com/@serhii.chernenko',
-	linkedin: 'https://www.linkedin.com/in/serhiichernenko/',
-	instagram: 'https://www.instagram.com/serhiichernenko.ua',
-	twitter: 'https://x.com/serhiichernenko',
-	github: 'https://github.com/serhii-chernenko',
+	youtube: '@serhii.chernenko',
+	linkedin: 'serhiichernenko',
+	instagram: 'serhiichernenko.ua',
+	twitter: '@serhiichernenko',
+	github: 'serhii-chernenko',
 };
 const PROFILES_FIELD = { slug: 'profiles', label: 'Profiles', type: 'text' };
 /**

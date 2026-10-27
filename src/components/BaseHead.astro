@@ -12,7 +12,7 @@ import {
 	serializeJsonLd,
 } from '../lib/seo';
 import { defaultOgImage, DEFAULT_OG_IMAGE_WIDTH, DEFAULT_OG_IMAGE_HEIGHT } from '../lib/og';
-import type { Author } from '../lib/cms/author';
+import { mergeProfiles, type Author } from '../lib/cms/author';
 import { absoluteMediaUrl, imageDimensions, mediaUrl } from '../lib/cms/media';
 import { resolveEntrySeo, type EntrySeo } from '../lib/cms/seo';
 import type { LayoutData } from '../lib/site';
@@ -119,7 +119,7 @@ const authorPath = layout.aboutPath;
 const authorInfo: Author = {
 	name: author?.name || siteName,
 	websiteUrl: author?.websiteUrl,
-	sameAs: Array.from(new Set([...(author?.sameAs ?? []), ...siteConfig.socialProfiles])),
+	sameAs: mergeProfiles(author?.sameAs ?? [], siteConfig.socialProfiles),
 };
 const authorCanonical = buildCanonical(site, authorPath);
 const isArticle = type === 'article' && publishedAt !== undefined;
