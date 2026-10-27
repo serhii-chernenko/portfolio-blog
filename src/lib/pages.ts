@@ -11,6 +11,7 @@ import {
 	stringField,
 	type CmsEntry,
 } from './cms/entries';
+import { entrySeo, type EntrySeo } from './cms/seo';
 import { indexByTranslationGroup, translationUrls, type LocalizedUrls } from './cms/translations';
 
 export interface Page {
@@ -24,6 +25,8 @@ export interface Page {
 	updatedAt?: Date;
 	body?: TypedObject[];
 	translations: LocalizedUrls;
+	/** The entry's SEO panel. Only set on single-page reads. */
+	seo?: EntrySeo;
 }
 
 type TranslationIndex = ReturnType<typeof indexByTranslationGroup>;
@@ -49,6 +52,7 @@ function toPage(entry: CmsEntry, index: TranslationIndex): Page | null {
 		updatedAt: dateField(entry, 'revised_at'),
 		body: Array.isArray(entry.data.body) ? (entry.data.body as TypedObject[]) : undefined,
 		translations: translationUrls(entry, index, () => true, pagePath),
+		seo: entrySeo(entry),
 	};
 }
 

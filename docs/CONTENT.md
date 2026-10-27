@@ -22,16 +22,16 @@ Sign in with your passkey (or a magic link, if one was sent to you). Locally, `p
 
 The content list shows one language at a time; switch it with the language selector. A new post is created in the selected language, and its language cannot change afterwards.
 
-| Field              | What it does                                                                                                                                                                           |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Title**          | Required, up to 120 characters. Used for the `<h1>`, `<title>`, OG tags and RSS.                                                                                                       |
-| **Slug**           | Generated from the title; edit it if needed. Lowercase letters, numbers and hyphens only (publishing refuses anything else). Becomes `/blog/{locale}/posts/{slug}/`.                   |
-| **Description**    | Required, 50–200 characters. Shows in post listings, RSS, OG and the meta description.                                                                                                 |
-| **Updated at**     | Optional (`revised_at`). Set it for meaningful edits; it shows as "Updated …" on the post page.                                                                                        |
-| **Tags**           | Free-form labels in order; type a tag and press Enter. Each tag gets a page at `/blog/{locale}/tags/{slug}/`, where the slug is derived from the text. The order is kept for keywords. |
-| **Hero image**     | Optional. Pick or upload an image from the **Media Library**. Cards and OG images use the original file.                                                                               |
-| **Hero image alt** | Set the alt text on the image whenever a hero image is used. Describe what is actually in the image.                                                                                   |
-| **Body**           | The article — see [Writing the body](#writing-the-body).                                                                                                                               |
+| Field              | What it does                                                                                                                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title**          | Required, up to 120 characters. Used for the `<h1>`, `<title>`, OG tags and RSS.                                                                                                                                                  |
+| **Slug**           | Generated from the title; edit it if needed. Lowercase letters, numbers and hyphens only (publishing refuses anything else). Becomes `/blog/{locale}/posts/{slug}/`.                                                              |
+| **Description**    | Required, 50–200 characters. Shows in post listings, RSS, OG and the meta description.                                                                                                                                            |
+| **Updated at**     | Optional (`revised_at`). Set it for meaningful edits; it shows as "Updated …" on the post page.                                                                                                                                   |
+| **Tags**           | In the **Tags** box: pick existing tags or type a new one. Each tag gets a page at `/blog/{locale}/tags/{slug}/`. Tags are shared with the post's translation, each language showing its own name of the tag (see [Tags](#tags)). |
+| **Hero image**     | Optional. Pick or upload an image from the **Media Library**. Cards use it, and so do social cards unless the SEO panel sets another image.                                                                                       |
+| **Hero image alt** | Set the alt text on the image whenever a hero image is used. Describe what is actually in the image.                                                                                                                              |
+| **Body**           | The article — see [Writing the body](#writing-the-body).                                                                                                                                                                          |
 
 The post date is the publish date: EmDash sets it when you first publish (or when a scheduled post goes live), and the admin shows it on the entry. The admin validates required fields and length limits before saving.
 
@@ -75,7 +75,7 @@ Insert a **YouTube video** block and paste the video ID (the `v=` value of the Y
 Every post and page is one entry per language, linked to its translations.
 
 1. Open the English post, find **Translations** in the sidebar, and choose **Translate** for Українська.
-2. EmDash creates a Ukrainian draft linked to the English one, prefilled with its content. Translate the fields (title, slug, description, tags, body, image alt text) and publish.
+2. EmDash creates a Ukrainian draft linked to the English one, prefilled with its content. Translate the fields (title, slug, description, body, image alt text) and publish. Tags carry over by themselves (see [Tags](#tags)).
 
 The slug belongs to one language: `/blog/en/posts/hello-world/` and `/blog/uk/posts/hello-world/` are different entries that can share a slug, and a translation usually has its own (`hello-world` ↔ `pryvit-svit`).
 
@@ -116,13 +116,49 @@ Write translations whenever you like; publishing one language never waits for th
 Same editor, same fields. Two notes:
 
 - **Set "Updated at"** when the change is meaningful (factual correction, expanded section). For typo fixes, leave it alone.
-- **Don't change the slug** of a published post unless you accept that old links will 404. The site has no automatic redirects for renamed posts.
+- **Changing the slug** of a published post breaks its old URL. Add a redirect in **Redirects** from the old path (`/blog/en/posts/old-slug/`) to the new one.
 
 ---
 
 ## Pages (about, privacy, support)
 
 Static pages live under **Pages**. Each has a `key` (`about`, `privacy`, `support`) that stays the same in every language, plus a per-language title, slug, description and body. Code and menus find pages by key, so you can change a slug without breaking links. Slugs that clash with site routes (`posts`, `tags`, `subscribe`, `api`, `preview`, …) cannot be published; the full list is in [`CMS.md`](./CMS.md#pages-key-and-reserved-slugs).
+
+---
+
+## Tags
+
+Tags live in **Tags** (one list per language; switch the language at the top). Every tag used on a Ukrainian post needs a Ukrainian version:
+
+1. In **Tags**, open the English tag (`database`) and add its translation for Українська (`база-даних`).
+2. Tag the post in either language: the post and its translation share their tags, and each language shows its own name (`database` on the English post, `база-даних` on the Ukrainian one). A tag without a Ukrainian version shows its English name on the Ukrainian post.
+
+The tag's slug is its URL (`/blog/uk/tags/база-даних/`), and the language switcher on a tag page goes to its translation. Renaming a tag's label is safe; changing its slug changes the tag page URL. Tags appear in alphabetical order.
+
+---
+
+## SEO panel, author and site-wide settings
+
+**SEO panel** (on every post and page): overrides for this page only.
+
+| Field                        | Effect                                                                             |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| **Title**                    | The `<title>` and social title instead of the post title (the page heading stays). |
+| **Description**              | The meta and social description instead of the post description.                   |
+| **Image**                    | The social card image instead of the hero image.                                   |
+| **Canonical URL**            | Points search engines to another URL as the original.                              |
+| **Hide from search engines** | Asks search engines not to index the page.                                         |
+
+**Author:** posts are credited to your byline (**Bylines**), automatically because it is linked to your user. Edit its name per language, its website and **Profiles** (one profile URL per line, used by search engines to connect your accounts). Changes appear on a page the next time it is published or within an hour.
+
+**Settings** (site-wide, not per language):
+
+- **General:** Logo (shown in the header instead of the site name), Favicon, and the Timezone dates are shown in. Site Title and Tagline are used when a language's **Site settings** leaves them empty.
+- **Reading:** Posts Per Page on the posts list.
+- **Social:** profile links, added to the author's profiles.
+- **SEO:** Title Separator (adds `| Chernenko` style suffixes to page titles), the default social image for pages without one, Google and Bing verification codes, the robots.txt text and **Disallow AI training**.
+
+Date Format is not used: dates follow each language's own format.
 
 ---
 
@@ -137,7 +173,7 @@ Static pages live under **Pages**. Each has a `key` (`about`, `privacy`, `suppor
 
 Reorder items by dragging them.
 
-**Site settings** (the `site_settings` collection) holds the site name, tagline, meta description, home hero and about copy, one entry per language; the default OG image is shared by both. Empty fields fall back to the defaults in `src/i18n/ui.ts`. Publish changes like any other entry.
+**Site settings** (the `site_settings` collection) holds the site name, tagline, meta description, home hero and about copy, one entry per language. Empty fields fall back to the defaults in `src/i18n/ui.ts`. Publish changes like any other entry.
 
 **UI strings** override any other interface text from `src/i18n/ui.ts` (buttons, labels, messages). Create a `ui_strings` entry in the language you want to change, choose the **key** (for example `nav.search`) and write the text. Keep placeholders such as `{year}` or `{query}` exactly as they are. Unpublishing or deleting the entry restores the default. New keys appear in the list after a developer adds them to `ui.ts` and to the content type (see [`CMS.md`](./CMS.md#menus-site-settings-and-ui-strings)).
 

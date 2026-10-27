@@ -38,23 +38,8 @@ const html = `<!doctype html>
 await writeFile(new URL('index.html', DIST), html, 'utf8');
 console.log('post-build: wrote dist/client/index.html (apex → /blog/en/ redirect for local dev)');
 
-// robots.txt is bound to this Worker at the exact host-root path (wrangler.jsonc
-// routes), but Astro only ever emits `public/robots.txt` under the `/blog` base
-// — there's no `/[locale]/[page]`-style route for it, so `context.rewrite()`
-// in src/middleware.ts can't hand off to it (rewrite only resolves real Astro
-// routes, not static files — it throws at request time for a static target).
-// Copying the already-built file to the assets root instead means Cloudflare's
-// static-asset serving picks it up directly ahead of any Worker code — same
-// mechanism the apex index.html redirect above relies on.
-const BUILT_ROBOTS_TXT = new URL('blog/robots.txt', DIST);
-if (existsSync(BUILT_ROBOTS_TXT)) {
-	await copyFile(BUILT_ROBOTS_TXT, new URL('robots.txt', DIST));
-	console.log(
-		'post-build: copied dist/client/blog/robots.txt to dist/client/robots.txt (host-root)',
-	);
-} else {
-	console.warn('post-build: dist/client/blog/robots.txt not found — skipping host-root copy');
-}
+// robots.txt is not a static file: EmDash serves /robots.txt from the admin's Settings → SEO
+// (custom robots.txt, "Disallow AI training"), see docs/CMS.md#seo-and-robotstxt.
 
 const BUILT_FAVICON_ICO = new URL('blog/favicon.ico', DIST);
 if (existsSync(BUILT_FAVICON_ICO)) {

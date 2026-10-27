@@ -11,7 +11,10 @@ import {
 	stringField,
 	type CmsEntry,
 } from './cms/entries';
+import { authorFromByline, type Author } from './cms/author';
 import { isMediaImage, type MediaImage } from './cms/media';
+import { entrySeo, type EntrySeo } from './cms/seo';
+import { postTagsFromEntry, type PostTag } from './cms/tags';
 import {
 	emptyLocalizedUrls,
 	indexByTranslationGroup,
@@ -21,7 +24,7 @@ import {
 import { portableTextToPlainText, portableTextWordCount } from './portable-text';
 import { tagSlug } from './tag-slug';
 
-export { tagSlug, emptyLocalizedUrls, type LocalizedUrls };
+export { tagSlug, emptyLocalizedUrls, type LocalizedUrls, type PostTag };
 
 export interface Post {
 	id: string;
@@ -33,7 +36,12 @@ export interface Post {
 	description: string;
 	publishedAt: Date;
 	updatedAt?: Date;
-	tags: string[];
+	/** Terms of the `tag` taxonomy in the post's language, sorted by label. */
+	tags: PostTag[];
+	/** From the post's primary byline (admin → Bylines). */
+	author?: Author;
+	/** The entry's SEO panel. Only set on single-post reads. */
+	seo?: EntrySeo;
 	heroImage?: MediaImage;
 	body?: TypedObject[];
 	wordCount: number;
@@ -69,11 +77,6 @@ function hasPendingDraft(entry: CmsEntry, ctx: CmsContext): boolean {
 	return typeof draft === 'string' && draft !== '' && draft !== entry.data.liveRevisionId;
 }
 
-function stringList(value: unknown): string[] {
-	if (!Array.isArray(value)) return [];
-	return value.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
-}
-
 function portableText(value: unknown): TypedObject[] | undefined {
 	return Array.isArray(value) ? (value as TypedObject[]) : undefined;
 }
@@ -102,7 +105,9 @@ function toPost(entry: CmsEntry, index: TranslationIndex, ctx: CmsContext): Post
 		description: stringField(entry, 'description'),
 		publishedAt,
 		updatedAt: dateField(entry, 'revised_at'),
-		tags: stringList(entry.data.tags),
+		tags: postTagsFromEntry(entry),
+		author: authorFromByline(entry.data.byline),
+		seo: entrySeo(entry),
 		heroImage: isMediaImage(heroImage) ? heroImage : undefined,
 		body,
 		wordCount: portableTextWordCount(body),
@@ -176,7 +181,12 @@ export function getTranslatedPostUrls(post: Pick<Post, 'translations'>): Localiz
 }
 
 export function postHasTagSlug(post: Pick<Post, 'tags'>, slug: string): boolean {
-	return post.tags.some((tag) => tagSlug(tag) === slug);
+	return post.tags.some((tag) => tag.slug === slug);
+}
+
+/** Tag labels in display order, for keywords, RSS categories and plain-text exports. */
+export function tagLabels(post: Pick<Post, 'tags'>): string[] {
+	return post.tags.map((tag) => tag.label);
 }
 
 export async function getPostsForTagSlug(
@@ -192,22 +202,23 @@ export interface TagSummary {
 	tag: string;
 	slug: string;
 	count: number;
+	/** Links the tag to its translations (the same term in other languages). */
+	translationGroup: string;
 }
 
 export function summarizeTags(posts: Pick<Post, 'tags'>[]): TagSummary[] {
-	const bySlug = new Map<string, { tag: string; count: number }>();
+	const bySlug = new Map<string, Omit<TagSummary, 'slug'>>();
 	for (const post of posts) {
 		const slugsInPost = new Set<string>();
-		for (const tag of post.tags) {
-			const slug = tagSlug(tag);
+		for (const { label, slug, translationGroup } of post.tags) {
 			if (!slug || slugsInPost.has(slug)) continue;
 			slugsInPost.add(slug);
 			const entry = bySlug.get(slug);
 			if (entry) entry.count += 1;
-			else bySlug.set(slug, { tag, count: 1 });
+			else bySlug.set(slug, { tag: label, count: 1, translationGroup });
 		}
 	}
-	return Array.from(bySlug, ([slug, { tag, count }]) => ({ tag, slug, count })).sort(
+	return Array.from(bySlug, ([slug, summary]) => ({ ...summary, slug })).sort(
 		(a, b) => b.count - a.count || a.tag.localeCompare(b.tag),
 	);
 }

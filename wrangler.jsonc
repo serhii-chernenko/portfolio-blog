@@ -170,14 +170,11 @@
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	//
-	// `/robots.txt` is the one narrow exception: static files live in `public/blog/`
-	// and are only emitted under `/blog`, so without this route the host-root file 522s (nothing is
-	// bound there) and crawlers never see it. Bound at an exact path — NOT a `/*`
-	// catch-all — so it stays out of the future portfolio Worker's way; ownership
-	// moves to that Worker (and this route is deleted) once it exists. Once bound,
-	// the file is served by Cloudflare's static assets directly — NOT by an Astro
-	// route or middleware rewrite (`context.rewrite()` can't target a static file;
-	// see src/middleware.ts and scripts/post-build.mjs). See docs/DNS-ROUTING.md.
+	// `/robots.txt` is the one narrow exception: crawlers only read robots.txt at the
+	// host root. Bound at an exact path — NOT a `/*` catch-all — so it stays out of the
+	// future portfolio Worker's way; ownership moves to that Worker (and this route is
+	// deleted) once it exists. EmDash serves it from the admin (Settings → SEO). See
+	// docs/DNS-ROUTING.md.
 	"routes": [
 		{
 			"pattern": "serhiichernenko.com/blog",

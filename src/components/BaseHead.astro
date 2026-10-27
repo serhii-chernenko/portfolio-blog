@@ -12,7 +12,9 @@ import {
 	serializeJsonLd,
 } from '../lib/seo';
 import { defaultOgImage, DEFAULT_OG_IMAGE_WIDTH, DEFAULT_OG_IMAGE_HEIGHT } from '../lib/og';
-import { absoluteMediaUrl, imageDimensions } from '../lib/cms/media';
+import type { Author } from '../lib/cms/author';
+import { absoluteMediaUrl, imageDimensions, mediaUrl } from '../lib/cms/media';
+import { resolveEntrySeo, type EntrySeo } from '../lib/cms/seo';
 import type { LayoutData } from '../lib/site';
 import type { PageType } from '../lib/telemetry-schema';
 import { useTranslations, localeHref, withBase } from '../i18n/utils';
@@ -35,6 +37,12 @@ export interface Props {
 	omitCanonical?: boolean;
 	pageType?: PageType;
 	layout: LayoutData;
+	/** The entry's SEO panel; its values override the ones above. */
+	seo?: EntrySeo;
+	/** Author for structured data (an entry's byline). Defaults to the site name. */
+	author?: Author;
+	/** Append Settings → SEO's title separator and the site name to `<title>`. Default true. */
+	titleSuffix?: boolean;
 }
 
 const {
@@ -55,39 +63,64 @@ const {
 	omitCanonical = false,
 	pageType,
 	layout,
+	seo,
+	author,
+	titleSuffix = true,
 } = Astro.props;
 
 const t = useTranslations(locale, Astro.locals.uiOverrides);
 const site = Astro.site!;
-const canonical = buildCanonical(site, Astro.url.pathname);
-const hreflangLinks = buildHreflang(site, locale, Astro.url.pathname, alternates);
+const siteConfig = layout.site;
 const siteName = layout.settings.siteName;
-const settingsImage = layout.settings.defaultOgImage;
+const panel = seo ? resolveEntrySeo(seo, site) : {};
+const pageTitle = seo?.title || title;
+const separator = siteConfig.seo.titleSeparator;
+const documentTitle =
+	titleSuffix && separator && pageTitle !== siteName
+		? `${pageTitle}${separator}${siteName}`
+		: pageTitle;
+const pageDescription = seo?.description || description;
+const canonical = panel.canonical ?? buildCanonical(site, Astro.url.pathname);
+const hreflangLinks = buildHreflang(site, locale, Astro.url.pathname, alternates);
+const googleVerification = siteConfig.seo.googleVerification || PUBLIC_GOOGLE_SITE_VERIFICATION;
+const bingVerification = siteConfig.seo.bingVerification || PUBLIC_BING_SITE_VERIFICATION;
+const favicon = siteConfig.favicon ? mediaUrl(siteConfig.favicon) : '';
+const settingsImage = siteConfig.seo.defaultOgImage;
 const settingsOgImage = settingsImage
 	? absoluteMediaUrl(settingsImage, site) || undefined
 	: undefined;
 const settingsOgImageSize = settingsImage ? imageDimensions(settingsImage) : null;
-const ogImage = image ?? settingsOgImage ?? defaultOgImage(site);
-const ogImageWidth = image
-	? imageWidth
-	: settingsOgImage
-		? settingsOgImageSize?.width
-		: DEFAULT_OG_IMAGE_WIDTH;
-const ogImageHeight = image
-	? imageHeight
-	: settingsOgImage
-		? settingsOgImageSize?.height
-		: DEFAULT_OG_IMAGE_HEIGHT;
-const ogImageAlt = imageAlt || (image ? title : siteName);
-const robotsContent = noIndex
-	? 'noindex,nofollow,noarchive'
-	: noIndexFollow
-		? 'noindex,follow'
-		: undefined;
+const ogImage = panel.image ?? image ?? settingsOgImage ?? defaultOgImage(site);
+const ogImageWidth = panel.image
+	? undefined
+	: image
+		? imageWidth
+		: settingsOgImage
+			? settingsOgImageSize?.width
+			: DEFAULT_OG_IMAGE_WIDTH;
+const ogImageHeight = panel.image
+	? undefined
+	: image
+		? imageHeight
+		: settingsOgImage
+			? settingsOgImageSize?.height
+			: DEFAULT_OG_IMAGE_HEIGHT;
+const ogImageAlt = panel.image ? pageTitle : imageAlt || (image ? pageTitle : siteName);
+const robotsContent =
+	noIndex || seo?.noIndex
+		? 'noindex,nofollow,noarchive'
+		: noIndexFollow
+			? 'noindex,follow'
+			: undefined;
 const alternateOgLocales = locales
 	.filter((alternateLocale) => alternateLocale !== locale && alternates?.[alternateLocale])
 	.map((alternateLocale) => ogLocaleFor(alternateLocale));
 const authorPath = layout.aboutPath;
+const authorInfo: Author = {
+	name: author?.name || siteName,
+	websiteUrl: author?.websiteUrl,
+	sameAs: Array.from(new Set([...(author?.sameAs ?? []), ...siteConfig.socialProfiles])),
+};
 const authorCanonical = buildCanonical(site, authorPath);
 const isArticle = type === 'article' && publishedAt !== undefined;
 const modifiedAt = updatedAt ?? publishedAt;
@@ -100,25 +133,34 @@ if (isArticle) {
 			site,
 			pathname: Astro.url.pathname,
 			locale,
-			title,
-			description,
+			title: pageTitle,
+			description: pageDescription,
 			image: ogImage,
 			publishedAt,
 			updatedAt,
 			tags,
 			authorPath,
+			author: authorInfo,
 		}),
 		breadcrumbJsonLd({
 			site,
 			crumbs: [
 				{ name: siteName, path: homePath },
 				{ name: t('nav.posts'), path: localeHref(locale, 'posts/') },
-				{ name: title, path: Astro.url.pathname },
+				{ name: pageTitle, path: Astro.url.pathname },
 			],
 		}),
 	);
 } else if (pageType === 'home') {
-	const websiteInput = { site, homePath, siteName, description, locale, authorPath };
+	const websiteInput = {
+		site,
+		homePath,
+		siteName,
+		description: pageDescription,
+		locale,
+		authorPath,
+		author: authorInfo,
+	};
 	jsonLdBlocks.push(websiteJsonLd(websiteInput), blogJsonLd(websiteInput));
 }
 ---
@@ -126,21 +168,23 @@ if (isArticle) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<title>{title}</title>
-<meta name="description" content={description} />
+<title>{documentTitle}</title>
+<meta name="description" content={pageDescription} />
 {robotsContent && <meta name="robots" content={robotsContent} />}
 {tags && tags.length > 0 && <meta name="keywords" content={tags.join(', ')} />}
-{PUBLIC_GOOGLE_SITE_VERIFICATION && (
-	<meta name="google-site-verification" content={PUBLIC_GOOGLE_SITE_VERIFICATION} />
-)}
-{PUBLIC_BING_SITE_VERIFICATION && (
-	<meta name="msvalidate.01" content={PUBLIC_BING_SITE_VERIFICATION} />
-)}
+{googleVerification && <meta name="google-site-verification" content={googleVerification} />}
+{bingVerification && <meta name="msvalidate.01" content={bingVerification} />}
 
 {!omitCanonical && <link rel="canonical" href={canonical} />}
 
-<link rel="icon" href={withBase('favicon.ico')} sizes="32x32" />
-<link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
+{favicon ? (
+	<link rel="icon" href={favicon} type={siteConfig.favicon?.contentType} />
+) : (
+	<>
+		<link rel="icon" href={withBase('favicon.ico')} sizes="32x32" />
+		<link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
+	</>
+)}
 <link rel="apple-touch-icon" href={withBase('apple-touch-icon.png')} />
 <link rel="manifest" href={withBase('site.webmanifest')} />
 
@@ -150,8 +194,8 @@ if (isArticle) {
 
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonical} />
-<meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={pageDescription} />
 <meta property="og:image" content={ogImage} />
 {ogImageWidth && <meta property="og:image:width" content={String(ogImageWidth)} />}
 {ogImageHeight && <meta property="og:image:height" content={String(ogImageHeight)} />}
@@ -169,8 +213,8 @@ if (isArticle) {
 {isArticle && tags && tags.map((tag) => <meta property="article:tag" content={tag} />)}
 
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content={title} />
-<meta name="twitter:description" content={description} />
+<meta name="twitter:title" content={pageTitle} />
+<meta name="twitter:description" content={pageDescription} />
 <meta name="twitter:image" content={ogImage} />
 <meta name="twitter:image:alt" content={ogImageAlt} />
 

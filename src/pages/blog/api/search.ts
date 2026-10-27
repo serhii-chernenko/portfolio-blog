@@ -15,7 +15,7 @@ const FTS_CANDIDATE_LIMIT = 50;
 const MAX_TERMS = 8;
 const TOKEN_SEPARATOR = /[^\p{L}\p{N}]+/u;
 
-/** Field weights of the Sanity-era GROQ `score()`: title 4, tags 3, description 2, body 1. */
+/** Field weights of the relevance score: title 4, tags 3, description 2, body 1. */
 const WEIGHTS = { title: 4, tags: 3, description: 2, body: 1 } as const;
 
 function json(body: Record<string, unknown>, status = 200): Response {
@@ -50,7 +50,7 @@ function matchesAll(text: string, terms: string[]): boolean {
 function score(post: Post, terms: string[]): number {
 	let total = 0;
 	if (matchesAll(post.title, terms)) total += WEIGHTS.title;
-	if (post.tags.some((tag) => matchesAll(tag, terms))) total += WEIGHTS.tags;
+	if (post.tags.some((tag) => matchesAll(tag.label, terms))) total += WEIGHTS.tags;
 	if (matchesAll(post.description, terms)) total += WEIGHTS.description;
 	if (matchesAll(portableTextToPlainText(post.body), terms)) total += WEIGHTS.body;
 	return total;

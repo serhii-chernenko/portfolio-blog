@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
-import { getPostsForTagSlug, getTagsForLocale, tagSlug } from '../../../../lib/posts';
+import { getPostsForTagSlug, getTagsForLocale } from '../../../../lib/posts';
 import { MIN_POSTS_FOR_TAG_INDEXING } from '../../../../lib/tag-slug';
 import { getCmsContext } from '../../../../lib/cms/context';
 import { getLayoutData } from '../../../../lib/site';
@@ -20,16 +20,18 @@ const [{ settings }, posts, tagsByLocale] = await Promise.all([
 	getPostsForTagSlug(locale, requestedTagSlug, cms),
 	Promise.all(locales.map((target) => getTagsForLocale(target, cms))),
 ]);
-const tagLabel = posts[0]?.tags.find((tag) => tagSlug(tag) === requestedTagSlug);
-if (!tagLabel) return new Response(null, { status: 404 });
-const title = t('tag.title', { tag: tagLabel });
+const tag = posts[0]?.tags.find(({ slug }) => slug === requestedTagSlug);
+if (!tag) return new Response(null, { status: 404 });
+const title = t('tag.title', { tag: tag.label });
+// The same term in the other language (a translation of it in admin → Tags), or that language's
+// tag index when the tag has no translation used by a published post there.
 const translatedUrls = Object.fromEntries(
-	locales.map((target, index) => [
-		target,
-		tagsByLocale[index].some(({ slug }) => slug === requestedTagSlug)
-			? localeHref(target, `tags/${requestedTagSlug}`)
-			: localeHref(target, 'tags/'),
-	]),
+	locales.map((target, index) => {
+		const match = tagsByLocale[index].find(
+			({ translationGroup }) => translationGroup === tag.translationGroup,
+		);
+		return [target, match ? localeHref(target, `tags/${match.slug}`) : localeHref(target, 'tags/')];
+	}),
 ) as Record<Locale, string>;
 ---
 

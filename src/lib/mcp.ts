@@ -5,6 +5,7 @@ import {
 	getPostsForLocales,
 	getTagsForLocale,
 	tagSlug,
+	type PostTag,
 	postUrl,
 	type Post,
 } from './posts';
@@ -40,12 +41,12 @@ function toSummary(post: Post) {
 		url: postUrl(post),
 		publishedAt: post.publishedAt.toISOString(),
 		updatedAt: post.updatedAt?.toISOString(),
-		tags: post.tags,
+		tags: post.tags.map((tag) => tag.label),
 	};
 }
 
-function matchesTag(postTags: string[], query: string): boolean {
-	return postTags.some((t) => t === query || tagSlug(t) === tagSlug(query));
+function matchesTag(postTags: PostTag[], query: string): boolean {
+	return postTags.some((t) => t.label === query || t.slug === query || t.slug === tagSlug(query));
 }
 
 function textResult(value: unknown, structuredContent?: Record<string, unknown>) {

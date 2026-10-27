@@ -180,7 +180,7 @@ There are three distinct sources for runtime values — use the right one for ea
 
 ## Skipped intentionally (Phase 2 per plan)
 
-- Custom OG image generator — MVP uses a single default (or the site settings' `default_og_image`).
+- Custom OG image generator — MVP uses a single default (admin → Settings → SEO → Default Social Image, or `public/blog/og-default.png`).
 - Custom comment system — Giscus is MVP.
 - Newsletter campaigns — MVP supports subscribe/confirm/unsubscribe only.
 

@@ -5,7 +5,7 @@ import { localeHref, useTranslations, withBase } from '../i18n/utils';
 import { COLLECTIONS, MENUS } from './cms/config';
 import type { CmsContext } from './cms/context';
 import { listEntries, stringField } from './cms/entries';
-import { isMediaImage, type MediaImage } from './cms/media';
+import { getSiteConfig, type SiteConfig } from './cms/settings';
 import { getPages, pageUrl, type Page } from './pages';
 import { loadUiOverrides } from './ui-overrides';
 
@@ -32,19 +32,19 @@ export interface SiteSettings {
 	aboutTitle: string;
 	aboutBody: string;
 	aboutCta: string;
-	defaultOgImage?: MediaImage;
 }
 
 export interface LayoutData {
+	/** Per-language site copy (`site_settings` collection). */
 	settings: SiteSettings;
+	/** Built-in EmDash settings (admin → Settings): logo, favicon, SEO, reading, social. */
+	site: SiteConfig;
 	header: NavLink[];
 	footer: NavLink[];
 	aboutPath: string;
 }
 
-type RawSettings = Partial<Record<Exclude<keyof SiteSettings, 'defaultOgImage'>, string>> & {
-	defaultOgImage?: MediaImage;
-};
+type RawSettings = Partial<Record<keyof SiteSettings, string>>;
 
 const NAV_ROUTES: readonly NavRoute[] = ['home', 'posts', 'tags', 'subscribe', 'rss'];
 const NAV_ICONS: readonly NavIcon[] = ['rss', 'github', 'support'];
@@ -55,7 +55,7 @@ const SOURCE_REPOSITORY_URL = 'https://github.com/serhii-chernenko/portfolio-blo
 const BLOG_PATH_PREFIX = withBase('');
 
 /** site_settings field slug → SiteSettings key. */
-const SETTINGS_FIELDS: Record<Exclude<keyof SiteSettings, 'defaultOgImage'>, string> = {
+const SETTINGS_FIELDS: Record<keyof SiteSettings, string> = {
 	siteName: 'site_name',
 	tagline: 'tagline',
 	description: 'description',
@@ -146,11 +146,15 @@ function toNavLinks(items: MenuItem[], locale: Locale, pages: Page[]): NavLink[]
 
 type Translate = ReturnType<typeof useTranslations>;
 
-function fallbackSettings(t: Translate, raw: RawSettings | null): SiteSettings {
+/**
+ * Empty per-language fields fall back to the built-in Settings → General title and tagline, then
+ * to the interface strings in `src/i18n/ui.ts`.
+ */
+function fallbackSettings(t: Translate, raw: RawSettings | null, site: SiteConfig): SiteSettings {
 	const pick = (value: string | null | undefined, key: UIKey) => value || t(key);
 	return {
-		siteName: pick(raw?.siteName, 'site.name'),
-		tagline: pick(raw?.tagline, 'site.tagline'),
+		siteName: pick(raw?.siteName || site.title, 'site.name'),
+		tagline: pick(raw?.tagline || site.tagline, 'site.tagline'),
 		description: pick(raw?.description, 'site.description'),
 		heroEyebrow: pick(raw?.heroEyebrow, 'home.hero.eyebrow'),
 		heroTitle: pick(raw?.heroTitle, 'home.hero.title'),
@@ -158,7 +162,6 @@ function fallbackSettings(t: Translate, raw: RawSettings | null): SiteSettings {
 		aboutTitle: pick(raw?.aboutTitle, 'home.about.title'),
 		aboutBody: pick(raw?.aboutBody, 'home.about.body'),
 		aboutCta: pick(raw?.aboutCta, 'home.about.cta'),
-		defaultOgImage: raw?.defaultOgImage,
 	};
 }
 
@@ -210,14 +213,13 @@ async function loadSettings(locale: Locale): Promise<RawSettings | null> {
 	][]) {
 		settings[key] = stringField(entry, field);
 	}
-	const image = entry.data.default_og_image;
-	if (isMediaImage(image)) settings.defaultOgImage = image;
 	return settings;
 }
 
 export async function getLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
-	const [settings, header, footer, pages, overrides] = await Promise.all([
+	const [settings, site, header, footer, pages, overrides] = await Promise.all([
 		loadSettings(locale),
+		getSiteConfig(),
 		getMenu(MENUS.header, { locale }),
 		getMenu(MENUS.footer, { locale }),
 		getPages(locale, ctx),
@@ -227,7 +229,8 @@ export async function getLayoutData(locale: Locale, ctx: CmsContext): Promise<La
 	const aboutPage = pages.find((page) => page.key === 'about');
 	const aboutPath = aboutPage ? pageUrl(aboutPage) : localeHref(locale);
 	return {
-		settings: fallbackSettings(t, settings),
+		settings: fallbackSettings(t, settings, site),
+		site,
 		header: header ? toNavLinks(header.items, locale, pages) : fallbackHeader(t, locale, aboutPath),
 		footer: footer ? toNavLinks(footer.items, locale, pages) : fallbackFooter(t, locale),
 		aboutPath,

@@ -19,7 +19,7 @@
 			"description": "Blog articles. One entry per language; link translations from the Translations panel.",
 			"icon": "article",
 			"sortOrder": 1,
-			"supports": ["drafts", "revisions", "preview", "scheduling", "search"],
+			"supports": ["drafts", "revisions", "preview", "scheduling", "search", "seo"],
 			"titleField": "title",
 			"admin": {
 				"listColumns": ["description"]
@@ -58,18 +58,6 @@
 					}
 				},
 				{
-					"slug": "tags",
-					"label": "Tags",
-					"type": "json",
-					"widget": "field-kit:tags",
-					"options": {
-						"placeholder": "Add a tag…",
-						"transform": "trim",
-						"allowCustom": true,
-						"helpText": "Free-form labels in this post's language. Each tag gets a page at /blog/{locale}/tags/{slug}."
-					}
-				},
-				{
 					"slug": "hero_image",
 					"label": "Hero image",
 					"type": "image",
@@ -95,7 +83,7 @@
 			"description": "Static pages (about, privacy, support), served at /blog/{locale}/{slug}.",
 			"icon": "file-text",
 			"sortOrder": 2,
-			"supports": ["drafts", "revisions", "preview", "search"],
+			"supports": ["drafts", "revisions", "preview", "search", "seo"],
 			"urlPattern": "/{slug}",
 			"titleField": "title",
 			"admin": {
@@ -220,12 +208,6 @@
 					"slug": "about_cta",
 					"label": "About call to action",
 					"type": "string"
-				},
-				{
-					"slug": "default_og_image",
-					"label": "Default social image",
-					"type": "image",
-					"translatable": false
 				}
 			]
 		},
@@ -333,6 +315,15 @@
 					"required": true
 				}
 			]
+		}
+	],
+	"taxonomies": [
+		{
+			"name": "tag",
+			"label": "Tags",
+			"labelSingular": "Tag",
+			"hierarchical": false,
+			"collections": ["posts"]
 		}
 	]
 }

@@ -8,6 +8,12 @@ export const htmlLangAttribute: Record<Locale, string> = {
 	uk: 'uk-UA',
 };
 
+/** BCP 47 tag for `Intl` date formatting. */
+export const dateLocale: Record<Locale, string> = {
+	en: 'en-US',
+	uk: 'uk-UA',
+};
+
 export const ogLocale: Record<Locale, string> = {
 	en: 'en_US',
 	uk: 'uk_UA',
