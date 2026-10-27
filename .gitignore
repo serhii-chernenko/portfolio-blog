@@ -35,3 +35,9 @@ worker-configuration.d.ts
 .claude/plans
 .pi
 .herdr
+
+# EmDash local development (pnpm dev): SQLite database, media uploads, generated files
+data.db
+data.db-*
+uploads/
+.emdash/

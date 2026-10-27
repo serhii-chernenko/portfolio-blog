@@ -1,10 +1,11 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
-import type { TypedObjectProps } from 'astro-portabletext/types';
+import type { TypedObject, TypedObjectProps } from 'astro-portabletext/types';
+import { youtubeVideoId } from '../../lib/portable-text';
 
 type Props = TypedObjectProps;
 
-interface YouTubeNode {
+interface YouTubeNode extends TypedObject {
+	id?: string;
 	videoId?: string;
 	title?: string;
 }
@@ -13,9 +14,9 @@ const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
 const DEFAULT_TITLE = 'YouTube video';
 
 const { node } = Astro.props;
-const { videoId = '', title: rawTitle } = node as unknown as YouTubeNode;
-const id = stegaClean(videoId);
-const title = rawTitle ? stegaClean(rawTitle) : DEFAULT_TITLE;
+const youtube = node as unknown as YouTubeNode;
+const id = youtubeVideoId(youtube);
+const title = youtube.title?.trim() || DEFAULT_TITLE;
 const src = `https://www.youtube-nocookie.com/embed/${id}`;
 ---
 

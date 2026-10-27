@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 
-const PUBLIC_DIR = new URL('../public/', import.meta.url);
+const PUBLIC_DIR = new URL('../public/blog/', import.meta.url);
 
 const SITE_NAME = 'Chernenko';
 const TAGLINE = 'Notes on engineering, photography, and craft.';

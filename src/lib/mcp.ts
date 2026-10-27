@@ -8,7 +8,7 @@ import {
 	postUrl,
 	type Post,
 } from './posts';
-import { createPublishedContext } from './sanity/request';
+import { createPublishedContext } from './cms/context';
 import { locales } from '../i18n/config';
 import { localeHref } from '../i18n/utils';
 
@@ -57,7 +57,7 @@ function textResult(value: unknown, structuredContent?: Record<string, unknown>)
 
 export function buildMcpServer(): McpServer {
 	const server = new McpServer({ name: 'portfolio-blog', version: '1.0.0' });
-	const sanity = createPublishedContext();
+	const cms = createPublishedContext();
 
 	server.registerTool(
 		'list_posts',
@@ -74,7 +74,7 @@ export function buildMcpServer(): McpServer {
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ locale, tag, limit, offset }) => {
-			let posts = await getPostsForLocales(locale, sanity);
+			let posts = await getPostsForLocales(locale, cms);
 			if (tag) posts = posts.filter((p) => matchesTag(p.tags, tag));
 			const page = posts.slice(offset, offset + limit).map(toSummary);
 			const output = { total: posts.length, posts: page };
@@ -110,7 +110,7 @@ export function buildMcpServer(): McpServer {
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ locale, slug }) => {
-			const result = await getPostPlainText(locale, slug, sanity);
+			const result = await getPostPlainText(locale, slug, cms);
 			if (!result) {
 				return {
 					isError: true,
@@ -141,9 +141,7 @@ export function buildMcpServer(): McpServer {
 			annotations: { readOnlyHint: true, openWorldHint: false },
 		},
 		async ({ tag, locale, limit, offset }) => {
-			const posts = (await getPostsForLocales(locale, sanity)).filter((p) =>
-				matchesTag(p.tags, tag),
-			);
+			const posts = (await getPostsForLocales(locale, cms)).filter((p) => matchesTag(p.tags, tag));
 			const output = {
 				total: posts.length,
 				posts: posts.slice(offset, offset + limit).map(toSummary),
@@ -175,7 +173,7 @@ export function buildMcpServer(): McpServer {
 			const targets = locale ? [locale] : locales;
 			const perLocale = await Promise.all(
 				targets.map(async (l) => {
-					const tags = await getTagsForLocale(l, sanity);
+					const tags = await getTagsForLocale(l, cms);
 					return tags.map(({ tag, slug, count }) => ({
 						tag,
 						slug,

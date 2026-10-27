@@ -1,16 +1,9 @@
 type ServerEnv = typeof import('astro:env/server');
 
-export interface DraftModeSecrets {
-	readToken: string;
-	cookieSecret: string;
-}
-
 export interface TelegramCredentials {
 	botToken: string;
 	chatId: string;
 }
-
-const MIN_DRAFT_MODE_COOKIE_SECRET_LENGTH = 32;
 
 let serverEnv: Promise<ServerEnv | null> | undefined;
 
@@ -30,20 +23,6 @@ function loadServerEnv(): Promise<ServerEnv | null> {
 		return null;
 	});
 	return serverEnv;
-}
-
-export async function getDraftModeSecrets(): Promise<DraftModeSecrets | null> {
-	const env = await loadServerEnv();
-	const readToken = env?.SANITY_API_READ_TOKEN;
-	const cookieSecret = env?.DRAFT_MODE_COOKIE_SECRET;
-	if (!readToken || !cookieSecret) return null;
-	if (cookieSecret.length < MIN_DRAFT_MODE_COOKIE_SECRET_LENGTH) return null;
-	return { readToken, cookieSecret };
-}
-
-export async function getSanityWebhookSecret(): Promise<string | null> {
-	const env = await loadServerEnv();
-	return env?.SANITY_WEBHOOK_SECRET || null;
 }
 
 export async function getTelegramCredentials(): Promise<TelegramCredentials | null> {

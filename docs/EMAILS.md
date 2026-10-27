@@ -26,7 +26,7 @@ editor, edit, click **Save**. Click **New template** to create one.
   Astro's i18n router 404s every file-based page route that has no locale
   prefix (`/blog/admin/...`), but exempts integration-injected routes. Production
   builds therefore contain no admin routes at all.
-- **API**: `src/pages/api/emails/templates*` provides REST CRUD. All routes
+- **API**: `src/pages/blog/api/emails/templates*` provides REST CRUD. All routes
   are guarded by `import.meta.env.DEV` (true only under `astro dev`), so they
   403 in production (the Cloudflare Worker doesn't have `fs` anyway).
 - **CSRF**: Astro 6 blocks cross-origin mutating requests. Browsers send

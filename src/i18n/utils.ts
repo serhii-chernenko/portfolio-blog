@@ -1,9 +1,10 @@
 import { ui, type UIKey } from './ui';
 import { defaultLocale, isLocale, type Locale } from './config';
 import { withTrailingSlash } from '../lib/trailing-slash';
+import { BASE_PATH } from '../lib/base-path';
 
 export function getLocaleFromUrl(url: URL): Locale {
-	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+	const base = BASE_PATH;
 	const pathname = url.pathname.startsWith(`${base}/`)
 		? url.pathname.slice(base.length)
 		: url.pathname;
@@ -15,8 +16,8 @@ export function getLocaleFromUrl(url: URL): Locale {
 export type UiOverrides = Partial<Record<Locale, Partial<Record<UIKey, string>>>>;
 
 /**
- * Returns a synchronous translator for `locale`. Sanity `uiStrings` overrides win over
- * `ui.ts`; in draft mode they carry stega markers, so clean them before using in attributes.
+ * Returns a synchronous translator for `locale`. CMS `ui_strings` overrides win over
+ * `ui.ts`.
  */
 export function useTranslations(locale: Locale, overrides?: UiOverrides) {
 	const localeOverrides = overrides?.[locale];
@@ -32,11 +33,11 @@ export function useTranslations(locale: Locale, overrides?: UiOverrides) {
 }
 
 /**
- * Prepends Astro's BASE_URL (e.g. `/blog`) to a path.
+ * Prepends the blog path prefix (`/blog`) to a path.
  * Always inserts exactly one slash between base and path.
  */
 export function withBase(path: string): string {
-	const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+	const base = BASE_PATH;
 	const clean = path.replace(/^\/+/, '');
 	return clean ? `${base}/${clean}` : `${base}/`;
 }

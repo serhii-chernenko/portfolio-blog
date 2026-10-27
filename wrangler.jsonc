@@ -5,6 +5,8 @@
 //  ── Required public vars (declared below under "vars") ──
 //    MAIL_FROM                             Sender address. Must be on a domain with
 //                                          Cloudflare Email Routing enabled.
+//    EMDASH_SITE_URL                       Public origin of the CMS (passkeys,
+//                                          admin redirects).
 //
 //  ── Required secrets (set via `wrangler secret put`) ──
 //    SUBSCRIBE_RATE_LIMIT_SECRET           32-byte random — derives opaque
@@ -13,30 +15,20 @@
 //                                          notifications.
 //    TELEGRAM_CHAT_ID                      Optional in dev. Required in prod.
 //
-//  ── Optional secrets (Sanity) ──
-//    SANITY_API_READ_TOKEN                 Sanity Viewer token. Enables draft mode
-//                                          (Presentation / Visual Editing). Without
-//                                          it, only published content is served
-//                                          and /api/draft-mode/enable returns 401.
-//    SANITY_WEBHOOK_SECRET                 Secret of the Sanity GROQ webhook that
-//                                          POSTs to /blog/api/sanity/revalidate to
-//                                          purge the Workers Cache `sanity` tag.
-//                                          Without it, revalidation returns 401 and
-//                                          pages refresh only when their cache TTL
-//                                          expires.
-//    DRAFT_MODE_COOKIE_SECRET              HMAC key (32+ chars) that signs the
-//                                          draft-session cookie. Draft mode needs
-//                                          it and SANITY_API_READ_TOKEN; without
-//                                          either, /api/draft-mode/enable returns 401.
-//
 //  Set them all in one go:
 //
 //    pnpm wrangler secret put SUBSCRIBE_RATE_LIMIT_SECRET
 //    pnpm wrangler secret put TELEGRAM_BOT_TOKEN
 //    pnpm wrangler secret put TELEGRAM_CHAT_ID
-//    pnpm wrangler secret put SANITY_API_READ_TOKEN
-//    pnpm wrangler secret put SANITY_WEBHOOK_SECRET
-//    pnpm wrangler secret put DRAFT_MODE_COOKIE_SECRET
+//
+//  ── Optional CMS secret (EmDash) ──
+//    EMDASH_ENCRYPTION_KEY                 Encrypts plugin secret settings stored
+//                                          in the CMS database. Only needed if a
+//                                          plugin declares secret settings (none
+//                                          do today). Generate with
+//                                          `pnpm exec emdash secrets generate`
+//                                          and keep a protected backup: losing
+//                                          it makes those values unreadable.
 //
 //  ── Optional secret (observability) ──
 //    NEW_RELIC_LICENSE_KEY                 New Relic ingest license key. Forwards
@@ -50,6 +42,14 @@
 //  ── Required bindings ──
 //    DB           D1 database. Replace database_id with the value from
 //                 `wrangler d1 create portfolio-blog`.
+//    CMS_DB       D1 database of the EmDash CMS (content, schema, users,
+//                 menus). Kept apart from DB so CMS backups and restores never
+//                 touch subscriber data. EmDash applies its own migrations on
+//                 the first request (docs/CMS.md).
+//    MEDIA        R2 bucket with the CMS media library (images uploaded in
+//                 the admin, served at /_emdash/api/media/file/...).
+//    SESSION      KV namespace for EmDash admin sessions. Not declared here:
+//                 the Cloudflare adapter adds it at build time.
 //    ASSETS       Static assets bound from ./dist (set automatically).
 //    SEND_EMAIL   Cloudflare Email Service binding. Requires Email Routing to
 //                 be enabled on the sender domain.
@@ -67,7 +67,8 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "portfolio-blog",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	// Astro handler + EmDash's scheduled handler (src/worker.ts).
+	"main": "./src/worker.ts",
 	"preview_urls": true,
 	"compatibility_date": "2026-05-15",
 	"compatibility_flags": ["nodejs_compat"],
@@ -87,7 +88,22 @@
 			"database_id": "3203b8f1-e6c5-4db7-bdb1-1651b33fb67f",
 			"migrations_dir": "./schema",
 		},
+		{
+			"binding": "CMS_DB",
+			"database_name": "portfolio-blog-cms",
+			"database_id": "2ffe316d-927f-4c83-acce-5f0ff72e893b",
+		},
 	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "portfolio-blog-media",
+		},
+	],
+	// Runs EmDash scheduled publishing and maintenance (createScheduledHandler).
+	"triggers": {
+		"crons": ["* * * * *"],
+	},
 	"send_email": [
 		{
 			"name": "SEND_EMAIL",
@@ -140,6 +156,7 @@
 	//
 	//   …/blog             → blog landing
 	//   …/blog/*           → all blog routes
+	//   …/_emdash/*        → EmDash admin, API and media
 	//
 	// `zone_name` is the apex (serhiichernenko.com) — the Cloudflare zone; the
 	// route *pattern* is what selects the host.
@@ -153,8 +170,8 @@
 	// more specific and keep winning (Cloudflare most-specific-route-wins). So do
 	// NOT add a `/` → `/blog` redirect here — the root belongs to the portfolio.
 	//
-	// `/robots.txt` is the one narrow exception: Astro only emits `public/` under
-	// the `/blog` base, so without this route the host-root file 522s (nothing is
+	// `/robots.txt` is the one narrow exception: static files live in `public/blog/`
+	// and are only emitted under `/blog`, so without this route the host-root file 522s (nothing is
 	// bound there) and crawlers never see it. Bound at an exact path — NOT a `/*`
 	// catch-all — so it stays out of the future portfolio Worker's way; ownership
 	// moves to that Worker (and this route is deleted) once it exists. Once bound,
@@ -190,6 +207,12 @@
 			"pattern": "serhiichernenko.com/sitemap.xml",
 			"zone_name": "serhiichernenko.com",
 		},
+		// EmDash admin (`/_emdash/admin`) and its API. The admin client calls these
+		// host-root paths, so they cannot live under /blog (docs/CMS.md).
+		{
+			"pattern": "serhiichernenko.com/_emdash/*",
+			"zone_name": "serhiichernenko.com",
+		},
 	],
 	// Public (non-secret) vars. These are inlined into the deployed Worker bundle
 	// and are safe to expose. Anything sensitive belongs in `wrangler secret put`.
@@ -200,5 +223,9 @@
 		// email will fail. Set it up in the CF dashboard before relying on
 		// production sends.
 		"MAIL_FROM": "hello@serhiichernenko.com",
+		// Public origin of the CMS: passkeys, admin redirects, MCP discovery and
+		// plugin site URLs. For `pnpm wrangler:dev`, override it in .dev.vars with
+		// http://localhost:8787 to sign in locally.
+		"EMDASH_SITE_URL": "https://serhiichernenko.com",
 	},
 }

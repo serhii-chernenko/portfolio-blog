@@ -1,6 +1,5 @@
 ---
 import { PUBLIC_GOOGLE_SITE_VERIFICATION, PUBLIC_BING_SITE_VERIFICATION } from 'astro:env/client';
-import { stegaClean } from '@sanity/client/stega';
 import { locales, type Locale } from '../i18n/config';
 import {
 	buildCanonical,
@@ -13,7 +12,7 @@ import {
 	serializeJsonLd,
 } from '../lib/seo';
 import { defaultOgImage, DEFAULT_OG_IMAGE_WIDTH, DEFAULT_OG_IMAGE_HEIGHT } from '../lib/og';
-import { imageUrl } from '../lib/sanity/image';
+import { absoluteMediaUrl, imageDimensions } from '../lib/cms/media';
 import type { LayoutData } from '../lib/site';
 import type { PageType } from '../lib/telemetry-schema';
 import { useTranslations, localeHref, withBase } from '../i18n/utils';
@@ -39,18 +38,18 @@ export interface Props {
 }
 
 const {
-	title: rawTitle,
-	description: rawDescription,
+	title,
+	description,
 	locale,
 	image,
 	imageWidth,
 	imageHeight,
-	imageAlt: rawImageAlt,
+	imageAlt,
 	type = 'website',
 	publishedAt,
 	updatedAt,
-	tags: rawTags,
-	alternates: rawAlternates,
+	tags,
+	alternates,
 	noIndex = false,
 	noIndexFollow = false,
 	omitCanonical = false,
@@ -59,26 +58,27 @@ const {
 } = Astro.props;
 
 const t = useTranslations(locale, Astro.locals.uiOverrides);
-const title = stegaClean(rawTitle);
-const description = stegaClean(rawDescription);
-const tags = rawTags?.map((tag) => stegaClean(tag));
-const alternates = rawAlternates ? stegaClean(rawAlternates) : undefined;
 const site = Astro.site!;
 const canonical = buildCanonical(site, Astro.url.pathname);
 const hreflangLinks = buildHreflang(site, locale, Astro.url.pathname, alternates);
-const siteName = stegaClean(layout.settings.siteName);
-const settingsOgImage = layout.settings.defaultOgImage
-	? imageUrl(layout.settings.defaultOgImage, {
-			width: DEFAULT_OG_IMAGE_WIDTH,
-			height: DEFAULT_OG_IMAGE_HEIGHT,
-			format: 'jpg',
-		})
+const siteName = layout.settings.siteName;
+const settingsImage = layout.settings.defaultOgImage;
+const settingsOgImage = settingsImage
+	? absoluteMediaUrl(settingsImage, site) || undefined
 	: undefined;
+const settingsOgImageSize = settingsImage ? imageDimensions(settingsImage) : null;
 const ogImage = image ?? settingsOgImage ?? defaultOgImage(site);
-const ogImageWidth = image ? imageWidth : DEFAULT_OG_IMAGE_WIDTH;
-const ogImageHeight = image ? imageHeight : DEFAULT_OG_IMAGE_HEIGHT;
-const ogImageAlt =
-	(rawImageAlt ? stegaClean(rawImageAlt) : undefined) ?? (image ? title : siteName);
+const ogImageWidth = image
+	? imageWidth
+	: settingsOgImage
+		? settingsOgImageSize?.width
+		: DEFAULT_OG_IMAGE_WIDTH;
+const ogImageHeight = image
+	? imageHeight
+	: settingsOgImage
+		? settingsOgImageSize?.height
+		: DEFAULT_OG_IMAGE_HEIGHT;
+const ogImageAlt = imageAlt || (image ? title : siteName);
 const robotsContent = noIndex
 	? 'noindex,nofollow,noarchive'
 	: noIndexFollow
@@ -112,7 +112,7 @@ if (isArticle) {
 			site,
 			crumbs: [
 				{ name: siteName, path: homePath },
-				{ name: stegaClean(t('nav.posts')), path: localeHref(locale, 'posts/') },
+				{ name: t('nav.posts'), path: localeHref(locale, 'posts/') },
 				{ name: title, path: Astro.url.pathname },
 			],
 		}),

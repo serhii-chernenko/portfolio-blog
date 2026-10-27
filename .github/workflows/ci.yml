@@ -46,7 +46,7 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Studio UI keys in sync
+      - name: CMS UI string keys in sync
         run: pnpm test:ui-keys
 
       - name: Typecheck

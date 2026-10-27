@@ -1,5 +1,5 @@
-import { stegaClean } from '@sanity/client/stega';
 import type { TypedObject } from 'astro-portabletext/types';
+import { markdownToPortableText } from 'emdash/client';
 
 export interface TocHeading {
 	depth: number;
@@ -28,7 +28,7 @@ function blockText(block: TextBlock): string {
 
 export function headingSlug(text: string): string {
 	return (
-		stegaClean(text)
+		text
 			.toLowerCase()
 			.normalize('NFKC')
 			.trim()
@@ -71,7 +71,40 @@ interface CodeNode extends TypedObject {
 }
 
 interface CalloutNode extends TypedObject {
+	/** Markdown edited in the EmDash callout block. */
+	text?: string;
+	/** Portable Text body of callouts stored before the EmDash migration. */
 	body?: TypedObject[];
+}
+
+const EXTERNAL_HREF_PATTERN = /^(https?:)?\/\//i;
+
+interface LinkMarkDef {
+	_type?: string;
+	href?: string;
+	blank?: boolean;
+}
+
+/**
+ * The callout's content as Portable Text. The admin edits callouts as Markdown (a block form
+ * cannot hold rich text), so `text` is converted here; external links open in a new tab, as
+ * every callout link did in the Sanity era.
+ */
+export function calloutBlocks(node: CalloutNode): TypedObject[] {
+	if (Array.isArray(node.body)) return node.body;
+	if (typeof node.text !== 'string' || !node.text.trim()) return [];
+	return (markdownToPortableText(node.text) as TypedObject[]).map((block) => {
+		const markDefs = (block as { markDefs?: LinkMarkDef[] }).markDefs;
+		if (!markDefs?.length) return block;
+		return {
+			...block,
+			markDefs: markDefs.map((markDef) =>
+				markDef._type === 'link' && EXTERNAL_HREF_PATTERN.test(markDef.href ?? '')
+					? { ...markDef, blank: true }
+					: markDef,
+			),
+		};
+	});
 }
 
 const BLOCK_PREFIXES: Record<string, string> = {
@@ -98,15 +131,22 @@ interface ImageNode extends TypedObject {
 }
 
 interface YouTubeNode extends TypedObject {
+	/** Video ID as edited in the EmDash block (its primary `id` field). */
+	id?: string;
+	/** Video ID of blocks stored before the EmDash migration. */
 	videoId?: string;
 	title?: string;
+}
+
+export function youtubeVideoId(node: YouTubeNode): string {
+	return (node.id ?? node.videoId ?? '').trim();
 }
 
 const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
 const DEFAULT_VIDEO_LINK_TEXT = 'Video';
 
 function inlineText(text: string): string {
-	return stegaClean(text).replace(/\s+/g, ' ').trim();
+	return text.replace(/\s+/g, ' ').trim();
 }
 
 function imageToPlainText(node: ImageNode): string {
@@ -115,7 +155,7 @@ function imageToPlainText(node: ImageNode): string {
 }
 
 function youtubeToPlainText(node: YouTubeNode): string {
-	const videoId = stegaClean(node.videoId ?? '');
+	const videoId = youtubeVideoId(node);
 	if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) return '';
 	const title = inlineText(node.title ?? '').replace(/[[\]]/g, '') || DEFAULT_VIDEO_LINK_TEXT;
 	return `[${title}](https://www.youtube.com/watch?v=${videoId})`;
@@ -137,10 +177,41 @@ export function portableTextToPlainText(body: TypedObject[] | undefined): string
 	const parts = (body ?? []).map((node) => {
 		if (node._type === 'block') return blockToPlainText(node as PlainTextBlock);
 		if (node._type === 'code') return codeToPlainText(node as CodeNode);
-		if (node._type === 'callout') return portableTextToPlainText((node as CalloutNode).body);
+		if (node._type === 'callout')
+			return portableTextToPlainText(calloutBlocks(node as CalloutNode));
 		if (node._type === 'image') return imageToPlainText(node as ImageNode);
 		if (node._type === 'youtube') return youtubeToPlainText(node as YouTubeNode);
 		return '';
 	});
 	return parts.filter(Boolean).join('\n\n');
+}
+
+function countWords(text: string): number {
+	return text.split(' ').length;
+}
+
+function proseText(blocks: TypedObject[]): string {
+	return blocks
+		.filter((node) => node._type === 'block')
+		.map((node) => blockText(node as TextBlock))
+		.join('\n\n');
+}
+
+/**
+ * Approximate word count for reading time: space-separated tokens of the prose, callout text and
+ * code blocks, the way the Sanity-era GROQ projection counted them.
+ */
+export function portableTextWordCount(body: TypedObject[] | undefined): number {
+	if (!body) return 0;
+	const callouts = body.filter((node) => node._type === 'callout');
+	const code = body
+		.filter((node) => node._type === 'code' && typeof (node as CodeNode).code === 'string')
+		.map((node) => (node as CodeNode).code as string);
+	return (
+		countWords(proseText(body)) +
+		(callouts.length
+			? countWords(proseText(callouts.flatMap((node) => calloutBlocks(node as CalloutNode))))
+			: 0) +
+		countWords(code.join(' '))
+	);
 }

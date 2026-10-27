@@ -1,0 +1,98 @@
+---
+import BaseLayout from '../../../../../layouts/BaseLayout.astro';
+import PostCard from '../../../../../components/PostCard.astro';
+import { getPublishedPosts } from '../../../../../lib/posts';
+import { POSTS_PAGE_SIZE, parsePageNumber } from '../../../../../lib/pagination';
+import { getCmsContext } from '../../../../../lib/cms/context';
+import { getLayoutData } from '../../../../../lib/site';
+import { useTranslations, localeHref } from '../../../../../i18n/utils';
+import { isLocale } from '../../../../../i18n/config';
+
+export const prerender = false;
+
+const locale = Astro.params.locale ?? '';
+const page = parsePageNumber(Astro.params.page);
+if (!isLocale(locale) || page === null || page < 2) return new Response(null, { status: 404 });
+const t = useTranslations(locale, Astro.locals.uiOverrides);
+const cms = getCmsContext(Astro.locals);
+const [{ settings }, posts] = await Promise.all([
+	getLayoutData(locale, cms),
+	getPublishedPosts(locale, cms),
+]);
+const totalPages = Math.ceil(posts.length / POSTS_PAGE_SIZE);
+if (page > totalPages) return new Response(null, { status: 404 });
+const pagePosts = posts.slice((page - 1) * POSTS_PAGE_SIZE, page * POSTS_PAGE_SIZE);
+const pageLabel = t('pagination.page', { page, total: totalPages });
+---
+
+<BaseLayout
+	title={`${t('nav.posts')} — ${pageLabel}`}
+	description={`${settings.description} (${pageLabel})`}
+	locale={locale}
+	pageType="post_list"
+>
+	<div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+		<div class="flex flex-col gap-10">
+			<header class="max-w-3xl mx-auto space-y-3 text-center">
+				<h1 class="text-4xl font-bold tracking-tight sm:text-5xl">{t('nav.posts')}</h1>
+				<p class="text-base text-base-content/70 sm:text-lg">{settings.description}</p>
+			</header>
+
+			{pagePosts.length === 0 ? (
+				<div class="rounded-box border border-base-300 bg-base-100 p-8 text-center sm:p-12">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="mx-auto size-10 opacity-50 mb-4"
+						aria-hidden="true"
+					>
+						<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+						<polyline points="14 2 14 8 20 8" />
+					</svg>
+					<h2 class="mt-4 text-xl font-semibold">{t('post.empty')}</h2>
+				</div>
+			) : (
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+					{pagePosts.map((post) => (
+						<PostCard post={post} />
+					))}
+				</div>
+			)}
+
+			{totalPages > 1 && (
+				<div class="mx-auto max-w-2xl text-center">
+					<div class="flex items-center justify-center gap-4">
+						<a
+							href={
+								page > 2
+									? localeHref(locale, `posts/page/${page - 1}/`)
+									: localeHref(locale, 'posts/')
+							}
+							class="btn btn-outline btn-sm"
+						>
+							{t('pagination.previous')}
+						</a>
+						<span class="text-sm text-base-content/60">
+							{t('pagination.page', { page, total: totalPages })}
+						</span>
+						{page < totalPages ? (
+							<a
+								href={localeHref(locale, `posts/page/${page + 1}/`)}
+								class="btn btn-outline btn-sm"
+							>
+								{t('pagination.next')}
+							</a>
+						) : (
+							<span class="btn btn-outline btn-sm btn-disabled">{t('pagination.next')}</span>
+						)}
+					</div>
+				</div>
+			)}
+		</div>
+	</div>
+</BaseLayout>

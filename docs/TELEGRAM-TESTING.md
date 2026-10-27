@@ -15,7 +15,7 @@ something noteworthy happens, so you don't have to watch dashboards or inboxes.
 It is deliberately **best-effort**: `notify()` in `src/lib/telegram.ts` no-ops when
 the token/chat-id are unset and swallows API errors (logs `console.warn`, never
 throws). A Telegram outage can never turn a subscribe request into a 500 or fail a
-webhook delivery. That's by design — notifications are a convenience, not a dependency.
+publish in the CMS. That's by design — notifications are a convenience, not a dependency.
 
 ---
 
@@ -27,12 +27,12 @@ Cloudflare Workers Builds, and neither GitHub Actions workflow
 (`.github/workflows/ci.yml`, `indexnow.yml`) sends Telegram messages, so there are
 no deploy or preview notifications.
 
-| #   | Message (prefix)                      | When                                                 | Source                               |
-| --- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------ |
-| 1   | `📬 New pending subscription`         | Pending row is stored and confirmation email is sent | `src/pages/api/subscribe.ts`         |
-| 2   | `✅ Subscription confirmed`           | Confirmation enables both content languages          | `src/pages/api/confirm.ts`           |
-| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | `src/pages/api/unsubscribe.ts`       |
-| 4   | `📝 New post published`               | A post is published in Sanity for the first time     | `src/pages/api/sanity/revalidate.ts` |
+| #   | Message (prefix)                      | When                                                 | Source                              |
+| --- | ------------------------------------- | ---------------------------------------------------- | ----------------------------------- |
+| 1   | `📬 New pending subscription`         | Pending row is stored and confirmation email is sent | `src/pages/blog/api/subscribe.ts`   |
+| 2   | `✅ Subscription confirmed`           | Confirmation enables both content languages          | `src/pages/blog/api/confirm.ts`     |
+| 3   | `🔔 Subscription preferences changed` | A signed POST makes a real preference change         | `src/pages/blog/api/unsubscribe.ts` |
+| 4   | `📝 New post published`               | A post goes live for the first time                  | `src/lib/publish-hooks.ts`          |
 
 Events 1–3 deliberately omit the subscriber address. They carry only event type, locale, and for a
 preference change the allowlisted action.
@@ -112,15 +112,14 @@ Repeating the same POST remains successful but sends no duplicate notification.
 A GET to the same endpoint only redirects to the preference center and never
 changes state or sends a notification.
 
-**Event 4 — new post published:** publish a brand-new post in the Studio (the
-Sanity webhook must point at the Worker, see `docs/SANITY.md`). The webhook
-projection carries `"operation": delta::operation()`; a first publish arrives as
-`operation: "create"` and, after the cache purge succeeds, sends
-`📝 New post published: <title> (<LANG>) <absolute post URL>`. Edits
-(`update`), deletes and non-post documents purge the cache without notifying. A
-purge failure returns 503 before notifying, so Sanity's retry does not produce a
-duplicate. Locally the purge usually fails (503), so verify this event against the
-deployed Worker.
+**Event 4 — new post published:** publish a brand-new post in the EmDash admin.
+The site plugin's `content:afterPublish` hook (`src/lib/publish-hooks.ts`) sends
+`📝 New post published: <title> (<LANG>) <absolute post URL>` when the post's
+`publishedAt` is within the last hour. A scheduled post notifies the same way
+when the cron publishes it. A plugin KV flag per entry makes it fire at most
+once, so republishing or editing never repeats it; pages and older posts never
+notify. The URL is built from `EMDASH_SITE_URL`. See
+`docs/CMS.md#publish-side-effects`.
 
 ### If a Worker event doesn't arrive
 
@@ -152,5 +151,5 @@ the code path wasn't reached (check the HTTP status — e.g. a 429 rate-limit or
 You're done when, in one pass, you've personally seen all four message types
 land in your chat: the three newsletter events from a real subscribe→confirm→
 unsubscribe cycle against the deployed Worker, and the first-publish event from a
-new post in the Studio. Until you've seen a given message at least once
+new post in the EmDash admin. Until you've seen a given message at least once
 end-to-end, treat that event as unverified.

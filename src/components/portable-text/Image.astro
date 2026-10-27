@@ -1,38 +1,38 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import type { TypedObjectProps } from 'astro-portabletext/types';
-import {
-	croppedImageDimensions,
-	imageSrcSet,
-	imageUrl,
-	type SanityImage,
-} from '../../lib/sanity/image';
+import { imageDimensions, isMediaImage, mediaUrl, type MediaImage } from '../../lib/cms/media';
 
 type Props = TypedObjectProps;
 
-interface ImageNode extends SanityImage {
+/** An EmDash Portable Text image block: the media reference plus per-use alt, caption and size. */
+interface ImageNode {
+	asset?: MediaImage & { _ref?: string };
+	alt?: string;
 	caption?: string;
+	width?: number;
+	height?: number;
 }
 
-const SRCSET_WIDTHS = [480, 768, 1024, 1536];
 const DEFAULT_WIDTH = 1024;
-const SIZES = '(min-width: 1024px) 768px, 100vw';
 
 const { node } = Astro.props;
 const image = node as unknown as ImageNode;
-const cropped = croppedImageDimensions(image);
-const width = cropped ? Math.min(DEFAULT_WIDTH, cropped.width) : DEFAULT_WIDTH;
-const height = cropped ? Math.round((width * cropped.height) / cropped.width) : undefined;
-const alt = image.alt ?? '';
-const caption = image.caption;
+const asset = image.asset;
+const src = isMediaImage(asset) ? mediaUrl(asset) : '';
+const original = imageDimensions({
+	width: image.width ?? asset?.width,
+	height: image.height ?? asset?.height,
+});
+const width = original ? Math.min(DEFAULT_WIDTH, original.width) : DEFAULT_WIDTH;
+const height = original ? Math.round((width * original.height) / original.width) : undefined;
+const alt = image.alt ?? asset?.alt ?? '';
+const caption = image.caption?.trim();
 ---
 
-{image.asset && (
+{src && (
 	<figure>
 		<img
-			src={imageUrl(image, { width })}
-			srcset={imageSrcSet(image, SRCSET_WIDTHS)}
-			sizes={SIZES}
+			src={src}
 			alt={alt}
 			width={width}
 			height={height}
@@ -40,6 +40,6 @@ const caption = image.caption;
 			decoding="async"
 			class="rounded-box"
 		/>
-		{caption && stegaClean(caption) && <figcaption>{caption}</figcaption>}
+		{caption && <figcaption>{caption}</figcaption>}
 	</figure>
 )}

@@ -13,8 +13,8 @@ production events to New Relic EU through evlog's OTLP drain, the same way the `
 
 ## Why a client beacon
 
-Content pages (`home`, posts, tags, static pages) are rendered on demand from Sanity and cached in
-Workers Cache (see [`SANITY.md`](./SANITY.md#caching)). A cache hit is answered before the Worker
+Content pages (`home`, posts, tags, static pages) are rendered on demand from EmDash and cached in
+Workers Cache (see [`CMS.md`](./CMS.md#caching)). A cache hit is answered before the Worker
 runs, so middleware only sees cache misses and a server-side request log is not a record of visits.
 Page activity is therefore reported by a small script in `src/components/Telemetry.astro`, rendered by
 `BaseLayout.astro`, that posts to the SSR endpoint `/blog/api/events`. Running JavaScript is also the
@@ -89,13 +89,13 @@ The client sends no events at all when `sessionStorage` is unavailable (blocked 
 
 Common body fields:
 
-| Field        | Type / allowlist                                                                                                                                                                                                                                                                                                                           |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `type`       | `page_view` \| `page_engaged` \| `language_switched` \| `search_used` \| `outbound_clicked`                                                                                                                                                                                                                                                |
-| `sessionId`  | UUID v4 from `crypto.randomUUID()`, stored in `sessionStorage` under `blog.sid` (tab-scoped, dies with the tab)                                                                                                                                                                                                                            |
-| `locale`     | `en` \| `uk` — the page locale                                                                                                                                                                                                                                                                                                             |
-| `pageType`   | `home` \| `post` \| `post_list` \| `tag` \| `tag_list` \| `page` \| `subscribe` \| `unsubscribe` \| `not_found`                                                                                                                                                                                                                            |
-| `contentKey` | optional. `post`: the slug of the post's English translation (the post's own slug when it has no English version), so EN and UK views share a key. `page`: the Sanity page `key` field. `tag`: the tag slug. The server validates it against published Sanity content (cached for 5 minutes per isolate); unknown → dropped from the event |
+| Field        | Type / allowlist                                                                                                                                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`       | `page_view` \| `page_engaged` \| `language_switched` \| `search_used` \| `outbound_clicked`                                                                                                                                                                                                                                           |
+| `sessionId`  | UUID v4 from `crypto.randomUUID()`, stored in `sessionStorage` under `blog.sid` (tab-scoped, dies with the tab)                                                                                                                                                                                                                       |
+| `locale`     | `en` \| `uk` — the page locale                                                                                                                                                                                                                                                                                                        |
+| `pageType`   | `home` \| `post` \| `post_list` \| `tag` \| `tag_list` \| `page` \| `subscribe` \| `unsubscribe` \| `not_found`                                                                                                                                                                                                                       |
+| `contentKey` | optional. `post`: the slug of the post's English translation (the post's own slug when it has no English version), so EN and UK views share a key. `page`: the page's `key` field. `tag`: the tag slug. The server validates it against published EmDash content (cached for 5 minutes per isolate); unknown → dropped from the event |
 
 Type-specific fields:
 
@@ -109,7 +109,7 @@ Type-specific fields:
 | `page_engaged`      | `activeSeconds`   | visible time on the page, sent on first `pagehide`/`visibilitychange → hidden`                                                                                          | `engagedBucket`: `lt10s` \| `s10to30` \| `s30to120` \| `m2to5` \| `m5plus`; `activeSeconds` (capped 3600)                                                                                                                                                                                                      |
 |                     | `scrollDepth`     | max scroll percent 0–100                                                                                                                                                | `scrollBucket`: `p0` \| `p25` \| `p50` \| `p75` \| `p100` (floor to quarter; ≥ 95 → `p100`)                                                                                                                                                                                                                    |
 | `language_switched` | `targetLocale`    | `en` \| `uk`                                                                                                                                                            | `targetLocale`                                                                                                                                                                                                                                                                                                 |
-| `search_used`       | `resultsCount`    | number of results from `/blog/api/search` (Sanity full-text search), reported about 1.5 s after a successful response and once per distinct query; never the query text | `resultsBucket`: `none` \| `oneToFive` \| `sixPlus`                                                                                                                                                                                                                                                            |
+| `search_used`       | `resultsCount`    | number of results from `/blog/api/search` (EmDash full-text search), reported about 1.5 s after a successful response and once per distinct query; never the query text | `resultsBucket`: `none` \| `oneToFive` \| `sixPlus`                                                                                                                                                                                                                                                            |
 | `outbound_clicked`  | `targetHost`      | hostname of an external link                                                                                                                                            | `targetSource`: same mapping as `referrerSource` (without `direct`/`internal`)                                                                                                                                                                                                                                 |
 
 `referrerSource` and `targetSource` map `google` for Google search hosts only: `mail.`, `docs.`,
@@ -144,17 +144,17 @@ and unsubscribe URLs carry bearer tokens): `/api/subscribe`, `/api/confirm`, `/a
 `/admin/emails/:slug`, `/:locale`, `/:locale/posts`, `/:locale/posts/page/:page`,
 `/:locale/posts/:slug`, `/:locale/tags`, `/:locale/tags/:tag`, `/:locale/subscribe`,
 `/:locale/unsubscribe`, `/:locale/rss.xml`, `/:locale/:page` (CMS pages, matched last), `/llms.txt`,
-`/llms-full.txt`, `/sitemap-index.xml`, `/sitemap-0.xml`, `/api/search`, `/api/sanity/revalidate`,
-`/api/draft-mode/enable`, `/api/draft-mode/disable`, otherwise `/unknown`. `/api/events` is not
-logged here.
+`/llms-full.txt`, `/sitemap-index.xml`, `/sitemap-0.xml`, `/api/search`, otherwise `/unknown`.
+`/api/events`, the EmDash admin, API and media (`/_emdash/...`) and the preview redirect
+(`/blog/preview/...`) are not logged here (`isUntrackedRoute` in `src/lib/telemetry-schema.ts`).
 
 The telemetry
-element and the client events are suppressed in draft mode and in the Studio's Presentation preview
-(see [`SANITY.md`](./SANITY.md#visual-editing--draft-mode)), so editing never counts as a visit.
+element and the client events are suppressed in preview (the admin's **Preview** links, see
+[`CMS.md`](./CMS.md#preview)), so editing never counts as a visit.
 
 ## Privacy
 
 No cookies, no `localStorage`, no email, IP, User-Agent, token, search query, full URL, or referrer
 path is ever emitted. The `sessionId` is random, tab-scoped, and cannot link visits across sessions.
-The privacy page (the Sanity `page` document with key `privacy`, in both languages) names
+The privacy page (the `pages` entry with key `privacy`, in both languages) names
 New Relic (EU) as a processor and lists these fields.

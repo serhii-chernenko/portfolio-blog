@@ -1,0 +1,209 @@
+# EmDash — CMS Setup, Deploys and Caching
+
+Blog content (posts, pages, menus, site copy, media) lives in [EmDash](https://emdashcms.com), an Astro-native CMS that runs inside this Worker. Content is stored in a Cloudflare D1 database, media in R2, and authors edit everything in the admin at `/_emdash/admin`.
+
+| Piece         | Value                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| Admin         | <https://serhiichernenko.com/_emdash/admin> (local: <http://localhost:4321/_emdash/admin>)     |
+| Version       | `emdash` / `@emdash-cms/cloudflare` 1.3.1 (pinned in `package.json`)                           |
+| Database      | D1 `portfolio-blog-cms`, binding `CMS_DB` (separate from the subscriber DB `DB`)               |
+| Media         | R2 bucket `portfolio-blog-media`, binding `MEDIA`, served at `/_emdash/api/media/file/<key>`   |
+| Content model | `seed/seed.json` (applied once, at setup)                                                      |
+| Site plugin   | `plugins/emdash-site/` (custom Portable Text blocks, publish hooks, slug policy)               |
+| Data layer    | `src/lib/cms/` (`entries.ts`, `translations.ts`, `context.ts`, `media.ts`, `config.ts`)        |
+| Worker entry  | `src/worker.ts` (the Astro handler plus EmDash's Cron Trigger handler)                         |
+| Docs          | <https://docs.emdashcms.com>, and the `emdash-docs` MCP server (see [AI tooling](#ai-tooling)) |
+
+Authoring steps (create a post, translate, schedule, preview) are in [`CONTENT.md`](./CONTENT.md). This document covers architecture, setup, deploys, preview and caching.
+
+> Migrated from Sanity (project `8xspnp7h`). The Studio, the GROQ client, draft mode, Visual Editing and the revalidate webhook are gone. `scripts/migrate-sanity-to-emdash.mjs` copies the Sanity content into EmDash; see [Migrating the Sanity content](#migrating-the-sanity-content).
+
+---
+
+## Architecture
+
+```
+EmDash admin (/_emdash/admin, same Worker)
+        │ edit / publish
+        ▼
+EmDash runtime ── D1 (CMS_DB) + R2 (MEDIA) + KV (SESSION, admin sessions)
+        │ getEmDashCollection / getEmDashEntry / getMenu (in-process, no HTTP)
+        ▼
+Astro pages under src/pages/blog/ ── route cache (Workers Cache, tags = collection names)
+        ▲
+        └── publish / unpublish / menu edit → EmDash purges the matching tags
+```
+
+### Why the pages live in `src/pages/blog/`
+
+EmDash only works when the site is mounted at the root: its middleware and routes assume `/_emdash/...`, and Astro's `base` option breaks them (in dev Astro re-adds the base to every request URL). So `astro.config.mts` has no `base`; the blog routes live under `src/pages/blog/`, static files under `public/blog/`, and built assets under `/blog/_astro/` (`build.assets`). Public URLs did not change. Code that needs the prefix uses `BASE_PATH` from `src/lib/base-path.ts` (or `localeHref()` / `withBase()` from `src/i18n/utils.ts`).
+
+The Worker is bound to `serhiichernenko.com/blog*` plus `serhiichernenko.com/_emdash/*` (admin, API and media), see [`DNS-ROUTING.md`](./DNS-ROUTING.md).
+
+### Collections
+
+The content model is defined in `seed/seed.json`, which EmDash applies on the first request before setup. After that, the schema lives in the database: change it in the admin (**Content Types**) or with `pnpm exec emdash schema …`, and mirror the change in `seed/seed.json` so a fresh install matches.
+
+| Collection      | Per language                       | Fields                                                                                                                                  |
+| --------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts`         | one entry per language, translated | `title`, `description` (50–200 chars), `revised_at`, `tags` (ordered list, Field Kit tags widget), `hero_image`, `body` (Portable Text) |
+| `pages`         | one entry per language, translated | `key` (shared), `title`, `description`, `category` (`static`/`legal`, shared), `revised_at`, `body`                                     |
+| `site_settings` | one entry per language             | `site_name`, `tagline`, `description`, `hero_*`, `about_*`, `default_og_image` (shared)                                                 |
+| `ui_strings`    | one entry per key and language     | `key` (shared, select of the keys in `src/i18n/ui.ts`), `value`                                                                         |
+
+System fields cover the rest: `slug`, `locale`, `status`, `publishedAt` (the post date), `createdAt`, `updatedAt` and the translation group. Posts and pages support drafts, revisions and preview; posts also support scheduling. Posts and pages are indexed by EmDash's full-text search.
+
+**Tags** are a `json` field holding an ordered string array rather than an EmDash taxonomy, because EmDash taxonomy assignments are shared by all translations of an entry, while this blog has per-language tags (`war` / `війна`) whose order feeds `keywords` and `article:tag`.
+
+### Internationalization
+
+Languages are `en` (default) and `uk`, set in `astro.config.mts` (`i18n.locales`). Astro's i18n routing is `manual`: the site builds its own `/blog/{locale}/` URLs, and EmDash only uses the locale list (it treats `manual` as "no prefix for the default locale", which keeps the admin working).
+
+A translation is a separate entry with its own slug, linked to the original through a translation group (admin: **Translations** panel on the entry). The site reads the group to build the language switcher and `hreflang` alternates (`src/lib/cms/translations.ts`). An entry without a live translation emits no alternates, and the switcher sends the other language to its home page. Fields marked shared (`key`, `category`, `default_og_image`) are not translatable: a new translation copies them from the original.
+
+Slugs must match `^[a-z0-9-]+$` and are unique per collection and language, so an English and a Ukrainian entry can share a slug. A request for a slug that only exists in the other language is a 404 (EmDash's locale fallback is not used).
+
+### Menus, site settings and UI strings
+
+- **Menus** are native EmDash menus, `header` and `footer`, one per language (admin: **Menus**). An item links to a page (resolved to that language's translation), or to a custom URL. Built-in routes use custom URLs (`/blog/uk/posts/`). The icon is stored in the item's CSS classes as `icon-<name>` (`rss`, `github` or `support`, `NAV_ICONS` in `src/lib/site.ts`), and **Open in new tab** sets `target="_blank"`. If a menu is missing, the header and footer fall back to built-in links.
+- **Site settings** is one `site_settings` entry per language. Empty fields fall back to `src/i18n/ui.ts`.
+- **UI strings** override interface strings from `src/i18n/ui.ts`, which stays the typed source of truth. Create a `ui_strings` entry per key and language. The middleware loads them once per request into `Astro.locals.uiOverrides`, and `useTranslations(locale, Astro.locals.uiOverrides)` prefers them. Placeholders such as `{year}` still work; empty values are ignored. API routes, emails and the MCP server keep plain `ui.ts`.
+
+The `key` select only offers valid keys. After adding or renaming a key in `ui.ts`, run `pnpm ui-keys:sync` (updates `seed/seed.json`) and add the option to the live schema (admin → **Content Types** → `ui_strings` → `key`). `pnpm test:ui-keys` (also in CI) fails when `ui.ts` and the seed drift.
+
+### Pages: `key` and reserved slugs
+
+`pages.key` is a stable cross-language identifier (`about`, `privacy`, `support`). Code looks pages up by key, so the Ukrainian slug can differ (`pro-mene`) and a page can be renamed without touching code. Pages are served at `/blog/{locale}/{slug}/`, so the site plugin refuses to publish or schedule a page whose slug collides with a site route (`posts`, `tags`, `subscribe`, `unsubscribe`, `rss.xml`, `page`, `api`, `admin`, `search`, `preview`, `sitemap-index.xml`, `sitemap-0.xml`), and any post or page slug outside `^[a-z0-9-]+$`. The list is `RESERVED_PAGE_SLUGS` in `plugins/emdash-site/src/slug-policy.ts`.
+
+### Portable Text
+
+Bodies are Portable Text, rendered by the site's own components (`src/components/portable-text/`):
+
+| Block                                                      | Source        | Notes                                                                                              |
+| ---------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
+| Text, h2–h4, lists, quotes, bold/italic/code/strike, links | EmDash editor | **Open in new tab** on a link stores `blank: true`.                                                |
+| Image                                                      | EmDash editor | Alt text, optional caption; the original file is served (no resizing, no `srcset`).                |
+| Code                                                       | EmDash editor | `code`, `language`, optional `filename`; highlighted with Shiki on render.                         |
+| Callout                                                    | site plugin   | `tone` (`info`/`tip`/`warn`/`danger`) and `text` in Markdown; links in callouts open in a new tab. |
+| YouTube                                                    | site plugin   | `id` (the part after `v=`) and optional `title`; embedded from youtube-nocookie.com.               |
+
+### Media
+
+Uploads go to R2 through the EmDash media library. Pages link the original file (`/_emdash/api/media/file/<key>`) with its stored width and height; there is no image transformation (`images: false` in the EmDash config). OG images use the same original file and its real dimensions.
+
+---
+
+## Local development
+
+```bash
+pnpm dev                       # site at http://localhost:4321/blog/en/, admin at /_emdash/admin
+```
+
+`pnpm dev` runs on the Node adapter with a local SQLite database (`data.db`) and an `uploads/` directory, both gitignored. On a fresh checkout EmDash creates the schema from `seed/seed.json` on the first request. To skip the passkey setup locally, open <http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin>, which signs you in as `dev@emdash.local` (dev only; the route returns 403 in production builds).
+
+To load the real content into the local database, run the migration against the dev server (see [Migrating the Sanity content](#migrating-the-sanity-content)), or copy a production export.
+
+`pnpm wrangler:dev` builds and runs the Worker in workerd with local D1, R2 and KV under `.wrangler/state/`, the closest match to production. Route caching only exists on the Cloudflare adapter, so cache behaviour is only exercised there and in production.
+
+`emdash-env.d.ts` (generated content types) is rewritten by the dev server whenever the schema changes; commit it so `pnpm typecheck` works on a fresh checkout.
+
+---
+
+## Preview
+
+The admin's **Preview** button asks EmDash for a signed, one-hour preview URL. `import.meta.env.EMDASH_PREVIEW_PATH_PATTERN` (set in `astro.config.mts`) points it at `/blog/preview/{collection}/{id}`, and `src/pages/blog/preview/[collection]/[id].ts` redirects to the entry's public URL with the `?_preview=` token. With a valid token the site renders the draft (or the pending draft of a published entry) and shows an **Exit preview** button.
+
+Preview responses are never cached: EmDash keeps `_preview` requests out of the route cache, and the middleware adds `Cache-Control: private, no-store`, `X-Robots-Tag: noindex` and a `noindex` meta tag. Telemetry is off in preview.
+
+The visual-editing toolbar is disabled (`toolbar: false`).
+
+---
+
+## Caching
+
+Content routes are rendered on demand and cached in Workers Cache through Astro's route cache (`cache.provider` in `astro.config.mts`). `src/middleware.ts` sets the policy for every cacheable `GET`: `maxAge` 1 hour, `swr` 1 day, tagged with all collection names (`posts`, `pages`, `site_settings`, `ui_strings`) plus `emdash:menu:header` and `emdash:menu:footer`, because every page renders menus and site copy.
+
+EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, and editing a menu purges `emdash:menu:{name}`. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
+
+If a purge fails, pages refresh when their TTL expires.
+
+---
+
+## Publish side effects
+
+The site plugin's `content:afterPublish` hook (`src/lib/publish-hooks.ts`) replaces the Sanity webhook:
+
+- **IndexNow:** on the production host only, submits the entry's URL and, for posts, the locale home and posts index (`src/lib/indexnow.ts`). Posts dated in the future are skipped. See [`SEO.md`](./SEO.md#indexnow).
+- **Telegram:** the first time a post goes live (its `publishedAt` is within the last hour), sends `📝 New post published` with the title, language and URL. A plugin KV flag per entry makes it fire at most once, so republishing or editing never repeats it. See [`TELEGRAM.md`](./TELEGRAM.md).
+
+Both run after the response (`after()`) and never fail the publish.
+
+### Scheduled publishing
+
+Scheduled posts are published by a Cron Trigger (`triggers.crons` `* * * * *` in `wrangler.jsonc`, handled in `src/worker.ts`), which also runs the publish hooks and the cache purge. Under `pnpm dev` (Node), EmDash runs the same sweep on a timer.
+
+---
+
+## Deploys
+
+Site and CMS deploy together: Cloudflare Workers Builds runs `pnpm build` and deploys on push to `main` (see [`GO-LIVE.md`](../GO-LIVE.md)). EmDash runs its pending database migrations on the first request after a deploy.
+
+### First production setup
+
+1. **Resources** (done). D1 `portfolio-blog-cms` (`database_id` `2ffe316d-927f-4c83-acce-5f0ff72e893b`, region WEUR) and R2 `portfolio-blog-media` were created with `wrangler d1 create` / `wrangler r2 bucket create`. The Cloudflare adapter adds the `SESSION` KV namespace for admin sessions, which `wrangler deploy` provisions.
+2. **Deploy**, then open <https://serhiichernenko.com/_emdash/admin>. The setup wizard creates the first admin with a passkey. Until content is migrated, the blog has no posts.
+3. **API token:** admin → **Settings** → **API Tokens** → create a token with admin scope.
+4. **Migrate the content** (next section), then check the site and the admin.
+
+No new secrets are needed. EmDash generates its preview-signing secret on first use and stores it in D1. `EMDASH_ENCRYPTION_KEY` (`pnpm exec emdash secrets generate`) is only required if a plugin declares secret settings; neither plugin here does.
+
+### Migrating the Sanity content
+
+`scripts/migrate-sanity-to-emdash.mjs` reads the Sanity dataset over the export API and writes it through the EmDash REST API:
+
+```bash
+# local dev server (uses the dev bypass for a token)
+pnpm cms:migrate-sanity -- --url http://localhost:4321
+
+# production
+EMDASH_TOKEN=<admin API token> SANITY_API_READ_TOKEN=<Sanity viewer token> \
+  pnpm cms:migrate-sanity -- --url https://serhiichernenko.com
+```
+
+It uploads the 28 images to the media library, creates pages and posts per language with their translation links, original publish and creation dates, site settings, UI string overrides and both menus. With a Sanity token it also copies unpublished drafts: a draft-only post becomes an EmDash draft, and pending edits of a published entry become its pending draft. Entries that already exist (same collection, language and slug) and existing menus are skipped, so the script can be re-run safely. `--dry-run` reports without writing.
+
+Verified locally: after migrating, a crawl of all 113 public URLs (pages, tags, RSS, sitemaps, `llms.txt`, search API) matched the Sanity-backed site, except the OG image URLs.
+
+### Decommissioning Sanity
+
+After the production content is verified:
+
+- [ ] Delete the old Worker secrets: `pnpm exec wrangler secret delete SANITY_API_READ_TOKEN`, `SANITY_WEBHOOK_SECRET`, `DRAFT_MODE_COOKIE_SECRET`.
+- [ ] Delete the revalidate webhook in the Sanity project (manage → API → Webhooks).
+- [ ] Undeploy the Studio (`serhiichernenko-blog.sanity.studio`) and archive or delete project `8xspnp7h` once an export is kept somewhere.
+
+---
+
+## AI tooling
+
+- **Docs MCP:** `emdash-docs` (`https://docs.emdashcms.com/mcp`, public, read-only) is configured for Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`) and OpenCode (`opencode.jsonc`). Codex: `codex mcp add emdash-docs --url https://docs.emdashcms.com/mcp`.
+- **Agent skills:** `building-emdash-site`, `creating-plugins`, `emdash-cli` and `upgrading-emdash` from `emdash-cms/skills` are installed in `.agents/skills/` (tracked in `skills-lock.json`).
+- **Site MCP:** EmDash also serves a content-management MCP server at `/_emdash/api/mcp` (OAuth). It is separate from the blog's public read-only MCP at `/blog/api/mcp` ([`MCP.md`](./MCP.md)).
+
+---
+
+## Troubleshooting
+
+**A change in the admin does not show on the site.**
+Check that the entry is published, not only saved as a draft. Then check the Worker logs for a purge error; without a purge the page refreshes within an hour.
+
+**The admin shows a 404 or the blog layout.**
+The request did not reach the Worker's `/_emdash/*` route. Check the Worker routes (`wrangler.jsonc` `routes[]`, then the zone's Workers Routes page).
+
+**Publishing fails with "The slug … is reserved" or "… can only use lowercase letters".**
+The [slug policy](#pages-key-and-reserved-slugs) rejected it. Change the slug.
+
+**Under `pnpm dev`, a hook fails with "Vite module runner has been closed".**
+The dev server restarted after a config change while EmDash kept the old plugin instance. Stop and start `pnpm dev`.
+
+**Upgrading EmDash.** Follow the `upgrading-emdash` skill: bump `emdash`, `@emdash-cms/cloudflare` and `@emdash-cms/plugin-field-kit` together, run `pnpm typecheck` and `pnpm build`, and read the release notes for schema migrations.

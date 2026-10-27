@@ -1,8 +1,8 @@
 {
 	"mcpServers": {
-		"portfolio-blog": {
+		"emdash-docs": {
 			"type": "http",
-			"url": "https://serhiichernenko.com/blog/api/mcp"
+			"url": "https://docs.emdashcms.com/mcp"
 		}
 	}
 }

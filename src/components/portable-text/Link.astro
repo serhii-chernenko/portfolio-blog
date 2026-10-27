@@ -1,17 +1,18 @@
 ---
-import { stegaClean } from '@sanity/client/stega';
 import type { MarkProps } from 'astro-portabletext/types';
 
-type Props = MarkProps<{ href?: string; openInNewTab?: boolean }>;
+// `blank` is EmDash's "open in new tab" flag; `openInNewTab` is the Sanity-era name.
+type Props = MarkProps<{ href?: string; blank?: boolean; openInNewTab?: boolean }>;
 
 const EXTERNAL_HREF_PATTERN = /^(https?:)?\/\//i;
 const SAFE_HREF_PATTERN = /^(https?:\/\/|\/\/|mailto:|\/(?![/\\])|#)/i;
 
 const { node } = Astro.props;
-const rawHref = stegaClean(node.markDef.href ?? '');
+const rawHref = node.markDef.href ?? '';
 const href = SAFE_HREF_PATTERN.test(rawHref) ? rawHref : undefined;
 const isExternal = href !== undefined && EXTERNAL_HREF_PATTERN.test(href);
-const opensNewTab = isExternal && node.markDef.openInNewTab === true;
+const opensNewTab =
+	isExternal && (node.markDef.blank === true || node.markDef.openInNewTab === true);
 ---
 
 <a

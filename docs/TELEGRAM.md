@@ -8,12 +8,12 @@ There is no public bot for visitors. This is a one-bot-one-user setup: the bot s
 
 ## Events you get notified about
 
-| Event                     | Trigger                                  | Source                               |
-| ------------------------- | ---------------------------------------- | ------------------------------------ |
-| 📬 New pending subscriber | Someone submitted the subscribe form     | `src/pages/api/subscribe.ts`         |
-| ✅ Subscriber confirmed   | Someone clicked the confirmation link    | `src/pages/api/confirm.ts`           |
-| 🔔 Preferences changed    | A signed POST changes delivery languages | `src/pages/api/unsubscribe.ts`       |
-| 📝 New post published     | First publish of a post in Sanity        | `src/pages/api/sanity/revalidate.ts` |
+| Event                     | Trigger                                     | Source                                                               |
+| ------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
+| 📬 New pending subscriber | Someone submitted the subscribe form        | `src/pages/blog/api/subscribe.ts`                                    |
+| ✅ Subscriber confirmed   | Someone clicked the confirmation link       | `src/pages/blog/api/confirm.ts`                                      |
+| 🔔 Preferences changed    | A signed POST changes delivery languages    | `src/pages/blog/api/unsubscribe.ts`                                  |
+| 📝 New post published     | First publish of a post in the EmDash admin | `src/lib/publish-hooks.ts` (site plugin `content:afterPublish` hook) |
 
 Telegram is best-effort: HTTP failures and fetch/network exceptions are swallowed, so committed
 subscription state is never reported as a 500 because Telegram is down. Warnings are structured

@@ -2,7 +2,7 @@
 import type { Post } from '../lib/posts';
 import { postUrl } from '../lib/posts';
 import { readingTimeMinutes } from '../lib/reading-time';
-import { imageSrcSet, imageUrl } from '../lib/sanity/image';
+import { mediaUrl } from '../lib/cms/media';
 import { useTranslations } from '../i18n/utils';
 
 export interface Props {
@@ -11,8 +11,6 @@ export interface Props {
 
 const CARD_ASPECT_RATIO = 16 / 9;
 const CARD_IMAGE_WIDTH = 640;
-const CARD_SRCSET_WIDTHS = [400, 640, 960, 1280];
-const CARD_SIZES = '(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw';
 
 const { post } = Astro.props;
 const locale = post.language;
@@ -37,9 +35,7 @@ const formattedDate = post.publishedAt.toLocaleDateString(locale === 'uk' ? 'uk-
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			{heroImage ? (
 				<img
-					src={imageUrl(heroImage, { width: CARD_IMAGE_WIDTH, height: cardImageHeight })}
-					srcset={imageSrcSet(heroImage, CARD_SRCSET_WIDTHS, CARD_ASPECT_RATIO)}
-					sizes={CARD_SIZES}
+					src={mediaUrl(heroImage)}
 					width={CARD_IMAGE_WIDTH}
 					height={cardImageHeight}
 					alt={heroImage.alt ?? post.title}
