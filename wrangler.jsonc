@@ -123,6 +123,12 @@
 	"cache": {
 		"enabled": true,
 	},
+	// Smart Placement: on a cache miss the Worker runs near the D1 primary (WEUR) instead of near
+	// the visitor. A page render makes dozens of sequential D1 queries, ~37 ms each from a distant
+	// colo. Cache hits are unaffected: Workers Cache is checked near the visitor before placement.
+	"placement": {
+		"mode": "smart",
+	},
 	"ratelimits": [
 		{
 			"name": "EVENTS_RATE_LIMITER",
