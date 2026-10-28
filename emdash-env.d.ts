@@ -53,6 +53,7 @@ export interface SiteSetting {
   about_title?: string;
   about_body?: string;
   about_cta?: string;
+  author_profiles?: string;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;
