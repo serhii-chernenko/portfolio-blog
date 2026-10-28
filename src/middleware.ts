@@ -304,10 +304,10 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
 	const source = layoutSource(context.locals.cms);
-	// Where the layout data came from (cached JSON or D1), next to EmDash's own timings.
+	// Where the layout data came from (cached JSON or D1). Not Server-Timing: EmDash overwrites it.
 	if (source) {
 		try {
-			response.headers.append('server-timing', `layout;desc="${source}"`);
+			response.headers.set('x-layout-source', source);
 		} catch {
 			// Immutable headers (e.g. Response.redirect): skip the diagnostic.
 		}

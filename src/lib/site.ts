@@ -302,7 +302,7 @@ async function fetchLayoutPayload(locale: Locale, origin: string): Promise<Layou
 
 const layoutSourceByContext = new WeakMap<CmsContext, string>();
 
-/** Where this request's layout data came from, for the `layout` Server-Timing entry. */
+/** Where this request's layout data came from, for the `x-layout-source` response header. */
 export function layoutSource(ctx: CmsContext): string | undefined {
 	return layoutSourceByContext.get(ctx);
 }
