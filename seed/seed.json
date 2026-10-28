@@ -209,6 +209,12 @@
 					"slug": "about_cta",
 					"label": "About call to action",
 					"type": "string"
+				},
+				{
+					"slug": "author_profiles",
+					"label": "Author profiles",
+					"type": "text",
+					"translatable": false
 				}
 			]
 		},

@@ -18,17 +18,43 @@ export const TAXONOMIES = {
 } as const;
 
 /**
- * Route-cache tags of every cached response. EmDash invalidates a collection's tag whenever an
- * entry of it changes live, `emdash:menu:{name}` on menu edits, `emdash:settings` when Settings
- * are saved and `emdash:taxonomy:{name}` on term edits, so any of those purges every cached page:
- * menus, settings, lists, tags and translation links make most pages depend on most entries.
- * Byline edits purge nothing; pages pick them up when they expire or their entry is saved.
+ * Route-cache tags. EmDash purges a collection's tag and the entry's ID whenever an entry changes
+ * live, `emdash:menu:{name}` on menu edits, `emdash:settings` when Settings are saved and
+ * `emdash:taxonomy:{name}` on term edits. Byline edits purge nothing; pages pick them up when they
+ * expire or their entry is saved.
+ *
+ * Every page renders the layout (site settings, UI strings, menus, and pages for menu links), so
+ * it carries LAYOUT_CACHE_TAGS. Routes that set `Astro.locals.cacheTags` add only those; all other
+ * routes (post lists, tag pages, feeds, sitemaps, search) depend on every post and carry the full
+ * CMS_CACHE_TAGS, so publishing a post doesn't purge the about page or other posts' pages.
  */
-export const CMS_CACHE_TAGS = [
-	...Object.values(COLLECTIONS),
+export const LAYOUT_CACHE_TAGS = [
+	COLLECTIONS.siteSettings,
+	COLLECTIONS.uiStrings,
+	COLLECTIONS.pages,
 	...Object.values(MENUS).map((name) => `emdash:menu:${name}`),
-	...Object.values(TAXONOMIES).map((name) => `emdash:taxonomy:${name}`),
 	'emdash:settings',
+];
+
+/** Tag of every taxonomy, for pages that show tag names. */
+export const TAXONOMY_CACHE_TAGS = Object.values(TAXONOMIES).map(
+	(name) => `emdash:taxonomy:${name}`,
+);
+
+/** Tag of every page with a comments section; purged after any comment write (src/middleware.ts). */
+export const COMMENTS_CACHE_TAG = 'comments';
+
+/**
+ * Tag of every page of one translation group. EmDash only purges the changed entry, so the site
+ * plugin purges this on publish and unpublish: the other languages' switchers and hreflang change.
+ */
+export function translationGroupCacheTag(collection: string, translationGroup: string): string {
+	return `${collection}:group:${translationGroup}`;
+}
+
+/** Lists, tag pages, feeds, sitemaps and search: every collection and taxonomy (no comments). */
+export const CMS_CACHE_TAGS = [
+	...new Set([...Object.values(COLLECTIONS), ...LAYOUT_CACHE_TAGS, ...TAXONOMY_CACHE_TAGS]),
 ];
 
 /** Query parameter of EmDash's signed preview links. */

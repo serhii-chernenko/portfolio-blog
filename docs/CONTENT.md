@@ -149,7 +149,7 @@ The tag's slug is its URL (`/blog/uk/tags/база-даних/`), and the langua
 | **Canonical URL**            | Points search engines to another URL as the original.                              |
 | **Hide from search engines** | Asks search engines not to index the page.                                         |
 
-**Author:** posts are credited to your byline (**Bylines**), automatically because it is linked to your user. Edit its name per language, its website and **Profiles** (one profile URL per line, used by search engines to connect your accounts). Changes appear on a page the next time it is published or within an hour.
+**Author:** posts are credited to your byline (**Bylines**). Pick it under **Bylines** on every new post: without an explicit byline the post still shows you as the author, but lists load more slowly. Edit the byline's name per language and its website there, and your profile links in **Site settings → Author profiles** (one URL per line, used by search engines to connect your accounts). Don't add fields under **Byline Schema**: any custom byline field slows down every page. Changes appear on a page the next time it is published or within an hour.
 
 **Settings** (site-wide, not per language):
 

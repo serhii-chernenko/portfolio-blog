@@ -13,6 +13,8 @@ const slug = Astro.params.page ?? '';
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 const page = await getPageBySlug(locale, slug, getCmsContext(Astro.locals));
 if (!page) return new Response(null, { status: 404 });
+// The page shows only itself and the layout, so it carries just the layout's cache tags.
+Astro.locals.cacheTags = [];
 ---
 
 <BaseLayout

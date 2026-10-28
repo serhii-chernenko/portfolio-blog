@@ -17,6 +17,9 @@
 //      profile URL per line, rendered as schema.org `sameAs`).
 //   4. Settings: prefills Settings → SEO robots.txt (from seed/robots.txt), the default social
 //      image (public/blog/og-default.png), the site URL and the social links, when unset.
+//   3b. Bylines without extra queries: moves the author's profile URLs from the byline custom
+//      field to Site settings, credits every post explicitly and clears the author of pages,
+//      site settings and UI strings (see normalizeCredits).
 //   5. Comments: turns on comments for posts (first comment of a commenter held for moderation,
 //      never closed), syncs the `ui_strings.key` options with seed/seed.json (new interface
 //      strings), and replaces the Giscus section of the privacy pages.
@@ -65,7 +68,15 @@ const SOCIAL = {
 	twitter: '@serhiichernenko',
 	github: 'serhii-chernenko',
 };
-const PROFILES_FIELD = { slug: 'profiles', label: 'Profiles', type: 'text' };
+/** The byline custom field earlier versions of this script created; see moveProfilesToSettings. */
+const LEGACY_PROFILES_FIELD = 'profiles';
+/** Site settings field (shared by both languages) that holds the author's profile URLs. */
+const PROFILES_SETTINGS_FIELD = {
+	slug: 'author_profiles',
+	label: 'Author profiles',
+	type: 'text',
+	translatable: false,
+};
 /**
  * Ukrainian terms for English tags whose Ukrainian label was shared by two English tags (the
  * posts used "продуктивність" for both performance and productivity; a term translates one tag).
@@ -308,14 +319,6 @@ async function migrateTags() {
 
 async function setUpByline() {
 	console.log('\nByline');
-	const fields = await api('GET', '/admin/byline-fields');
-	const fieldList = fields.items ?? fields.fields ?? (Array.isArray(fields) ? fields : []);
-	if (!fieldList.some((field) => field.slug === PROFILES_FIELD.slug)) {
-		await write(`create byline field "${PROFILES_FIELD.slug}"`, () =>
-			api('POST', '/admin/byline-fields', { ...PROFILES_FIELD, translatable: false }),
-		);
-	} else console.log(`  byline field "${PROFILES_FIELD.slug}" exists`);
-
 	const me = await api('GET', '/auth/me');
 	const userId = me.id ?? me.user?.id;
 	const existing = await listAll(`/admin/bylines?locale=${DEFAULT_LOCALE}`);
@@ -327,7 +330,6 @@ async function setUpByline() {
 				displayName: AUTHOR.displayName,
 				userId,
 				locale: DEFAULT_LOCALE,
-				customFields: { [PROFILES_FIELD.slug]: AUTHOR.profiles.join('\n') },
 			}),
 		);
 		byline = byline?.item ?? byline;
@@ -343,6 +345,102 @@ async function setUpByline() {
 			}),
 		);
 	} else console.log('  Ukrainian byline exists');
+}
+
+// ── 3b. Bylines without extra queries ─────────────────────────────────────────
+//
+// EmDash folds bylines into the content query only when (a) no byline custom fields exist and
+// (b) every listed entry either has explicit byline credits or no author at all. Otherwise each
+// list of each collection costs several extra queries (credits, author fallback per locale,
+// custom field values). This step moves the profile URLs from the byline custom field to Site
+// settings, credits every post explicitly and clears the author of entries that show none.
+
+async function moveProfilesToSettings() {
+	console.log('\nAuthor profiles');
+	const fieldsResult = await api('GET', '/schema/collections/site_settings/fields');
+	const fields =
+		fieldsResult.items ?? fieldsResult.fields ?? (Array.isArray(fieldsResult) ? fieldsResult : []);
+	if (!fields.some((field) => field.slug === PROFILES_SETTINGS_FIELD.slug)) {
+		await write(`create site_settings field "${PROFILES_SETTINGS_FIELD.slug}"`, () =>
+			api('POST', '/schema/collections/site_settings/fields', PROFILES_SETTINGS_FIELD),
+		);
+	} else console.log(`  site_settings field "${PROFILES_SETTINGS_FIELD.slug}" exists`);
+
+	// Current value of the legacy byline field, if any, else the defaults above.
+	let profiles = AUTHOR.profiles.join('\n');
+	const bylineFields = await api('GET', '/admin/byline-fields');
+	const bylineFieldList =
+		bylineFields.items ?? bylineFields.fields ?? (Array.isArray(bylineFields) ? bylineFields : []);
+	const hasLegacyField = bylineFieldList.some((field) => field.slug === LEGACY_PROFILES_FIELD);
+	if (hasLegacyField) {
+		const bylines = await listAll(`/admin/bylines?locale=${DEFAULT_LOCALE}`);
+		const byline = bylines.find((item) => item.slug === AUTHOR.slug);
+		const value = byline?.customFields?.[LEGACY_PROFILES_FIELD];
+		if (typeof value === 'string' && value.trim()) profiles = value;
+	}
+
+	for (const locale of LOCALES) {
+		const [entry] = await listAll(`/content/site_settings?locale=${locale}`);
+		if (!entry) continue;
+		if (
+			typeof entry.data?.[PROFILES_SETTINGS_FIELD.slug] === 'string' &&
+			entry.data[PROFILES_SETTINGS_FIELD.slug].trim()
+		) {
+			console.log(`  ${locale}: profiles already set`);
+			continue;
+		}
+		await write(`${locale}: copy profiles into site settings and publish`, async () => {
+			const full = await api('GET', `/content/site_settings/${entry.id}`);
+			const item = full.item ?? full;
+			await api('PUT', `/content/site_settings/${entry.id}`, {
+				_rev: full._rev,
+				data: { ...item.data, [PROFILES_SETTINGS_FIELD.slug]: profiles },
+			});
+			await api('POST', `/content/site_settings/${entry.id}/publish`, {});
+		});
+	}
+
+	if (hasLegacyField) {
+		await write(`delete byline field "${LEGACY_PROFILES_FIELD}"`, () =>
+			api('DELETE', `/admin/byline-fields/${LEGACY_PROFILES_FIELD}`),
+		);
+	}
+}
+
+/** Collections whose entries show no author: their author is cleared. */
+const AUTHORLESS_COLLECTIONS = ['pages', 'site_settings', 'ui_strings'];
+
+async function normalizeCredits() {
+	console.log('\nByline credits');
+	const bylineIdByLocale = {};
+	for (const locale of LOCALES) {
+		const bylines = await listAll(`/admin/bylines?locale=${locale}`);
+		const byline = bylines.find((item) => item.slug === AUTHOR.slug);
+		if (byline) bylineIdByLocale[locale] = byline.id;
+	}
+	let credited = 0;
+	let cleared = 0;
+	for (const locale of LOCALES) {
+		for (const post of await listAll(`/content/posts?locale=${locale}`)) {
+			if (post.primaryBylineId || !bylineIdByLocale[locale]) continue;
+			await write(`posts/${locale}/${post.slug}: credit "${AUTHOR.slug}"`, () =>
+				api('PUT', `/content/posts/${post.id}`, {
+					bylines: [{ bylineId: bylineIdByLocale[locale] }],
+				}),
+			);
+			credited++;
+		}
+		for (const collection of AUTHORLESS_COLLECTIONS) {
+			for (const entry of await listAll(`/content/${collection}?locale=${locale}`)) {
+				if (!entry.authorId || entry.primaryBylineId) continue;
+				await write(`${collection}/${locale}/${entry.slug ?? entry.id}: clear author`, () =>
+					api('PUT', `/content/${collection}/${entry.id}`, { authorId: null }),
+				);
+				cleared++;
+			}
+		}
+	}
+	if (credited === 0 && cleared === 0) console.log('  all entries already in shape');
 }
 
 // ── 4. Settings ───────────────────────────────────────────────────────────────
@@ -525,6 +623,8 @@ async function main() {
 	await enableSeo();
 	await migrateTags();
 	await setUpByline();
+	await moveProfilesToSettings();
+	await normalizeCredits();
 	await prefillSettings();
 	await enableComments();
 	await syncUiStringKeys();

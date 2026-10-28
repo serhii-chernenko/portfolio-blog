@@ -14,6 +14,7 @@ const slug = Astro.params.slug ?? '';
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 const post = await getPostBySlug(locale, slug, getCmsContext(Astro.locals));
 if (!post) return new Response(null, { status: 404 });
+Astro.locals.cacheTags = post.cacheTags;
 
 const { headings } = annotateHeadings(post.body);
 const readingTime = readingTimeMinutes(post.wordCount);

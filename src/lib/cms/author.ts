@@ -3,16 +3,17 @@ export interface Author {
 	name: string;
 	/** The byline's website URL. */
 	websiteUrl?: string;
-	/** Profile URLs: the byline's `profiles` field (one per line), its website and Settings → Social. */
+	/** Profile URLs from the byline (its website). Site-wide profiles are merged in BaseHead. */
 	sameAs: string[];
 }
 
-/** Byline custom field (admin → Byline Schema) holding profile URLs, one per line. */
-export const BYLINE_PROFILES_FIELD = 'profiles';
+/** Byline custom field that held profile URLs before they moved to Site settings. */
+const LEGACY_PROFILES_FIELD = 'profiles';
 
 const HTTP_URL = /^https?:\/\/\S+$/i;
 
-function urlLines(value: unknown): string[] {
+/** Profile URLs from a multi-line text value (one URL per line; other lines are ignored). */
+export function profileUrls(value: unknown): string[] {
 	if (typeof value !== 'string') return [];
 	return value
 		.split(/\r?\n/)
@@ -59,12 +60,15 @@ export function authorFromByline(
 		typeof record.websiteUrl === 'string' && HTTP_URL.test(record.websiteUrl)
 			? record.websiteUrl
 			: undefined;
+	// No byline custom fields on purpose: any custom byline field makes EmDash load bylines with
+	// extra queries for every list of every collection. Profile URLs live in Site settings; the
+	// legacy `profiles` byline field is still read until `pnpm cms:adopt` moves and deletes it.
 	const customFields =
 		record.customFields && typeof record.customFields === 'object'
 			? (record.customFields as Record<string, unknown>)
 			: {};
 	const sameAs = mergeProfiles(
-		urlLines(customFields[BYLINE_PROFILES_FIELD]),
+		profileUrls(customFields[LEGACY_PROFILES_FIELD]),
 		websiteUrl ? [websiteUrl] : [],
 		socialProfiles,
 	);

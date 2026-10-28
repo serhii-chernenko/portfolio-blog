@@ -1,7 +1,12 @@
 import type { TypedObject } from 'astro-portabletext/types';
 import { locales, type Locale } from '../i18n/config';
 import { localeHref } from '../i18n/utils';
-import { COLLECTIONS } from './cms/config';
+import {
+	COLLECTIONS,
+	COMMENTS_CACHE_TAG,
+	TAXONOMY_CACHE_TAGS,
+	translationGroupCacheTag,
+} from './cms/config';
 import { includesScheduledContent, type CmsContext } from './cms/context';
 import {
 	dateField,
@@ -46,6 +51,8 @@ export interface Post {
 	body?: TypedObject[];
 	wordCount: number;
 	translations: LocalizedUrls;
+	/** Route-cache tags of the post's page beyond the layout: itself, its translations, tags, comments. */
+	cacheTags: string[];
 }
 
 type TranslationIndex = ReturnType<typeof indexByTranslationGroup>;
@@ -112,6 +119,15 @@ function toPost(entry: CmsEntry, index: TranslationIndex, ctx: CmsContext): Post
 		body,
 		wordCount: portableTextWordCount(body),
 		translations,
+		cacheTags: [
+			entry.id,
+			...Object.values(index.get(entry.translationGroup) ?? {})
+				.map((sibling) => sibling?.id)
+				.filter((id): id is string => Boolean(id) && id !== entry.id),
+			translationGroupCacheTag(COLLECTIONS.posts, entry.translationGroup),
+			...TAXONOMY_CACHE_TAGS,
+			COMMENTS_CACHE_TAG,
+		],
 	};
 }
 

@@ -57,20 +57,20 @@ System fields cover the rest: `slug`, `locale`, `status`, `publishedAt` (the pos
 
 Everything editorial is edited in the admin; code only holds defaults for empty values.
 
-| Admin screen                         | Used by the site for                                                                                                                                         | Fallback when empty                                                                                           |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| Posts, Pages                         | Content, per-entry **SEO** panel (title, description, social image, canonical URL, noindex)                                                                  | Entry title and description, hero image                                                                       |
-| Tags                                 | Post tags, tag pages and their translations                                                                                                                  | –                                                                                                             |
-| Bylines (+ Byline Schema `profiles`) | Post author in structured data (`BlogPosting`, `WebSite`, `Blog`): name, profile URLs as `sameAs`                                                            | Site name, Settings → Social                                                                                  |
-| Menus                                | Header and footer                                                                                                                                            | Built-in links                                                                                                |
-| Site → Site settings                 | Per-language site name, tagline, description, home hero and about copy                                                                                       | Settings → General title/tagline, then `src/i18n/ui.ts`                                                       |
-| Site → UI strings                    | Overrides of interface strings                                                                                                                               | `src/i18n/ui.ts`                                                                                              |
-| Settings → General                   | Title and tagline (fallbacks, above), Logo (header, instead of the text name), Favicon, Timezone of displayed dates                                          | Text name, `public/blog/favicon.*`, UTC                                                                       |
-| Settings → Reading                   | Posts per page (posts index, pagination, sitemap)                                                                                                            | 10                                                                                                            |
-| Settings → Social                    | Profile URLs added to the author's `sameAs`                                                                                                                  | –                                                                                                             |
-| Settings → SEO                       | Title separator (`{title}{separator}{site name}` on every page but home), default social image, Google/Bing verification, robots.txt, "Disallow AI training" | No suffix, `public/blog/og-default.png`, `PUBLIC_*_SITE_VERIFICATION` build vars, EmDash's default robots.txt |
-| Comments                             | Comments on posts: moderation queue, approve, spam, trash. Per-collection settings in Content Types → Posts                                                  |
-| Redirects                            | Redirects of any `/blog/...` path, applied by EmDash before the page renders                                                                                 | –                                                                                                             |
+| Admin screen         | Used by the site for                                                                                                                                         | Fallback when empty                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Posts, Pages         | Content, per-entry **SEO** panel (title, description, social image, canonical URL, noindex)                                                                  | Entry title and description, hero image                                                                       |
+| Tags                 | Post tags, tag pages and their translations                                                                                                                  | –                                                                                                             |
+| Bylines              | Post author in structured data (`BlogPosting`, `WebSite`, `Blog`): name, profile URLs as `sameAs`                                                            | Site name, Settings → Social                                                                                  |
+| Menus                | Header and footer                                                                                                                                            | Built-in links                                                                                                |
+| Site → Site settings | Per-language site name, tagline, description, home hero and about copy                                                                                       | Settings → General title/tagline, then `src/i18n/ui.ts`                                                       |
+| Site → UI strings    | Overrides of interface strings                                                                                                                               | `src/i18n/ui.ts`                                                                                              |
+| Settings → General   | Title and tagline (fallbacks, above), Logo (header, instead of the text name), Favicon, Timezone of displayed dates                                          | Text name, `public/blog/favicon.*`, UTC                                                                       |
+| Settings → Reading   | Posts per page (posts index, pagination, sitemap)                                                                                                            | 10                                                                                                            |
+| Settings → Social    | Profile URLs added to the author's `sameAs`                                                                                                                  | –                                                                                                             |
+| Settings → SEO       | Title separator (`{title}{separator}{site name}` on every page but home), default social image, Google/Bing verification, robots.txt, "Disallow AI training" | No suffix, `public/blog/og-default.png`, `PUBLIC_*_SITE_VERIFICATION` build vars, EmDash's default robots.txt |
+| Comments             | Comments on posts: moderation queue, approve, spam, trash. Per-collection settings in Content Types → Posts                                                  |
+| Redirects            | Redirects of any `/blog/...` path, applied by EmDash before the page renders                                                                                 | –                                                                                                             |
 
 Settings → General's **Date Format** is not used: one pattern can't produce correct dates in both languages, so each language keeps its own `Intl` format (`src/lib/dates.ts`). Categories, Widgets and Sections are EmDash features the site doesn't render.
 
@@ -84,7 +84,9 @@ The term slug is the URL segment of `/blog/{locale}/tags/{slug}/`, and the tag p
 
 ### Bylines
 
-The author is the post's primary byline (admin → **Bylines**), one byline per language (`Serhii Chernenko` / `Сергій Черненко`). It is linked to the admin user, so EmDash credits it automatically on that user's posts; assign another byline on a post to change it. The `profiles` custom field (admin → **Byline Schema**) holds profile URLs, one per line, which become the author's schema.org `sameAs` together with the byline's website and Settings → Social (`src/lib/cms/author.ts`).
+The author is the post's primary byline (admin → **Bylines**), one byline per language (`Serhii Chernenko` / `Сергій Черненко`). Every post credits it explicitly (`pnpm cms:adopt` sets missing credits); pages, site settings and UI strings have no author. Profile URLs live in **Site settings → Author profiles** (one per line, shared by both languages) and become the author's schema.org `sameAs` together with the byline's website and Settings → Social (`BaseHead.astro`, `src/lib/cms/author.ts`).
+
+Keep bylines without custom fields (**Byline Schema** empty) and credit a byline on new posts: EmDash then reads bylines inside the content query. A custom byline field, or an entry with an author but no byline credit, makes every list of that collection load bylines with several extra queries.
 
 ### Internationalization
 
@@ -152,17 +154,28 @@ The visual-editing toolbar is disabled (`toolbar: false`).
 
 ## Caching
 
-Content routes are rendered on demand and cached in Workers Cache through Astro's route cache (`cache.provider` in `astro.config.mts`). `src/middleware.ts` sets the policy for every cacheable `GET`: `maxAge` 1 hour, `swr` 1 day, tagged with all collection names (`posts`, `pages`, `site_settings`, `ui_strings`), `emdash:menu:header`, `emdash:menu:footer`, `emdash:taxonomy:tag` and `emdash:settings`, because every page renders menus, settings and site copy (`CMS_CACHE_TAGS` in `src/lib/cms/config.ts`).
+Content routes are rendered on demand and cached in Workers Cache through Astro's route cache (`cache.provider` in `astro.config.mts`). `src/middleware.ts` sets the policy for every cacheable `GET` (`maxAge` 1 hour, `swr` 1 day) and tags it by what the page shows (`src/lib/cms/config.ts`):
 
-EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, editing a menu purges `emdash:menu:{name}`, editing tags purges `emdash:taxonomy:tag` and saving Settings purges `emdash:settings`. Byline edits purge nothing; they show once a page expires or its post is saved. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
+| Pages                                                                           | Tags                                                                                                                            |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Every page (layout)                                                             | `site_settings`, `ui_strings`, `pages` (menu links), `emdash:menu:header`, `emdash:menu:footer`, `emdash:settings`              |
+| A post                                                                          | the layout's, plus the post's ID and its translations' IDs, `posts:group:{translationGroup}`, `emdash:taxonomy:tag`, `comments` |
+| A page (about, privacy, support)                                                | the layout's only                                                                                                               |
+| Everything else: home, post lists, tag pages, RSS, sitemaps, `llms.txt`, search | every collection and taxonomy (`CMS_CACHE_TAGS`)                                                                                |
 
-EmDash doesn't purge anything for comments, so `src/middleware.ts` does: after a successful comment submission or moderation action (`POST /_emdash/api/comments/…`, any write under `/_emdash/api/admin/comments`) it purges the `posts` tag. Likes don't purge; their counts update in the browser and refresh with the page.
+A route declares its tags through `Astro.locals.cacheTags`; routes that don't get the full set. Publishing a post therefore purges the lists and that post's pages, not the other posts or the about page.
+
+EmDash purges those tags itself: publishing, unpublishing, deleting, restoring or saving a live entry purges its collection tag, editing a menu purges `emdash:menu:{name}`, editing tags purges `emdash:taxonomy:tag` and saving Settings purges `emdash:settings`. EmDash purges the changed entry's ID as well, and the site plugin purges `posts:group:{translationGroup}` on publish and unpublish, because the other language's switcher and hreflang change too (`src/lib/cache-purge.ts`). Byline edits purge nothing; they show once a page expires or its post is saved. Content changes therefore show up within seconds and never need a deploy. Scheduled posts are purged when the cron publishes them. 404s, preview responses and pages rendered for signed-in editors are never stored.
+
+EmDash doesn't purge anything for comments, so `src/middleware.ts` does: after a successful comment submission or moderation action (`POST /_emdash/api/comments/…`, any write under `/_emdash/api/admin/comments`) it purges the `comments` tag, which only post pages carry. Likes don't purge; their counts update in the browser and refresh with the page.
 
 If a purge fails, pages refresh when their TTL expires.
 
+After a publish or unpublish the site plugin also warms the cache: once the response is sent (EmDash purges before it), it renders the home pages and post lists of both languages and the entry's own page through the Worker's loopback entrypoint (`ctx.exports`), which goes through Workers Cache like a visitor's request (`warmPages` in `src/lib/cache-purge.ts`).
+
 ### Deploys keep the cache
 
-An uncached render is slow (roughly 1–2.5 s): EmDash makes 30–45 sequential D1 queries per page, about 30 ms each, plus 200–400 ms to start a fresh isolate. EmDash reports this in the `Server-Timing` response header (`db.count`, `db.total`, `rt`). Cached responses take about 50 ms.
+An uncached render costs one D1 round trip per query, about 30 ms from the colo that runs the Worker, plus 200–400 ms to start a fresh isolate. EmDash reports the numbers in the `Server-Timing` response header (`db.count`, `db.total`, `rt`); setting `EMDASH_QUERY_LOG=1` for `pnpm dev` logs every query. A post page makes 16 queries, other pages 12–13 (37 and 30+ before bylines were folded into the content query, see [Bylines](#bylines)). The layout's data (`getLayoutData`, memoized per request) starts in the middleware, so it loads alongside the page's own queries. Cached responses take about 50 ms.
 
 Workers Cache keys on the Worker version by default, which made every page uncached after each deploy. `wrangler.jsonc` sets `cache.cross_version_cache: true`, so cached pages survive deploys. As a consequence:
 
@@ -234,7 +247,7 @@ Verified locally: after migrating, a crawl of all 113 public URLs (pages, tags, 
 
 1. turns on the SEO panel for posts and pages;
 2. turns the legacy `posts.tags` list into `tag` terms per language, links Ukrainian terms to their English ones and assigns them (`швидкодія` is the Ukrainian term for `performance`, since the old data used `продуктивність` for both performance and productivity);
-3. creates the `profiles` byline field and the author byline (English and Ukrainian), linked to the signed-in user;
+3. creates the author byline (English and Ukrainian), linked to the signed-in user, moves profile URLs from the old `profiles` byline field to Site settings → Author profiles and deletes that field, credits the byline on every post without one and clears the author of pages, site settings and UI strings (so bylines load without extra queries);
 4. prefills Settings → SEO robots.txt (from `seed/robots.txt`), the default social image (`public/blog/og-default.png`), the site URL and the social links;
 5. with `--remove-legacy-fields`, deletes `posts.tags` and `site_settings.default_og_image`.
 
