@@ -47,6 +47,11 @@ export function loadUiOverrides(ctx: CmsContext): Promise<UiOverrides> {
 	return pending;
 }
 
+/** Marks the request as rendered without its overrides (they failed to load for the cached layout). */
+export function markUiOverridesFailed(ctx: CmsContext): void {
+	failedContexts.add(ctx);
+}
+
 export function uiOverridesFailed(ctx: CmsContext): boolean {
 	return failedContexts.has(ctx);
 }
