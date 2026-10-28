@@ -7,7 +7,9 @@ import type { CmsContext } from './cms/context';
 import { listEntries, stringField } from './cms/entries';
 import { getSiteConfig, type SiteConfig } from './cms/settings';
 import { getPages, pageUrl, type Page } from './pages';
-import { loadUiOverrides } from './ui-overrides';
+import { loadUiOverrides, markUiOverridesFailed, uiOverridesFailed } from './ui-overrides';
+import { BASE_PATH } from './base-path';
+import type { UiOverrides } from '../i18n/utils';
 
 export type NavIcon = 'rss' | 'github' | 'support';
 export type NavRoute = 'home' | 'posts' | 'tags' | 'subscribe' | 'rss';
@@ -220,29 +222,120 @@ async function loadSettings(locale: Locale): Promise<RawSettings | null> {
 	return settings;
 }
 
-const layoutByContext = new WeakMap<CmsContext, Map<Locale, Promise<LayoutData>>>();
+/**
+ * Layout data plus the UI string overrides of every language: what every page needs before it
+ * renders. Served as JSON by LAYOUT_DATA_ROUTE and route-cached with the layout's tags, so a page
+ * render reads it from Workers Cache (one loopback request) instead of running ~11 D1 queries.
+ */
+export interface LayoutPayload {
+	layout: LayoutData;
+	uiOverrides: UiOverrides;
+	/** UI string overrides failed to load: the page must not be cached (see uiOverridesFailed). */
+	degraded: boolean;
+}
 
 /**
- * Header, footer and site copy for a page. Memoized per request and locale: the middleware starts
- * it before the page renders (see prefetchLayoutData), so its queries overlap the page's own.
+ * Bump when LayoutPayload changes shape: the page cache is shared across deploys
+ * (cache.cross_version_cache), so a new version must not read an older version's JSON.
  */
-export function getLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
-	let perLocale = layoutByContext.get(ctx);
+const LAYOUT_DATA_VERSION = 'v1';
+
+/** Path of the layout JSON for a locale (src/pages/blog/api/layout/[version]/[locale].json.ts). */
+export function layoutDataPath(locale: Locale): string {
+	return `${BASE_PATH}/api/layout/${LAYOUT_DATA_VERSION}/${locale}.json`;
+}
+
+export function isLayoutDataVersion(version: string | undefined): boolean {
+	return version === LAYOUT_DATA_VERSION;
+}
+
+/** Loads the payload from D1 (the JSON route, previews, and the fallback). */
+export async function loadLayoutPayload(locale: Locale, ctx: CmsContext): Promise<LayoutPayload> {
+	const [layout, uiOverrides] = await Promise.all([
+		loadLayoutData(locale, ctx),
+		loadUiOverrides(ctx),
+	]);
+	return { layout, uiOverrides, degraded: uiOverridesFailed(ctx) };
+}
+
+function isLayoutPayload(value: unknown): value is LayoutPayload {
+	if (!value || typeof value !== 'object') return false;
+	const payload = value as Partial<LayoutPayload>;
+	return (
+		typeof payload.layout === 'object' &&
+		payload.layout !== null &&
+		Array.isArray(payload.layout.header) &&
+		Array.isArray(payload.layout.footer) &&
+		typeof payload.uiOverrides === 'object' &&
+		payload.uiOverrides !== null
+	);
+}
+
+/** Reads the cached layout JSON through the Worker's loopback entrypoint, which goes through Workers Cache. */
+async function fetchLayoutPayload(locale: Locale, origin: string): Promise<LayoutPayload | null> {
+	try {
+		const workers = await import('cloudflare:workers');
+		const target = (
+			workers.exports as unknown as Record<
+				string,
+				{ fetch(request: Request): Promise<Response> } | undefined
+			>
+		).default;
+		if (!target) return null;
+		const response = await target.fetch(new Request(new URL(layoutDataPath(locale), origin)));
+		if (!response.ok) {
+			await response.body?.cancel();
+			return null;
+		}
+		const payload: unknown = await response.json();
+		return isLayoutPayload(payload) ? payload : null;
+	} catch {
+		return null;
+	}
+}
+
+async function resolveLayoutPayload(
+	locale: Locale,
+	ctx: CmsContext,
+	origin: string | undefined,
+): Promise<LayoutPayload> {
+	// Previews read drafts and are never cached, so they skip the cached JSON.
+	const cached = origin && !ctx.preview ? await fetchLayoutPayload(locale, origin) : null;
+	if (cached) {
+		if (cached.degraded) markUiOverridesFailed(ctx);
+		return cached;
+	}
+	return loadLayoutPayload(locale, ctx);
+}
+
+const payloadByContext = new WeakMap<CmsContext, Map<Locale, Promise<LayoutPayload>>>();
+
+/**
+ * The layout payload for this request, memoized per request and locale. The middleware calls it
+ * first with the request origin, so it comes from the cached JSON and loads alongside the page's
+ * own queries; later calls reuse that promise. Without an origin it loads from D1.
+ */
+export function getLayoutPayload(
+	locale: Locale,
+	ctx: CmsContext,
+	origin?: string,
+): Promise<LayoutPayload> {
+	let perLocale = payloadByContext.get(ctx);
 	if (!perLocale) {
 		perLocale = new Map();
-		layoutByContext.set(ctx, perLocale);
+		payloadByContext.set(ctx, perLocale);
 	}
 	let pending = perLocale.get(locale);
 	if (!pending) {
-		pending = loadLayoutData(locale, ctx);
+		pending = resolveLayoutPayload(locale, ctx, origin);
 		perLocale.set(locale, pending);
 	}
 	return pending;
 }
 
-/** Starts loading the layout data without waiting; failures surface where the page awaits it. */
-export function prefetchLayoutData(locale: Locale, ctx: CmsContext): void {
-	getLayoutData(locale, ctx).catch(() => {});
+/** Header, footer and site copy for a page (see getLayoutPayload). */
+export async function getLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
+	return (await getLayoutPayload(locale, ctx)).layout;
 }
 
 async function loadLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {

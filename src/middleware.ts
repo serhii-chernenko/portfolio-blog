@@ -19,7 +19,7 @@ import {
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
 import { loadUiOverrides, uiOverridesFailed } from './lib/ui-overrides';
-import { prefetchLayoutData } from './lib/site';
+import { getLayoutPayload } from './lib/site';
 import { isLocale } from './i18n/config';
 import { BASE_PATH } from './lib/base-path';
 
@@ -67,6 +67,8 @@ function isRfc8058OneClickRequest(request: Request, url: URL): boolean {
 const CACHEABLE_METHODS = ['GET', 'HEAD'];
 const CACHEABLE_STATUSES = [200, 404];
 const CACHEABLE_API_PATHS = [`${RUNTIME_BASE}/api/search`];
+/** Cached API routes matched by prefix: the layout JSON (src/pages/blog/api/layout/). */
+const CACHEABLE_API_PREFIXES = [`${RUNTIME_BASE}/api/layout/`];
 const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
 const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400 };
 const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: CMS_CACHE_TAGS };
@@ -119,7 +121,12 @@ async function handleCmsRoute(context: APIContext, next: MiddlewareNext): Promis
 
 function isCacheableRoute(pathname: string): boolean {
 	if (pathname.startsWith(ADMIN_PATH_PREFIX)) return false;
-	if (pathname.startsWith(API_PATH_PREFIX)) return CACHEABLE_API_PATHS.includes(pathname);
+	if (pathname.startsWith(API_PATH_PREFIX)) {
+		return (
+			CACHEABLE_API_PATHS.includes(pathname) ||
+			CACHEABLE_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+		);
+	}
 	return true;
 }
 
@@ -288,10 +295,12 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 
 	const apexEndpoint = apexEndpointFor(request, url.pathname);
 	if (!apexEndpoint && rendersUi(url.pathname)) {
-		// Header, footer and site copy load alongside the page's own queries instead of after them.
+		// Header, footer, site copy and UI strings come from the cached layout JSON (one Workers
+		// Cache lookup instead of ~11 D1 queries); the page reuses the same promise.
 		const locale = url.pathname.slice(BASE_PATH.length).split('/')[1] ?? '';
-		if (isLocale(locale)) prefetchLayoutData(locale, context.locals.cms);
-		context.locals.uiOverrides = await loadUiOverrides(context.locals.cms);
+		context.locals.uiOverrides = isLocale(locale)
+			? (await getLayoutPayload(locale, context.locals.cms, url.origin)).uiOverrides
+			: await loadUiOverrides(context.locals.cms);
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
 	if (isDraftViewRequest(url, context.locals.cms.preview)) return disableCaching(context, response);
