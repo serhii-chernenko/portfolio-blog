@@ -65,7 +65,9 @@ const cmsStorageConfig = USE_NODE_DEV_ADAPTER
 			storage: local({ directory: './uploads', baseUrl: `${EMDASH_PATH_PREFIX}/api/media/file` }),
 		}
 	: {
-			database: d1({ binding: 'CMS_DB', session: 'auto' }),
+			// session + coalesce: concurrent reads of a request go to D1 as one batch (one round trip);
+			// session without coalesce runs every query one at a time (emdash-cms/emdash#3915).
+			database: d1({ binding: 'CMS_DB', session: 'auto', coalesce: true }),
 			storage: r2({ binding: 'MEDIA' }),
 		};
 
