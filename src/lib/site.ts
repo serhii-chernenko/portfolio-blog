@@ -271,8 +271,10 @@ function isLayoutPayload(value: unknown): value is LayoutPayload {
 	);
 }
 
+type LayoutFetch = { payload: LayoutPayload | null; source: string };
+
 /** Reads the cached layout JSON through the Worker's loopback entrypoint, which goes through Workers Cache. */
-async function fetchLayoutPayload(locale: Locale, origin: string): Promise<LayoutPayload | null> {
+async function fetchLayoutPayload(locale: Locale, origin: string): Promise<LayoutFetch> {
 	try {
 		const workers = await import('cloudflare:workers');
 		const target = (
@@ -281,17 +283,28 @@ async function fetchLayoutPayload(locale: Locale, origin: string): Promise<Layou
 				{ fetch(request: Request): Promise<Response> } | undefined
 			>
 		).default;
-		if (!target) return null;
+		if (!target) return { payload: null, source: 'd1;no-loopback' };
 		const response = await target.fetch(new Request(new URL(layoutDataPath(locale), origin)));
+		const cacheStatus = response.headers.get('cf-cache-status')?.toLowerCase() ?? 'none';
 		if (!response.ok) {
 			await response.body?.cancel();
-			return null;
+			return { payload: null, source: `d1;status-${response.status}` };
 		}
 		const payload: unknown = await response.json();
-		return isLayoutPayload(payload) ? payload : null;
-	} catch {
-		return null;
+		return isLayoutPayload(payload)
+			? { payload, source: `json;${cacheStatus}` }
+			: { payload: null, source: 'd1;invalid' };
+	} catch (error) {
+		const name = error instanceof Error ? error.name : 'error';
+		return { payload: null, source: `d1;${name}` };
 	}
+}
+
+const layoutSourceByContext = new WeakMap<CmsContext, string>();
+
+/** Where this request's layout data came from, for the `x-layout-source` response header. */
+export function layoutSource(ctx: CmsContext): string | undefined {
+	return layoutSourceByContext.get(ctx);
 }
 
 async function resolveLayoutPayload(
@@ -300,10 +313,14 @@ async function resolveLayoutPayload(
 	origin: string | undefined,
 ): Promise<LayoutPayload> {
 	// Previews read drafts and are never cached, so they skip the cached JSON.
-	const cached = origin && !ctx.preview ? await fetchLayoutPayload(locale, origin) : null;
-	if (cached) {
-		if (cached.degraded) markUiOverridesFailed(ctx);
-		return cached;
+	const fetched =
+		origin && !ctx.preview
+			? await fetchLayoutPayload(locale, origin)
+			: { payload: null, source: origin ? 'd1;preview' : 'd1;direct' };
+	layoutSourceByContext.set(ctx, fetched.source);
+	if (fetched.payload) {
+		if (fetched.payload.degraded) markUiOverridesFailed(ctx);
+		return fetched.payload;
 	}
 	return loadLayoutPayload(locale, ctx);
 }

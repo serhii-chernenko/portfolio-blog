@@ -19,7 +19,7 @@ import {
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
 import { loadUiOverrides, uiOverridesFailed } from './lib/ui-overrides';
-import { getLayoutPayload } from './lib/site';
+import { getLayoutPayload, layoutSource } from './lib/site';
 import { isLocale } from './i18n/config';
 import { BASE_PATH } from './lib/base-path';
 
@@ -303,6 +303,15 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 			: await loadUiOverrides(context.locals.cms);
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));
+	const source = layoutSource(context.locals.cms);
+	// Where the layout data came from (cached JSON or D1). Not Server-Timing: EmDash overwrites it.
+	if (source) {
+		try {
+			response.headers.set('x-layout-source', source);
+		} catch {
+			// Immutable headers (e.g. Response.redirect): skip the diagnostic.
+		}
+	}
 	if (isDraftViewRequest(url, context.locals.cms.preview)) return disableCaching(context, response);
 	if (uiOverridesFailed(context.locals.cms)) {
 		disableCachingForDegradedResponse(context, response);
