@@ -8,6 +8,8 @@ patchedDependencies:
 # @tiptap/core 3.32; @react-email/editor alone resolved the 3.23 line. Keep every
 # Tiptap package on one version so both editors share a single core.
 overrides:
+  # TEST ONLY (branch test/emdash-4460): EmDash fix preview for emdash-cms/emdash#4456
+  emdash: https://pkg.pr.new/emdash-cms/emdash@1a53c00
   '@tiptap/core': 3.32.0
   '@tiptap/extension-blockquote': 3.32.0
   '@tiptap/extension-bold': 3.32.0
@@ -41,3 +43,5 @@ overrides:
   '@tiptap/react': 3.32.0
   '@tiptap/starter-kit': 3.32.0
   '@tiptap/suggestion': 3.32.0
+# TEST ONLY (branch test/emdash-4460): the EmDash preview package depends on @emdash-cms/admin by URL.
+blockExoticSubdeps: false

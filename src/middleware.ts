@@ -103,6 +103,9 @@ const COMMENT_WRITE_PATH = /^\/_emdash\/api\/(?:comments\/[^/]+\/[^/]+|admin\/co
  */
 async function handleCmsRoute(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	const response = await next();
+	// TEST ONLY (branch test/emdash-4460): rely on EmDash's own purge from emdash-cms/emdash#4460.
+	const ownCommentPurge = false as boolean;
+	if (!ownCommentPurge) return response;
 	const { request, url } = context;
 	if (
 		!SAFE_METHODS.includes(request.method) &&

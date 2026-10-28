@@ -44,7 +44,7 @@
 		"@react-email/editor": "1.7.12",
 		"astro": "^7.3.8",
 		"astro-portabletext": "^1.0.1",
-		"emdash": "1.3.1",
+		"emdash": "https://pkg.pr.new/emdash-cms/emdash@1a53c00",
 		"evlog": "2.30.1",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
