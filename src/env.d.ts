@@ -10,5 +10,7 @@ declare namespace App {
 	interface Locals extends Runtime {
 		cms: import('./lib/cms/context').CmsContext;
 		uiOverrides?: import('./i18n/utils').UiOverrides;
+		/** Route-cache tags this route depends on beyond the layout (see LAYOUT_CACHE_TAGS). */
+		cacheTags?: string[];
 	}
 }

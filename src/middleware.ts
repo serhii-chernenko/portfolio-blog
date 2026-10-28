@@ -4,7 +4,8 @@ import { GET as getLlmsTxt } from './pages/blog/llms.txt';
 import { GET as getLlmsFullTxt } from './pages/blog/llms-full.txt';
 import {
 	CMS_CACHE_TAGS,
-	COLLECTIONS,
+	COMMENTS_CACHE_TAG,
+	LAYOUT_CACHE_TAGS,
 	EDIT_MODE_PARAM,
 	PREVIEW_TOKEN_PARAM,
 } from './lib/cms/config';
@@ -18,6 +19,8 @@ import {
 } from './lib/telemetry-schema';
 import { hasAssetExtension } from './lib/trailing-slash';
 import { loadUiOverrides, uiOverridesFailed } from './lib/ui-overrides';
+import { prefetchLayoutData } from './lib/site';
+import { isLocale } from './i18n/config';
 import { BASE_PATH } from './lib/base-path';
 
 const FORM_CONTENT_TYPES = [
@@ -65,7 +68,7 @@ const CACHEABLE_METHODS = ['GET', 'HEAD'];
 const CACHEABLE_STATUSES = [200, 404];
 const CACHEABLE_API_PATHS = [`${RUNTIME_BASE}/api/search`];
 const API_PATH_PREFIX = `${RUNTIME_BASE}/api/`;
-const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400, tags: CMS_CACHE_TAGS };
+const PUBLISHED_CACHE_POLICY = { maxAge: 3600, swr: 86400 };
 const NOT_FOUND_CACHE_POLICY = { maxAge: 60, tags: CMS_CACHE_TAGS };
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const NO_STORE_CACHE_CONTROL = 'no-store';
@@ -94,7 +97,7 @@ const COMMENT_WRITE_PATH = /^\/_emdash\/api\/(?:comments\/[^/]+\/[^/]+|admin\/co
 /**
  * EmDash purges the route cache for content, menu, taxonomy and settings changes, but not for
  * comments, so a post page would show a new comment only after its cached copy expires. Purge
- * the post pages after a successful comment write instead.
+ * the pages with a comments section (COMMENTS_CACHE_TAG) after a successful comment write instead.
  */
 async function handleCmsRoute(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	const response = await next();
@@ -106,7 +109,7 @@ async function handleCmsRoute(context: APIContext, next: MiddlewareNext): Promis
 		context.cache?.enabled
 	) {
 		try {
-			await context.cache.invalidate({ tags: COLLECTIONS.posts });
+			await context.cache.invalidate({ tags: COMMENTS_CACHE_TAG });
 		} catch {
 			// Purge failures only delay the comment until the page expires.
 		}
@@ -237,7 +240,15 @@ function applyCachePolicy(context: APIContext, response: Response): void {
 		isCacheableRoute(context.url.pathname) &&
 		isCacheableResponse(response)
 	) {
-		context.cache.set(response.status === 404 ? NOT_FOUND_CACHE_POLICY : PUBLISHED_CACHE_POLICY);
+		if (response.status === 404) {
+			context.cache.set(NOT_FOUND_CACHE_POLICY);
+			return;
+		}
+		// Routes that declare their dependencies get the layout's tags plus theirs; the rest depend
+		// on everything (see CMS_CACHE_TAGS).
+		const routeTags = context.locals.cacheTags;
+		const tags = routeTags ? [...new Set([...LAYOUT_CACHE_TAGS, ...routeTags])] : CMS_CACHE_TAGS;
+		context.cache.set({ ...PUBLISHED_CACHE_POLICY, tags });
 	}
 }
 
@@ -277,6 +288,9 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 
 	const apexEndpoint = apexEndpointFor(request, url.pathname);
 	if (!apexEndpoint && rendersUi(url.pathname)) {
+		// Header, footer and site copy load alongside the page's own queries instead of after them.
+		const locale = url.pathname.slice(BASE_PATH.length).split('/')[1] ?? '';
+		if (isLocale(locale)) prefetchLayoutData(locale, context.locals.cms);
 		context.locals.uiOverrides = await loadUiOverrides(context.locals.cms);
 	}
 	const response = applySecurityHeaders(await (apexEndpoint ? apexEndpoint(context) : next()));

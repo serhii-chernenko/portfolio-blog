@@ -1,4 +1,4 @@
-import { definePlugin } from 'emdash';
+import { after, definePlugin } from 'emdash';
 import { SITE_PLUGIN_ID, SITE_PLUGIN_VERSION } from './descriptor';
 import { slugPolicyViolation } from './slug-policy';
 
@@ -84,11 +84,22 @@ export function createPlugin() {
 				);
 			},
 			'content:afterPublish': async (event, ctx) => {
+				const { purgeTranslationGroup, pathsToWarm, warmPages } =
+					await import('../../../src/lib/cache-purge');
+				await purgeTranslationGroup(event.collection, event.content);
+				// After the response: EmDash purges the route cache before it responds.
+				after(() => warmPages(ctx.site.url, pathsToWarm(event.collection, event.content)));
 				const { handleContentPublished } = await import('../../../src/lib/publish-hooks');
 				await handleContentPublished(
 					{ collection: event.collection, content: event.content },
 					{ siteUrl: ctx.site.url, kv: ctx.kv, log: ctx.log },
 				);
+			},
+			'content:afterUnpublish': async (event, ctx) => {
+				const { purgeTranslationGroup, pathsToWarm, warmPages } =
+					await import('../../../src/lib/cache-purge');
+				await purgeTranslationGroup(event.collection, event.content);
+				after(() => warmPages(ctx.site.url, pathsToWarm(event.collection, event.content)));
 			},
 		},
 	});

@@ -32,6 +32,8 @@ export interface SiteSettings {
 	aboutTitle: string;
 	aboutBody: string;
 	aboutCta: string;
+	/** Author profile URLs, one per line (shared by both languages). */
+	authorProfiles: string;
 }
 
 export interface LayoutData {
@@ -65,6 +67,7 @@ const SETTINGS_FIELDS: Record<keyof SiteSettings, string> = {
 	aboutTitle: 'about_title',
 	aboutBody: 'about_body',
 	aboutCta: 'about_cta',
+	authorProfiles: 'author_profiles',
 };
 
 function isNavIcon(value: string): value is NavIcon {
@@ -162,6 +165,7 @@ function fallbackSettings(t: Translate, raw: RawSettings | null, site: SiteConfi
 		aboutTitle: pick(raw?.aboutTitle, 'home.about.title'),
 		aboutBody: pick(raw?.aboutBody, 'home.about.body'),
 		aboutCta: pick(raw?.aboutCta, 'home.about.cta'),
+		authorProfiles: raw?.authorProfiles ?? '',
 	};
 }
 
@@ -216,7 +220,32 @@ async function loadSettings(locale: Locale): Promise<RawSettings | null> {
 	return settings;
 }
 
-export async function getLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
+const layoutByContext = new WeakMap<CmsContext, Map<Locale, Promise<LayoutData>>>();
+
+/**
+ * Header, footer and site copy for a page. Memoized per request and locale: the middleware starts
+ * it before the page renders (see prefetchLayoutData), so its queries overlap the page's own.
+ */
+export function getLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
+	let perLocale = layoutByContext.get(ctx);
+	if (!perLocale) {
+		perLocale = new Map();
+		layoutByContext.set(ctx, perLocale);
+	}
+	let pending = perLocale.get(locale);
+	if (!pending) {
+		pending = loadLayoutData(locale, ctx);
+		perLocale.set(locale, pending);
+	}
+	return pending;
+}
+
+/** Starts loading the layout data without waiting; failures surface where the page awaits it. */
+export function prefetchLayoutData(locale: Locale, ctx: CmsContext): void {
+	getLayoutData(locale, ctx).catch(() => {});
+}
+
+async function loadLayoutData(locale: Locale, ctx: CmsContext): Promise<LayoutData> {
 	const [settings, site, header, footer, pages, overrides] = await Promise.all([
 		loadSettings(locale),
 		getSiteConfig(),
